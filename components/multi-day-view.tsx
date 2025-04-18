@@ -12,7 +12,6 @@ interface User {
   initial: string
 }
 
-// Update the TimeBlock interface
 interface TimeBlock {
   id?: string
   start: string
@@ -27,10 +26,34 @@ interface MultiDayViewProps {
   days: string[]
 }
 
+// Helper function to get text color based on background color for contrast
+const getTextColor = (bgColor: string): string => {
+  // Convert hex to RGB
+  const hex = bgColor.replace("#", "")
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+
+  // Calculate luminance (perceived brightness)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+  // Return white for dark colors, black for light colors
+  return luminance > 0.5 ? "#000000" : "#ffffff"
+}
+
 export function MultiDayView({ users: initialUsers, schedules: initialSchedules, days }: MultiDayViewProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true)
-  // Change the hours array to start at 6am and end at midnight
-  const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6 to 24 (midnight)
+  // Initialize isCollapsed state from localStorage or default to true
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedState = localStorage.getItem('multiDayViewCollapsed')
+      return savedState !== null ? savedState === 'true' : true
+    }
+    return true
+  })
+  
+  // Change the hours array to start at 6am and end at 2am
+  const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
 
   // Add a toggle state for time format (24h vs AM/PM)
   const [use24HourFormat, setUse24HourFormat] = useState(true)
@@ -47,6 +70,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   const [selectedDay, setSelectedDay] = useState<string>("Monday")
   const [editMode, setEditMode] = useState(false)
   const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlock | undefined>(undefined)
+  const [showColorPicker, setShowColorPicker] = useState(false)
 
   // Get current user name from localStorage
   const [currentUserName, setCurrentUserName] = useState("")
@@ -57,6 +81,23 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   // Add a state for tracking screen width
   const [screenWidth, setScreenWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024)
   const [isMobile, setIsMobile] = useState(false)
+
+  // Helper function to find the hour when the first event of the day starts
+  const getFirstEventHour = (daySchedule: TimeBlock[]): number => {
+    if (!daySchedule || daySchedule.length === 0) return 0;
+    
+    // Sort by start time and get the first event
+    const sortedEvents = [...daySchedule].sort((a, b) => {
+      const aStart = a.start.split(":").map(Number);
+      const bStart = b.start.split(":").map(Number);
+      return (aStart[0] * 60 + aStart[1]) - (bStart[0] * 60 + bStart[1]);
+    });
+    
+    // Get the hour of the first event
+    const firstEvent = sortedEvents[0];
+    const startHour = parseInt(firstEvent.start.split(":")[0]);
+    return startHour;
+  };
 
   useEffect(() => {
     // Get current user name
@@ -117,7 +158,10 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   }, [users])
 
   const toggleView = () => {
-    setIsCollapsed(!isCollapsed)
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    // Save to localStorage
+    localStorage.setItem('multiDayViewCollapsed', String(newState))
   }
 
   // Add a toggle function for time format
@@ -148,10 +192,19 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   // Format hour based on selected format
   const formatHour = (hour: number): string => {
     if (use24HourFormat) {
-      return hour === 24 ? "00:00" : `${hour}:00`
+      if (hour === 24) return "00:00"
+      if (hour === 25) return "01:00"
+      if (hour === 26) return "02:00"
+      return `${hour}:00`
     } else {
       if (hour === 0 || hour === 24) {
         return "12AM"
+      }
+      if (hour === 25) {
+        return "1AM"
+      }
+      if (hour === 26) {
+        return "2AM"
       }
       const period = hour >= 12 ? "PM" : "AM"
       const displayHour = hour > 12 ? hour - 12 : hour
@@ -160,12 +213,11 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   }
 
   // Convert time string to position percentage
-  // Update the timeToPosition function to use the new time range
   const timeToPosition = (time: string): number => {
     const [hours, minutes] = time.split(":").map(Number)
     const totalMinutes = hours * 60 + minutes
     const startMinutes = 6 * 60 // 6:00 AM
-    const endMinutes = 24 * 60 // 12:00 AM (midnight)
+    const endMinutes = 26 * 60 // 2:00 AM
     const totalDuration = endMinutes - startMinutes
 
     return ((totalMinutes - startMinutes) / totalDuration) * 100
@@ -301,186 +353,146 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           >
             <Clock className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleView}
-            className="h-8 w-8 text-white hover:bg-[#333333]"
-            title={isCollapsed ? "Show Detailed View" : "Show Collapsed View"}
-          >
-            {isCollapsed ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-layout-list"
-              >
-                <rect width="7" height="7" x="3" y="3" rx="1" />
-                <rect width="7" height="7" x="3" y="14" rx="1" />
-                <path d="M14 4h7" />
-                <path d="M14 9h7" />
-                <path d="M14 15h7" />
-                <path d="M14 20h7" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-layout-grid"
-              >
-                <rect width="7" height="7" x="3" y="3" rx="1" />
-                <rect width="7" height="7" x="14" y="3" rx="1" />
-                <rect width="7" height="7" x="14" y="14" rx="1" />
-                <rect width="7" height="7" x="3" y="14" rx="1" />
-              </svg>
-            )}
-          </Button>
+
         </div>
       </div>
 
-      <div className="space-y-6">
-        {days.map((day) => (
-          <div key={day} className="mb-4">
-            {/* Day header - stays fixed at the top */}
-            <div className="sticky top-0 z-50 bg-[#1E1E1E] pt-2 pb-1">
-              <h4 className="text-sm font-medium mb-2 pl-2">{day}</h4>
+      {/* Vertical calendar layout */}
+      <div className="relative">
+        {/* Day headers across the top */}
+        <div className="sticky top-[57px] z-40 bg-[#1E1E1E] flex border-b border-[#333333]">
+          {/* Empty cell for time column */}
+          <div className="w-16 min-w-16 border-r border-[#333333] py-2"></div>
+          
+          {/* Day headers */}
+          {days.map((day) => (
+            <div key={day} className="flex-1 text-center py-2 px-1">
+              <h4 className="text-sm font-medium">{day}</h4>
+              
+              {/* No user icons here - they'll be placed at the top of each line */}
             </div>
+          ))}
+        </div>
 
-            {/* Scrollable container for the entire day group */}
-            <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
-              <div className="min-w-[800px] md:min-w-0 pl-2">
-                {/* Time header - now inside the scrollable container */}
-                <div className="sticky top-8 z-40 bg-[#1E1E1E] pt-1 pb-10">
-                  <div className="relative h-6">
-                    <div className="absolute inset-0 flex">
-                      {hours.map((hour) => (
-                        <div key={hour} className="flex-1 relative">
-                          {getVisibleHours().includes(hour) && (
-                            <div
-                              className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
-                              style={{ left: `${((hour - 6) / 18) * 100}%` }}
-                            >
-                              {formatHour(hour)}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* User schedules */}
-                <div className="space-y-3">
-                  {users.map((user) => {
-                    const userSchedule = schedules[user.id]?.[day] || []
-                    const isCurrentUser = user.name === currentUserName
-
+        {/* Time slots and events */}
+        <div className="relative">
+          {hours.map((hour) => (
+            <div key={hour} className="flex border-b border-[#333333]">
+              {/* Time label */}
+              <div className="w-16 min-w-16 border-r border-[#333333] py-2 text-right pr-2">
+                <span className="text-xs text-[#666666]">{formatHour(hour)}</span>
+              </div>
+              
+              {/* Day columns */}
+              {days.map((day) => (
+                <div key={`${day}-${hour}`} className="flex-1 relative h-12 border-r border-[#333333]">
+                  {/* User columns with thin vertical lines */}
+                  {users.map((user, userIndex) => {
+                    const userSchedule = schedules[user.id]?.[day] || [];
+                    const isCurrentUser = user.name === currentUserName;
+                    const columnWidth = 100 / users.length;
+                    const leftPosition = userIndex * columnWidth;
+                    
+                    // Check if there's an event in this hour
+                    const eventsInThisHour = userSchedule.filter(block => {
+                      const startParts = block.start.split(":").map(Number);
+                      const endParts = block.end.split(":").map(Number);
+                      const startHour = startParts[0] + startParts[1] / 60;
+                      const endHour = endParts[0] + endParts[1] / 60;
+                      return (startHour <= hour + 1 && endHour >= hour);
+                    });
+                    
                     return (
-                      <div
-                        key={`${day}-${user.id}`}
-                        className={`mb-${isCollapsed ? "1" : "2"} mt-8 pt-2 relative z-30`}
+                      <div 
+                        key={`${day}-${user.id}-${hour}-column`}
+                        className="absolute h-full"
+                        style={{
+                          left: `${leftPosition}%`,
+                          width: `${columnWidth}%`,
+                        }}
                       >
-                        <div className="flex items-center justify-between mb-1 pl-1">
-                          <div
-                            className={`flex items-center gap-2 ${isCurrentUser ? "cursor-pointer hover:opacity-80" : ""}`}
-                            onClick={() => isCurrentUser && handleUserClick(user, day)}
-                          >
-                            <div
-                              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${isCurrentUser ? "ring-2 ring-offset-2 ring-offset-[#1E1E1E] ring-[#444444]" : ""}`}
-                              style={{ backgroundColor: user.color, color: "#000" }}
-                            >
-                              {user.initial}
+                        {/* Only show vertical line during scheduled times */}
+                        {eventsInThisHour.length > 0 && eventsInThisHour.map((block, blockIndex) => {
+                          const startParts = block.start.split(":").map(Number);
+                          const endParts = block.end.split(":").map(Number);
+                          const startHour = startParts[0] + startParts[1] / 60;
+                          const endHour = endParts[0] + endParts[1] / 60;
+                          
+                          // Calculate position and height for this hour segment
+                          const startPercent = Math.max(0, (startHour - hour) * 100);
+                          const endPercent = Math.min(100, (endHour - hour) * 100);
+                          const heightPercent = endPercent - startPercent;
+                          
+                          // Check if this is the first event of the day for this user and if it starts in this hour
+                          const isFirstEventOfDay = blockIndex === 0 && startPercent > 0;
+                          const isAllDay = block.allDay;
+                          const showUserIcon = isFirstEventOfDay || (blockIndex === 0 && hour === getFirstEventHour(userSchedule)) || (isAllDay && hour === 6);
+                          
+                          return (
+                            <div key={`line-${block.id || `${day}-${user.id}-${hour}-${block.start}`}`}>
+                              {/* Line segment */}
+                              <div 
+                                className="absolute left-1/2 transform -translate-x-1/2"
+                                style={{
+                                  top: `${startPercent}%`,
+                                  height: `${heightPercent}%`,
+                                  width: '10px',
+                                  backgroundColor: user.color,
+                                  opacity: 0.9,
+                                  zIndex: 5,
+                                  borderRadius: endHour < hour + 1 || hour === 26 ? '0 0 10px 10px' : '0'
+                                }}
+                                title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
+                                onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
+                              />
+                              
+                              {/* User icon at the start of the first event */}
+                              {showUserIcon && (
+                                <div 
+                                  className="absolute left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center"
+                                  style={{
+                                    top: `${startPercent - 10}%`
+                                  }}
+                                >
+                                  <div
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md"
+                                    style={{
+                                      backgroundColor: user.color,
+                                      color: getTextColor(user.color),
+                                      border: '2px solid ' + getTextColor(user.color)
+                                    }}
+                                  >
+                                    {user.initial}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <span className="text-sm">
-                              {user.name}
-                              {isCurrentUser && " (You)"}
-                            </span>
-                          </div>
-
-                          {/* Add button for current user */}
-                          {isCurrentUser && (
+                          );
+                        })}
+                        
+                        {/* Add button for current user */}
+                        {isCurrentUser && (
+                          <div 
+                            className="absolute top-0 right-0 opacity-0 hover:opacity-100 p-1 z-20"
+                          >
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 rounded-full bg-[#333333] hover:bg-[#444444]"
+                              className="h-5 w-5 bg-[#333333] text-white hover:bg-[#444444] rounded-full"
                               onClick={() => handleAddClick(user, day)}
                             >
                               <Plus className="h-3 w-3" />
-                              <span className="sr-only">Add schedule item</span>
                             </Button>
-                          )}
-                        </div>
-
-                        {/* Adjust the height based on collapsed state */}
-                        <div
-                          className={`relative ${isCollapsed ? "h-2" : "h-8"} bg-[#1E1E1E] rounded-md overflow-hidden transition-all duration-200`}
-                        >
-                          {/* Vertical grid lines */}
-                          <div className="absolute inset-0 flex pointer-events-none">
-                            {hours.map((hour) => (
-                              <div key={hour} className="flex-1 border-l border-[#333333] first:border-l-0 h-full" />
-                            ))}
                           </div>
-
-                          {/* Schedule blocks */}
-                          {userSchedule.map((block, index) => {
-                            // For all-day events, span the entire width
-                            const startPos = block.allDay ? 0 : timeToPosition(block.start)
-                            const endPos = block.allDay ? 100 : timeToPosition(block.end)
-                            const width = block.allDay ? 100 : endPos - startPos
-
-                            return (
-                              <div
-                                key={block.id || index}
-                                className={`absolute ${
-                                  isCollapsed ? "h-2" : "top-0 h-full"
-                                } rounded-md flex items-center justify-center transition-all duration-200 z-10 ${
-                                  isCurrentUser ? "cursor-pointer hover:opacity-90" : ""
-                                }`}
-                                style={{
-                                  left: `${startPos}%`,
-                                  width: `${width}%`,
-                                  backgroundColor: user.color,
-                                  color: "#000",
-                                  top: isCollapsed ? "0" : undefined,
-                                }}
-                                title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
-                                onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
-                              >
-                                {!isCollapsed && width > 15 ? (
-                                  <div className="flex items-center justify-center w-full">
-                                    <span className="text-xs font-medium truncate px-2">
-                                      {block.label}
-                                      {block.allDay ? " (All Day)" : ""}
-                                    </span>
-                                    {isCurrentUser && width > 30 && <Edit2 className="h-3 w-3 opacity-70" />}
-                                  </div>
-                                ) : null}
-                              </div>
-                            )
-                          })}
-                        </div>
+                        )}
                       </div>
-                    )
+                    );
                   })}
                 </div>
-              </div>
+              ))}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Quick Schedule Modal */}
@@ -498,22 +510,11 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           usedColors={usedColors}
           onUserColorChange={(color) => {
             if (selectedUser) {
-              updateUserColor(selectedUser, color)
+              updateUserColor(selectedUser, color);
             }
           }}
         />
       )}
-
-      {/* Add CSS to hide scrollbars */}
-      <style jsx global>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;  /* Chrome, Safari and Opera */
-        }
-      `}</style>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Edit2, Users, Eye } from "lucide-react"
+import { ChevronLeft, ChevronRight, Edit2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WeeklySchedule } from "@/components/weekly-schedule"
 import Link from "next/link"
@@ -131,7 +131,22 @@ export default function Dashboard() {
             </Link>
             <Link href="/overview">
               <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Eye className="h-4 w-4" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+                  <line x1="15" y1="3" x2="15" y2="21"></line>
+                  <line x1="3" y1="3" x2="3" y2="21"></line>
+                </svg>
                 <span className="sr-only">Overview</span>
               </Button>
             </Link>
@@ -141,22 +156,7 @@ export default function Dashboard() {
 
       {/* Add padding to account for the fixed header */}
       <main className="flex-1 pt-[57px] p-4 max-w-7xl mx-auto w-full">
-        {/* Week navigation - now part of the scrollable content */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-medium">Week of {formatWeekRange(currentWeek)}</h2>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={previousWeek} className="h-8 w-8">
-              <ChevronLeft className="h-4 w-4" />
-              <span className="sr-only">Previous week</span>
-            </Button>
-
-            <Button variant="ghost" size="icon" onClick={nextWeek} className="h-8 w-8">
-              <ChevronRight className="h-4 w-4" />
-              <span className="sr-only">Next week</span>
-            </Button>
-          </div>
-        </div>
 
         {/* Schedule content */}
         <div className="flex flex-col gap-4">

@@ -62,13 +62,20 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6 to 24 (midnight)
+  const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
 
   // For mobile view, we'll show a simplified version
   const [isMobile, setIsMobile] = useState(false)
 
-  // Add a toggle state for the collapsed view at the top of the component
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  // Add a toggle state for the collapsed view, initialized from localStorage
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedState = localStorage.getItem('weeklyScheduleCollapsed')
+      return savedState !== null ? savedState === 'true' : false
+    }
+    return false
+  })
 
   // Add a toggle state for time format (24h vs AM/PM)
   const [use24HourFormat, setUse24HourFormat] = useState(true)
@@ -153,7 +160,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const [hours, minutes] = time.split(":").map(Number)
     const totalMinutes = hours * 60 + minutes
     const startMinutes = 6 * 60 // 6:00 AM
-    const endMinutes = 24 * 60 // 12:00 AM (midnight)
+    const endMinutes = 26 * 60 // 2:00 AM
     const totalDuration = endMinutes - startMinutes
 
     return ((totalMinutes - startMinutes) / totalDuration) * 100
@@ -161,7 +168,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Add a toggle function after the timeToPosition function
   const toggleView = () => {
-    setIsCollapsed(!isCollapsed)
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    // Save to localStorage
+    localStorage.setItem('weeklyScheduleCollapsed', String(newState))
   }
 
   // Add a toggle function for time format
@@ -174,10 +184,19 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Format hour based on selected format
   const formatHour = (hour: number): string => {
     if (use24HourFormat) {
-      return hour === 24 ? "00:00" : `${hour}:00`
+      if (hour === 24) return "00:00"
+      if (hour === 25) return "01:00"
+      if (hour === 26) return "02:00"
+      return `${hour}:00`
     } else {
       if (hour === 0 || hour === 24) {
         return "12AM"
+      }
+      if (hour === 25) {
+        return "1AM"
+      }
+      if (hour === 26) {
+        return "2AM"
       }
       const period = hour >= 12 ? "PM" : "AM"
       const displayHour = hour > 12 ? hour - 12 : hour
@@ -339,7 +358,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       <div className="sticky top-[57px] z-40 bg-[#121212] border-t border-[#333333]">
         <div className="flex justify-between items-center h-[36px] px-2">
           <div>
-            <h3 className="text-sm font-medium">Weekly Schedule</h3>
+            <h3 className="text-sm font-medium">Week of Apr 13 - Apr 19 Schedule</h3>
           </div>
           <div className="flex items-center gap-2">
             <Button

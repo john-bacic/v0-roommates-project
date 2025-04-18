@@ -12,59 +12,43 @@ const users = [
   { id: 3, name: "John", color: "#CF6679", initial: "J" },
 ]
 
-// Sample schedule data
-const sampleSchedules: Record<number, Record<string, Array<{ start: string; end: string; label: string }>>> = {
+// Sample schedule data - matches the WeeklySchedule component's data
+const sampleSchedules: Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>> = {
   1: {
-    // Riko
-    Monday: [
-      { start: "9:00", end: "12:00", label: "Class" },
-      { start: "14:00", end: "16:00", label: "Work" },
-    ],
-    Tuesday: [{ start: "9:00", end: "13:00", label: "Class" }],
-    Wednesday: [{ start: "13:00", end: "17:00", label: "Work" }],
-    Thursday: [
-      { start: "9:00", end: "11:00", label: "Class" },
-      { start: "15:00", end: "17:00", label: "Study Group" },
-    ],
-    Friday: [{ start: "11:00", end: "14:00", label: "Work" }],
-    Saturday: [],
-    Sunday: [],
+    // Riko - Updated schedule
+    Monday: [{ start: "16:00", end: "23:00", label: "Work" }],
+    Tuesday: [{ start: "17:00", end: "22:00", label: "Work" }],
+    Wednesday: [{ start: "12:00", end: "22:00", label: "Work" }],
+    Thursday: [{ start: "12:00", end: "23:00", label: "Work" }],
+    Friday: [{ start: "17:00", end: "23:30", label: "Work" }],
+    Saturday: [{ start: "17:00", end: "23:30", label: "Work" }],
+    Sunday: [{ start: "16:00", end: "22:00", label: "Work" }],
   },
   2: {
-    // Narumi
-    Monday: [{ start: "12:00", end: "15:00", label: "Work" }],
-    Tuesday: [
-      { start: "9:00", end: "11:00", label: "Gym" },
-      { start: "15:00", end: "17:00", label: "Work" },
-    ],
-    Wednesday: [{ start: "9:00", end: "12:00", label: "Work" }],
-    Thursday: [{ start: "13:00", end: "16:00", label: "Work" }],
-    Friday: [
-      { start: "9:00", end: "11:00", label: "Appointment" },
-      { start: "14:00", end: "16:00", label: "Work" },
-    ],
-    Saturday: [{ start: "10:00", end: "12:00", label: "Work" }],
-    Sunday: [],
+    // Narumi - Updated schedule
+    Monday: [{ start: "10:00", end: "19:45", label: "Work" }],
+    Tuesday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
+    Wednesday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
+    Thursday: [{ start: "10:00", end: "19:45", label: "Work" }],
+    Friday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
+    Saturday: [{ start: "06:00", end: "18:45", label: "Work" }],
+    Sunday: [{ start: "11:00", end: "19:45", label: "Work" }],
   },
   3: {
-    // John
-    Monday: [
-      { start: "9:00", end: "11:00", label: "Class" },
-      { start: "15:00", end: "17:00", label: "Work" },
-    ],
-    Tuesday: [{ start: "11:00", end: "14:00", label: "Class" }],
-    Wednesday: [
-      { start: "9:00", end: "11:00", label: "Class" },
-      { start: "15:00", end: "17:00", label: "Work" },
-    ],
-    Thursday: [{ start: "11:00", end: "14:00", label: "Class" }],
-    Friday: [{ start: "14:00", end: "17:00", label: "Work" }],
-    Saturday: [],
-    Sunday: [{ start: "14:00", end: "16:00", label: "Study Group" }],
+    // John - Updated schedule
+    Monday: [{ start: "09:00", end: "17:00", label: "Work" }],
+    Tuesday: [{ start: "09:00", end: "21:00", label: "Work" }],
+    Wednesday: [{ start: "09:00", end: "17:00", label: "Work" }],
+    Thursday: [{ start: "09:00", end: "17:00", label: "Work" }],
+    Friday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
+    Saturday: [{ start: "00:00", end: "23:59", label: "Out of town", allDay: true }],
+    Sunday: [{ start: "00:00", end: "23:59", label: "Out of town", allDay: true }],
   },
 }
 
 export default function Overview() {
+  // Initialize users state with the initial users data
+  const [usersList, setUsersList] = useState<typeof users>(users)
   const [schedules, setSchedules] = useState(sampleSchedules)
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const [currentWeek, setCurrentWeek] = useState(new Date())
@@ -73,7 +57,16 @@ export default function Overview() {
     // Try to load schedules from localStorage
     const loadedSchedules = { ...sampleSchedules }
 
-    users.forEach((user) => {
+    // Load user colors from localStorage
+    const updatedUsers = [...usersList]
+    usersList.forEach((user, index) => {
+      // Update user colors
+      const savedColor = localStorage.getItem(`userColor_${user.name}`)
+      if (savedColor) {
+        updatedUsers[index] = { ...user, color: savedColor }
+      }
+
+      // Load user schedules
       const savedSchedule = localStorage.getItem(`schedule_${user.name}`)
       if (savedSchedule) {
         try {
@@ -84,7 +77,40 @@ export default function Overview() {
       }
     })
 
+    // Update both users and schedules
+    setUsersList(updatedUsers)
     setSchedules(loadedSchedules)
+
+    // Add event listener for real-time updates
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key?.startsWith("userColor_")) {
+        // Handle color changes
+        const userName = event.key.replace("userColor_", "")
+        const userToUpdate = updatedUsers.find(u => u.name === userName)
+        if (userToUpdate && event.newValue) {
+          setUsersList(prev => prev.map(u => 
+            u.name === userName ? { ...u, color: event.newValue! } : u
+          ))
+        }
+      } else if (event.key?.startsWith("schedule_")) {
+        // Handle schedule changes
+        const userName = event.key.replace("schedule_", "")
+        const userToUpdate = updatedUsers.find(u => u.name === userName)
+        if (userToUpdate && event.newValue) {
+          try {
+            setSchedules(prev => ({
+              ...prev,
+              [userToUpdate.id]: JSON.parse(event.newValue!)
+            }))
+          } catch (e) {
+            console.error(`Failed to parse updated schedule for ${userName}`)
+          }
+        }
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
   // Format week range with month names
@@ -110,11 +136,31 @@ export default function Overview() {
       <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#121212] p-4 shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-            <h1 className="text-xl font-bold">Weekly Overview</h1>
+            <div className="flex items-center group">
+              <Link href="/dashboard" className="flex items-center text-[#A0A0A0] group-hover:text-white mr-2">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Link>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4 mx-2 text-[#A0A0A0] group-hover:text-white transition-colors duration-200"
+              >
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </div>
+            <h1 className="text-xl font-bold">
+              Weekly Overview
+            </h1>
           </div>
         </div>
       </header>
@@ -129,7 +175,7 @@ export default function Overview() {
         </div>
 
         <div className="bg-[#1E1E1E] rounded-lg p-4">
-          <MultiDayView users={users} schedules={schedules} days={days} />
+          <MultiDayView users={usersList} schedules={schedules} days={days} />
         </div>
       </main>
     </div>
