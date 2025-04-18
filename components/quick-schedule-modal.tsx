@@ -1,0 +1,364 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Trash2, Check, Palette } from "lucide-react"
+
+// Update the TimeBlock interface to include allDay property
+interface TimeBlock {
+  id?: string
+  start: string
+  end: string
+  label: string
+  allDay?: boolean
+}
+
+interface QuickScheduleModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSave: (day: string, timeBlock: TimeBlock) => void
+  onDelete?: (day: string, timeBlockId: string) => void
+  userName: string
+  userColor: string
+  initialDay?: string
+  editMode?: boolean
+  timeBlock?: TimeBlock
+  usedColors?: string[]
+  onUserColorChange?: (color: string) => void
+}
+
+// Predefined colors for the color picker
+const COLORS = [
+  "#BB86FC", // Purple (default)
+  "#03DAC6", // Teal
+  "#CF6679", // Pink
+  "#FFB74D", // Orange
+  "#64B5F6", // Blue
+  "#81C784", // Green
+  "#FFD54F", // Yellow
+  "#E57373", // Red
+]
+
+export function QuickScheduleModal({
+  isOpen,
+  onClose,
+  onSave,
+  onDelete,
+  userName,
+  userColor: initialUserColor,
+  initialDay = "Monday",
+  editMode = false,
+  timeBlock: initialTimeBlock,
+  usedColors = [],
+  onUserColorChange,
+}: QuickScheduleModalProps) {
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  const [day, setDay] = useState(initialDay)
+  // Add state to track the current color within the modal
+  const [currentColor, setCurrentColor] = useState(initialUserColor)
+
+  // Update the initial state in the component to include allDay property
+  const [timeBlock, setTimeBlock] = useState<TimeBlock>(() => {
+    if (initialTimeBlock) {
+      return {
+        ...initialTimeBlock,
+        // Ensure allDay is explicitly set to a boolean value
+        allDay: initialTimeBlock.allDay === true,
+      }
+    }
+    return {
+      id: crypto.randomUUID(),
+      start: "09:00",
+      end: "17:00",
+      label: "Work",
+      allDay: false,
+    }
+  })
+  const [showColorPicker, setShowColorPicker] = useState(false)
+
+  // Reset state when modal opens or userColor changes
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentColor(initialUserColor)
+      setShowColorPicker(false)
+      if (initialTimeBlock) {
+        // Ensure allDay is explicitly set to a boolean value
+        setTimeBlock({
+          ...initialTimeBlock,
+          allDay: initialTimeBlock.allDay === true,
+        })
+      } else {
+        // Reset to default state with allDay explicitly set to false
+        setTimeBlock({
+          id: crypto.randomUUID(),
+          start: "09:00",
+          end: "17:00",
+          label: "Work",
+          allDay: false,
+        })
+      }
+    }
+  }, [isOpen, initialTimeBlock, initialUserColor])
+
+  // Update CSS variable for focus styles
+  useEffect(() => {
+    document.documentElement.style.setProperty("--focus-ring-color", currentColor)
+  }, [currentColor])
+
+  const handleSave = () => {
+    onSave(day, timeBlock)
+    onClose()
+  }
+
+  const handleDelete = () => {
+    if (onDelete && timeBlock.id) {
+      onDelete(day, timeBlock.id)
+      onClose()
+    } else if (onDelete) {
+      // If there's no ID (which might be the case for newly created blocks),
+      // we can still try to delete using a fallback approach
+      console.log("Attempting to delete time block without ID")
+      onDelete(day, "current")
+      onClose()
+    }
+  }
+
+  // Update the handleColorChange function to immediately apply the color change
+  const handleColorChange = (color: string) => {
+    // Update local state first for immediate UI feedback
+    setCurrentColor(color)
+
+    // Then notify parent component
+    if (onUserColorChange) {
+      onUserColorChange(color)
+    }
+  }
+
+  const toggleColorPicker = () => {
+    setShowColorPicker(!showColorPicker)
+  }
+
+  // Add a function to toggle the all-day state
+  const toggleAllDay = () => {
+    setTimeBlock((prev) => ({
+      ...prev,
+      allDay: !prev.allDay,
+    }))
+  }
+
+  // Helper function to determine text color based on background color
+  const getTextColor = (bgColor: string) => {
+    const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
+    return lightColors.includes(bgColor) ? "#000" : "#fff"
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="bg-[#1E1E1E] text-white border-[#333333] sm:max-w-[425px]">
+        <DialogHeader>
+          {/* Use currentColor instead of userColor for immediate feedback */}
+          <DialogTitle className="flex items-center gap-2">
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center text-xs relative cursor-pointer group"
+              style={{ backgroundColor: currentColor, color: getTextColor(currentColor) }}
+              onClick={toggleColorPicker}
+            >
+              {userName.charAt(0)}
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 rounded-full group-hover:bg-opacity-30 transition-all">
+                <Palette className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+            <span>{userName}'s Schedule</span>
+          </DialogTitle>
+          <DialogDescription className="text-[#A0A0A0]">
+            {editMode ? "Edit this schedule item" : "Quickly add to your schedule for the selected day."}
+            {onUserColorChange && <div className="mt-1 text-xs">Click on your icon to change your color.</div>}
+          </DialogDescription>
+        </DialogHeader>
+
+        {showColorPicker && (
+          <div className="mb-4 p-3 bg-[#242424] rounded-md">
+            <Label className="mb-2 block text-sm">Select Your Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {COLORS.map((color) => {
+                const isUsed = usedColors.includes(color) && color !== currentColor && color !== initialUserColor
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    disabled={isUsed}
+                    onClick={() => handleColorChange(color)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      isUsed ? "opacity-30 cursor-not-allowed" : "hover:ring-2 hover:ring-white"
+                    } ${currentColor === color ? "ring-2 ring-white" : ""}`}
+                    style={{ backgroundColor: color }}
+                    title={isUsed ? "This color is already in use" : ""}
+                  >
+                    {currentColor === color && <Check className="h-4 w-4" style={{ color: getTextColor(color) }} />}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-[#A0A0A0] mt-2">This color will be applied to all your schedule items.</p>
+          </div>
+        )}
+
+        {/* Add the toggle UI in the modal form, after the day selection and before the time inputs */}
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="day">Day</Label>
+            <Select value={day} onValueChange={setDay}>
+              <SelectTrigger
+                id="day"
+                className="bg-[#242424] border-[#333333] text-white"
+                style={{ backgroundColor: "#242424" }}
+              >
+                <SelectValue placeholder="Select day" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#242424] border-[#333333] text-white">
+                {days.map((d) => (
+                  <SelectItem
+                    key={d}
+                    value={d}
+                    className="focus:bg-opacity-80 data-[state=checked]:bg-opacity-80 data-[state=checked]:text-black"
+                  >
+                    {d}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Improved toggle implementation with better clickability */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">All Day</span>
+            <button
+              type="button"
+              onClick={toggleAllDay}
+              className="relative inline-flex h-6 w-11 items-center rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1E1E1E]"
+              style={{
+                outlineColor: timeBlock.allDay ? currentColor : undefined,
+                boxShadow: timeBlock.allDay ? `0 0 0 2px ${currentColor}` : undefined,
+              }}
+              aria-pressed={timeBlock.allDay}
+              aria-labelledby="all-day-label"
+            >
+              <span className="sr-only">Toggle all day</span>
+              <span
+                className={`absolute inset-0 rounded-full transition-colors ${timeBlock.allDay ? "" : "bg-[#333333]"}`}
+                style={{
+                  backgroundColor: timeBlock.allDay ? currentColor : undefined,
+                }}
+              />
+              <span
+                className={`${
+                  timeBlock.allDay ? "translate-x-5" : "translate-x-0"
+                } inline-block h-5 w-5 transform rounded-full bg-white transition-transform`}
+                style={{ marginLeft: "2px" }}
+              />
+            </button>
+          </div>
+
+          {/* Only render time inputs when allDay is false */}
+          {timeBlock.allDay === false && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="start-time">Start Time</Label>
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={timeBlock.start}
+                  onChange={(e) => setTimeBlock({ ...timeBlock, start: e.target.value })}
+                  className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
+                  style={{ backgroundColor: "#242424" }}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="end-time">End Time</Label>
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={timeBlock.end}
+                  onChange={(e) => setTimeBlock({ ...timeBlock, end: e.target.value })}
+                  className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
+                  style={{ backgroundColor: "#242424" }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-2">
+            <Label htmlFor="label">Activity</Label>
+            <Input
+              id="label"
+              value={timeBlock.label}
+              onChange={(e) => setTimeBlock({ ...timeBlock, label: e.target.value })}
+              placeholder="Work, Class, etc."
+              className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
+              style={{ backgroundColor: "#242424" }}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="flex flex-row items-center justify-between sm:justify-between">
+          {editMode && onDelete && (
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              className="bg-[#CF6679] hover:bg-[#B25563] text-white h-9 px-3 text-xs sm:text-sm"
+            >
+              <Trash2 className="h-3 w-3 mr-1 sm:mr-2" />
+              Delete
+            </Button>
+          )}
+          {!editMode && <div></div>} {/* Empty div to maintain spacing when delete button isn't shown */}
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              className="bg-[#333333] hover:bg-[#444444] text-white border-none h-9 px-3 text-xs sm:text-sm"
+            >
+              Cancel
+            </Button>
+            {/* Use currentColor instead of userColor for the button */}
+            <Button
+              onClick={handleSave}
+              style={{ backgroundColor: currentColor, color: getTextColor(currentColor) }}
+              className="h-9 px-3 text-xs sm:text-sm"
+            >
+              {editMode ? "Update" : "Add"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+      <style jsx global>{`
+        [data-state="checked"] {
+          background-color: ${currentColor};
+          color: ${getTextColor(currentColor)};
+        }
+        
+        .focus-visible:focus-visible {
+          border-color: var(--focus-ring-color);
+          ring-color: var(--focus-ring-color);
+        }
+        
+        input:focus-visible, select:focus-visible {
+          border-color: var(--focus-ring-color);
+          outline-color: var(--focus-ring-color);
+          ring-color: var(--focus-ring-color);
+        }
+      `}</style>
+    </Dialog>
+  )
+}
