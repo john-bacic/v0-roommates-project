@@ -2,115 +2,124 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Edit2 } from "lucide-react"
 import { MultiDayView } from "@/components/multi-day-view"
+import { supabase } from "@/lib/supabase"
+import { Button } from "@/components/ui/button"
 
-// Sample users data
-const users = [
+// Initial users data as fallback
+const initialUsers = [
   { id: 1, name: "Riko", color: "#BB86FC", initial: "R" },
   { id: 2, name: "Narumi", color: "#03DAC6", initial: "N" },
   { id: 3, name: "John", color: "#CF6679", initial: "J" },
 ]
 
-// Sample schedule data - matches the WeeklySchedule component's data
-const sampleSchedules: Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>> = {
-  1: {
-    // Riko - Updated schedule
-    Monday: [{ start: "16:00", end: "23:00", label: "Work" }],
-    Tuesday: [{ start: "17:00", end: "22:00", label: "Work" }],
-    Wednesday: [{ start: "12:00", end: "22:00", label: "Work" }],
-    Thursday: [{ start: "12:00", end: "23:00", label: "Work" }],
-    Friday: [{ start: "17:00", end: "23:30", label: "Work" }],
-    Saturday: [{ start: "17:00", end: "23:30", label: "Work" }],
-    Sunday: [{ start: "16:00", end: "22:00", label: "Work" }],
-  },
-  2: {
-    // Narumi - Updated schedule
-    Monday: [{ start: "10:00", end: "19:45", label: "Work" }],
-    Tuesday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
-    Wednesday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
-    Thursday: [{ start: "10:00", end: "19:45", label: "Work" }],
-    Friday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
-    Saturday: [{ start: "06:00", end: "18:45", label: "Work" }],
-    Sunday: [{ start: "11:00", end: "19:45", label: "Work" }],
-  },
-  3: {
-    // John - Updated schedule
-    Monday: [{ start: "09:00", end: "17:00", label: "Work" }],
-    Tuesday: [{ start: "09:00", end: "21:00", label: "Work" }],
-    Wednesday: [{ start: "09:00", end: "17:00", label: "Work" }],
-    Thursday: [{ start: "09:00", end: "17:00", label: "Work" }],
-    Friday: [{ start: "00:00", end: "23:59", label: "Day off", allDay: true }],
-    Saturday: [{ start: "00:00", end: "23:59", label: "Out of town", allDay: true }],
-    Sunday: [{ start: "00:00", end: "23:59", label: "Out of town", allDay: true }],
-  },
-}
-
 export default function Overview() {
   // Initialize users state with the initial users data
-  const [usersList, setUsersList] = useState<typeof users>(users)
-  const [schedules, setSchedules] = useState(sampleSchedules)
+  const [usersList, setUsersList] = useState<typeof initialUsers>(initialUsers)
+  const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>>>({})
+  const [loading, setLoading] = useState(true)
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [userName, setUserName] = useState("")
+  const [userColor, setUserColor] = useState("#BB86FC") // Default color
 
-  useEffect(() => {
-    // Try to load schedules from localStorage
-    const loadedSchedules = { ...sampleSchedules }
-
-    // Load user colors from localStorage
-    const updatedUsers = [...usersList]
-    usersList.forEach((user, index) => {
-      // Update user colors
-      const savedColor = localStorage.getItem(`userColor_${user.name}`)
-      if (savedColor) {
-        updatedUsers[index] = { ...user, color: savedColor }
+  // Function to load data from Supabase
+  const loadData = async () => {
+    setLoading(true)
+    
+    try {
+      // Get the user's name from localStorage
+      const storedName = localStorage.getItem("userName")
+      if (storedName) {
+        setUserName(storedName)
       }
-
-      // Load user schedules
-      const savedSchedule = localStorage.getItem(`schedule_${user.name}`)
-      if (savedSchedule) {
-        try {
-          loadedSchedules[user.id] = JSON.parse(savedSchedule)
-        } catch (e) {
-          console.error(`Failed to parse saved schedule for ${user.name}`)
-        }
-      }
-    })
-
-    // Update both users and schedules
-    setUsersList(updatedUsers)
-    setSchedules(loadedSchedules)
-
-    // Add event listener for real-time updates
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key?.startsWith("userColor_")) {
-        // Handle color changes
-        const userName = event.key.replace("userColor_", "")
-        const userToUpdate = updatedUsers.find(u => u.name === userName)
-        if (userToUpdate && event.newValue) {
-          setUsersList(prev => prev.map(u => 
-            u.name === userName ? { ...u, color: event.newValue! } : u
-          ))
-        }
-      } else if (event.key?.startsWith("schedule_")) {
-        // Handle schedule changes
-        const userName = event.key.replace("schedule_", "")
-        const userToUpdate = updatedUsers.find(u => u.name === userName)
-        if (userToUpdate && event.newValue) {
-          try {
-            setSchedules(prev => ({
-              ...prev,
-              [userToUpdate.id]: JSON.parse(event.newValue!)
-            }))
-          } catch (e) {
-            console.error(`Failed to parse updated schedule for ${userName}`)
+      
+      // Fetch users from Supabase
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError)
+        // Fall back to initial users if there's an error
+        setUsersList(initialUsers)
+      } else if (usersData && usersData.length > 0) {
+        setUsersList(usersData)
+        
+        // Set current user's color if they exist in the users list
+        if (storedName) {
+          const currentUser = usersData.find(u => u.name === storedName)
+          if (currentUser) {
+            setUserColor(currentUser.color)
           }
         }
+        
+        // Fetch schedules for each user
+        const schedulesData: Record<number, Record<string, Array<any>>> = {}
+        
+        for (const user of usersData) {
+          const { data: userSchedules, error: schedulesError } = await supabase
+            .from('schedules')
+            .select('*')
+            .eq('user_id', user.id)
+          
+          if (!schedulesError && userSchedules) {
+            // Transform the data into the format expected by the app
+            const formattedSchedules: Record<string, Array<any>> = {}
+            
+            userSchedules.forEach(schedule => {
+              if (!formattedSchedules[schedule.day]) {
+                formattedSchedules[schedule.day] = []
+              }
+              
+              formattedSchedules[schedule.day].push({
+                id: schedule.id,
+                start: schedule.start_time,
+                end: schedule.end_time,
+                label: schedule.label,
+                allDay: schedule.all_day
+              })
+            })
+            
+            schedulesData[user.id] = formattedSchedules
+          }
+        }
+        
+        setSchedules(schedulesData)
       }
+    } catch (error) {
+      console.error('Error loading data:', error)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
+  // Set up real-time subscription to schedule changes
+  useEffect(() => {
+    const scheduleSubscription = supabase
+      .channel('schedules-changes-overview')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
+        // Reload data when any schedule changes
+        loadData()
+      })
+      .subscribe()
+
+    const usersSubscription = supabase
+      .channel('users-changes-overview')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        // Reload data when any user changes (like color updates)
+        loadData()
+      })
+      .subscribe()
+
+    // Initial data load
+    loadData()
+
+    return () => {
+      supabase.removeChannel(scheduleSubscription)
+      supabase.removeChannel(usersSubscription)
+    }
   }, [])
 
   // Format week range with month names
@@ -159,25 +168,46 @@ export default function Overview() {
               </svg>
             </div>
             <h1 className="text-xl font-bold">
-              Weekly Overview
+              Week of {formatWeekRange(currentWeek)}
             </h1>
           </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
-        <div className="mb-6">
-          <h2 className="text-lg font-medium mb-2">Week of {formatWeekRange(currentWeek)}</h2>
-          <p className="text-sm text-[#A0A0A0]">
-            View all roommate schedules in a compact timeline format. Toggle between collapsed and detailed views.
-          </p>
-        </div>
+      <main className="flex-1 pt-0 px-4 pb-4 max-w-7xl mx-auto w-full">
+        {/* Removed spacing div */}
 
         <div className="bg-[#1E1E1E] rounded-lg p-4">
-          <MultiDayView users={usersList} schedules={schedules} days={days} />
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <p className="text-[#A0A0A0]">Loading schedules...</p>
+            </div>
+          ) : (
+            <MultiDayView users={usersList} schedules={schedules} days={days} />
+          )}
         </div>
       </main>
+
+      {/* Floating action button - only visible when logged in */}
+      {userName && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <Button
+            asChild
+            className="rounded-full h-14 w-14"
+            style={{
+              backgroundColor: userColor,
+              color: userColor === "#BB86FC" || userColor === "#03DAC6" || userColor === "#FFB74D" || 
+                    userColor === "#64B5F6" || userColor === "#81C784" || userColor === "#FFD54F" ? "#000" : "#fff",
+            }}
+          >
+            <Link href="/schedule/edit?from=%2Foverview">
+              <Edit2 className="h-6 w-6" />
+              <span className="sr-only">Edit schedule</span>
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
