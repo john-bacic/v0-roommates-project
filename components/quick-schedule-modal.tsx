@@ -108,8 +108,9 @@ export function QuickScheduleModal({
           allDay: false,
         })
       }
+      setDay(initialDay)
     }
-  }, [isOpen, initialTimeBlock, initialUserColor])
+  }, [isOpen, initialTimeBlock, initialUserColor, initialDay])
 
   // Update CSS variable for focus styles
   useEffect(() => {
@@ -130,19 +131,17 @@ export function QuickScheduleModal({
       // we can still try to delete using a fallback approach
       console.log("Attempting to delete time block without ID")
       onDelete(day, "current")
-      onClose()
     }
   }
 
-  // Update the handleColorChange function to immediately apply the color change
-  const handleColorChange = (color: string) => {
-    // Update local state first for immediate UI feedback
-    setCurrentColor(color)
-
-    // Then notify parent component
+  // Handle color change
+  const handleColorChange = (newColor: string) => {
+    setCurrentColor(newColor)
+    // Only update the color, don't close the modal or affect schedules
     if (onUserColorChange) {
-      onUserColorChange(color)
+      onUserColorChange(newColor)
     }
+    // Important: Don't call onClose() here to prevent losing schedule data
   }
 
   const toggleColorPicker = () => {
@@ -183,33 +182,30 @@ export function QuickScheduleModal({
           </DialogTitle>
           <DialogDescription className="text-[#A0A0A0]">
             {editMode ? "Edit this schedule item" : "Quickly add to your schedule for the selected day."}
-            {onUserColorChange && <div className="mt-1 text-xs">Click on your icon to change your color.</div>}
           </DialogDescription>
+          {onUserColorChange && <div className="mt-1 text-xs text-[#A0A0A0]">Click on your icon to change your color.</div>}
         </DialogHeader>
 
         {showColorPicker && (
           <div className="mb-4 p-3 bg-[#242424] rounded-md">
             <Label className="mb-2 block text-sm">Select Your Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {COLORS.map((color) => {
-                const isUsed = usedColors.includes(color) && color !== currentColor && color !== initialUserColor
-                return (
-                  <button
-                    key={color}
-                    type="button"
-                    disabled={isUsed}
-                    onClick={() => handleColorChange(color)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                      isUsed ? "opacity-30 cursor-not-allowed" : "hover:ring-2 hover:ring-white"
-                    } ${currentColor === color ? "ring-2 ring-white" : ""}`}
-                    style={{ backgroundColor: color }}
-                    title={isUsed ? "This color is already in use" : ""}
-                  >
-                    {currentColor === color && <Check className="h-4 w-4" style={{ color: getTextColor(color) }} />}
-                  </button>
-                )
-              })}
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              {COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className="w-full h-8 rounded-md border border-[#333333] transition-all hover:scale-110"
+                  style={{ backgroundColor: color }}
+                  onClick={() => handleColorChange(color)}
+                />
+              ))}
             </div>
+            <input
+              type="color"
+              value={currentColor}
+              onChange={(e) => handleColorChange(e.target.value)}
+              className="w-full h-8 cursor-pointer"
+            />
             <p className="text-xs text-[#A0A0A0] mt-2">This color will be applied to all your schedule items.</p>
           </div>
         )}

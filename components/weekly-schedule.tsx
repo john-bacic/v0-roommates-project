@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
-import { Plus, Edit2, Clock } from "lucide-react"
+import { Plus, Edit2, Clock, ChevronUp, ChevronDown } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface User {
   id: number
@@ -24,6 +25,7 @@ interface WeeklyScheduleProps {
   users: User[]
   currentWeek: Date
   onColorChange?: (name: string, color: string) => void
+  schedules?: Record<number, Record<string, Array<TimeBlock>>>
 }
 
 // Sample schedule data - in a real app, this would be loaded from localStorage or a database
@@ -60,7 +62,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
   },
 }
 
-export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange }: WeeklyScheduleProps) {
+export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
 
@@ -78,13 +80,20 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   })
 
   // Add a toggle state for time format (24h vs AM/PM)
-  const [use24HourFormat, setUse24HourFormat] = useState(true)
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedFormat = localStorage.getItem('use24HourFormat')
+      return savedFormat !== null ? savedFormat === 'true' : false
+    }
+    return false
+  })
 
   // State for users (now mutable)
   const [users, setUsers] = useState<User[]>(initialUsers)
 
-  // State for schedules
-  const [schedules, setSchedules] = useState(sampleSchedules)
+  // State for schedules - use provided schedules or fall back to sample data
+  const [schedules, setSchedules] = useState(initialSchedules || sampleSchedules)
 
   // State for quick schedule modal
   const [modalOpen, setModalOpen] = useState(false)
@@ -98,6 +107,79 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Track used colors
   const [usedColors, setUsedColors] = useState<string[]>([])
+
+  // Set up real-time subscriptions for schedule and user changes
+  useEffect(() => {
+    // Set up subscription for schedule changes
+    const scheduleSubscription = supabase
+      .channel('schedules-changes-weekly')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, (payload) => {
+        // Get the updated schedule data directly from Supabase
+        // This ensures we have the latest data without a full reload
+        const fetchLatestData = async () => {
+          try {
+            // Get the user_id from the payload
+            const userId = payload.new?.user_id || payload.old?.user_id;
+            if (userId) {
+              // Fetch all schedules for this user
+              const { data: schedulesData, error } = await supabase
+                .from('schedules')
+                .select('*')
+                .eq('user_id', userId);
+              
+              if (!error && schedulesData) {
+                // Transform the data into the format expected by the component
+                const formattedSchedules: Record<string, Array<any>> = {};
+                
+                schedulesData.forEach(schedule => {
+                  if (!formattedSchedules[schedule.day]) {
+                    formattedSchedules[schedule.day] = [];
+                  }
+                  
+                  formattedSchedules[schedule.day].push({
+                    id: schedule.id,
+                    start: schedule.start_time,
+                    end: schedule.end_time,
+                    label: schedule.label,
+                    allDay: schedule.all_day
+                  });
+                });
+                
+                // Update only the affected user's schedule
+                setSchedules(prev => ({
+                  ...prev,
+                  [userId]: formattedSchedules
+                }));
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching updated schedule data:', error);
+          }
+        };
+        
+        fetchLatestData();
+      })
+      .subscribe();
+
+    // Set up subscription for user changes
+    const usersSubscription = supabase
+      .channel('users-changes-weekly')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+        // Update the user data when it changes
+        if (payload.new) {
+          const updatedUser = payload.new;
+          setUsers(prev => prev.map(user => 
+            user.id === updatedUser.id ? { ...user, ...updatedUser } : user
+          ));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(scheduleSubscription);
+      supabase.removeChannel(usersSubscription);
+    };
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -113,25 +195,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       setCurrentUserName(storedName)
     }
 
-    // Load schedules from localStorage
-    const loadedSchedules = { ...sampleSchedules }
-    users.forEach((user) => {
-      const savedSchedule = localStorage.getItem(`schedule_${user.name}`)
-      if (savedSchedule) {
-        try {
-          loadedSchedules[user.id] = JSON.parse(savedSchedule)
-        } catch (e) {
-          console.error(`Failed to parse saved schedule for ${user.name}`)
-        }
-      }
-    })
-    setSchedules(loadedSchedules)
-
-    // Load time format preference from localStorage
-    const timeFormatPreference = localStorage.getItem("timeFormat")
-    if (timeFormatPreference) {
-      setUse24HourFormat(timeFormatPreference === "24h")
-    }
+    // Time format is now loaded in the useState initialization
 
     // Load user colors from localStorage
     users.forEach((user) => {
@@ -178,7 +242,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const toggleTimeFormat = () => {
     const newFormat = !use24HourFormat
     setUse24HourFormat(newFormat)
-    localStorage.setItem("timeFormat", newFormat ? "24h" : "12h")
+    localStorage.setItem('use24HourFormat', newFormat.toString())
   }
 
   // Format hour based on selected format
@@ -251,104 +315,185 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Handle opening the modal when clicking on a time block
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
     if (user.name === currentUserName) {
+      // Ensure the timeBlock has a valid UUID if it doesn't already
+      if (!timeBlock.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timeBlock.id)) {
+        console.warn('Time block has invalid UUID, generating a new one for UI purposes');
+        timeBlock = { ...timeBlock, id: crypto.randomUUID() };
+      }
+      
       setSelectedUser(user)
       setSelectedDay(day)
-      setEditMode(true)
       setSelectedTimeBlock(timeBlock)
+      setEditMode(true)
       setModalOpen(true)
     }
   }
 
   // Handle saving the schedule from the modal
-  const handleSaveSchedule = (day: string, timeBlock: TimeBlock) => {
+  const handleSaveSchedule = async (day: string, timeBlock: TimeBlock) => {
     if (!selectedUser) return
 
     const userId = selectedUser.id
     const newSchedules = { ...schedules }
 
-    // Make sure the day exists in the user's schedule
+    // Initialize user's schedule for the day if it doesn't exist
+    if (!newSchedules[userId]) {
+      newSchedules[userId] = {}
+    }
+
     if (!newSchedules[userId][day]) {
       newSchedules[userId][day] = []
     }
 
-    if (editMode && selectedTimeBlock?.id) {
-      // Update existing time block
-      const index = newSchedules[userId][day].findIndex((block) => block.id === selectedTimeBlock.id)
-      if (index !== -1) {
-        newSchedules[userId][day][index] = { ...timeBlock }
-      }
-    } else {
-      // Add the new time block with a unique ID if it doesn't have one
-      if (!timeBlock.id) {
-        timeBlock.id = crypto.randomUUID()
+    try {
+      // If editing, replace the existing time block
+      if (editMode && selectedTimeBlock?.id) {
+        // Update the time block in Supabase
+        const { error: updateError } = await supabase
+          .from('schedules')
+          .update({
+            start_time: timeBlock.start,
+            end_time: timeBlock.end,
+            label: timeBlock.label,
+            all_day: timeBlock.allDay || false
+          })
+          .eq('id', selectedTimeBlock.id);
+
+        if (updateError) {
+          console.error('Error updating schedule in Supabase:', updateError);
+        }
+
+        // Update local state
+        newSchedules[userId][day] = newSchedules[userId][day].map((block) =>
+          block.id === selectedTimeBlock.id ? { ...timeBlock, id: selectedTimeBlock.id } : block
+        )
+      } else {
+        // Create a new time block in Supabase - let Supabase generate the UUID
+        const { data: insertedData, error: insertError } = await supabase
+          .from('schedules')
+          .insert({
+            user_id: userId,
+            day: day,
+            start_time: timeBlock.start,
+            end_time: timeBlock.end,
+            label: timeBlock.label,
+            all_day: timeBlock.allDay || false
+          })
+          .select(); // Return the inserted row with the generated UUID
+
+        if (insertError) {
+          console.error('Error inserting schedule in Supabase:', insertError);
+          // Still update local state with a temporary ID for UI purposes
+          const tempId = crypto.randomUUID();
+          newSchedules[userId][day].push({ ...timeBlock, id: tempId });
+        } else if (insertedData && insertedData.length > 0) {
+          // Update local state with the proper UUID from Supabase
+          const newId = insertedData[0].id;
+          newSchedules[userId][day].push({
+            ...timeBlock,
+            id: newId,
+            start: insertedData[0].start_time,
+            end: insertedData[0].end_time,
+            label: insertedData[0].label,
+            allDay: insertedData[0].all_day
+          });
+        }
       }
 
-      // Sort the time blocks by start time after adding the new one
-      newSchedules[userId][day].push(timeBlock)
-      newSchedules[userId][day].sort((a, b) => {
-        const aTime = a.start.split(":").map(Number)
-        const bTime = b.start.split(":").map(Number)
-        return aTime[0] * 60 + aTime[1] - (bTime[0] * 60 + bTime[1])
-      })
+      // Update local state
+      setSchedules(newSchedules)
+
+      // Save to localStorage as a fallback
+      localStorage.setItem('roommate-schedules', JSON.stringify(newSchedules))
+    } catch (error) {
+      console.error('Error saving schedule:', error);
     }
 
-    // Update state
-    setSchedules(newSchedules)
-
-    // Save to localStorage
-    localStorage.setItem(`schedule_${selectedUser.name}`, JSON.stringify(newSchedules[userId]))
+    // Close the modal
+    setModalOpen(false)
   }
 
   // Handle deleting a time block
-  const handleDeleteTimeBlock = (day: string, timeBlockId: string) => {
+  const handleDeleteTimeBlock = async (day: string, timeBlockId: string) => {
     if (!selectedUser) return
 
     const userId = selectedUser.id
     const newSchedules = { ...schedules }
 
-    // Filter out the time block with the matching ID
-    if (newSchedules[userId][day]) {
-      if (timeBlockId === "current" && selectedTimeBlock) {
-        // If we're deleting the currently selected time block without an ID
-        newSchedules[userId][day] = newSchedules[userId][day].filter((block) => block !== selectedTimeBlock)
+    try {
+      // Check if the timeBlockId is a valid UUID before trying to delete from Supabase
+      // UUID format validation using a simple regex
+      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timeBlockId);
+      
+      if (isValidUUID) {
+        // Delete the time block from Supabase
+        const { error: deleteError } = await supabase
+          .from('schedules')
+          .delete()
+          .eq('id', timeBlockId);
+
+        if (deleteError) {
+          console.error('Error deleting schedule from Supabase:', deleteError);
+        }
       } else {
-        // Normal case - filter by ID
-        newSchedules[userId][day] = newSchedules[userId][day].filter((block) => block.id !== timeBlockId)
+        console.warn('Skipping Supabase delete - not a valid UUID:', timeBlockId);
       }
 
-      // Update state
-      setSchedules(newSchedules)
+      // Check if the user and day exist in the schedules
+      if (newSchedules[userId] && newSchedules[userId][day]) {
+        // Filter out the time block with the matching ID
+        newSchedules[userId][day] = newSchedules[userId][day].filter((block) => block.id !== timeBlockId)
 
-      // Save to localStorage
-      localStorage.setItem(`schedule_${selectedUser.name}`, JSON.stringify(newSchedules[userId]))
+        // Update local state
+        setSchedules(newSchedules)
+
+        // Save to localStorage as a fallback
+        localStorage.setItem('roommate-schedules', JSON.stringify(newSchedules))
+      }
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
     }
+
+    // Close the modal
+    setModalOpen(false)
   }
 
   // Handle changing a user's color
-  const updateUserColor = (user: User, color: string, saveToStorage = true) => {
-    // Update the user's color in the users array
-    const updatedUsers = users.map((u) => {
-      if (u.id === user.id) {
-        return { ...u, color }
-      }
-      return u
-    })
-    setUsers(updatedUsers)
+  const updateUserColor = async (user: User, color: string, saveToStorage = true) => {
+    // Update the user's color in the local state WITHOUT affecting schedules
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, color } : u)))
 
-    // Save to localStorage if needed
+    // Notify the parent component of the color change
+    if (onColorChange) {
+      onColorChange(user.name, color)
+    }
+
+    // Save the color to Supabase
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ color })
+        .eq('id', user.id);
+      
+      if (error) {
+        console.error('Error updating user color in Supabase:', error);
+      }
+    } catch (error) {
+      console.error('Error updating user color:', error);
+    }
+
+    // Save the color to localStorage as a fallback
     if (saveToStorage) {
       localStorage.setItem(`userColor_${user.name}`, color)
-
-      // Notify parent component about the color change immediately
-      if (onColorChange) {
-        onColorChange(user.name, color)
-      }
-
-      // Create a custom event to notify other components about the color change
       const event = new CustomEvent("userColorChange", {
         detail: { userName: user.name, color },
       })
       window.dispatchEvent(event)
+    }
+
+    // Close the modal if it's open
+    if (modalOpen) {
+      setModalOpen(false)
     }
   }
 
@@ -375,7 +520,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               size="icon"
               onClick={toggleView}
               className="h-8 w-8 text-white hover:bg-[#333333]"
-              title={isCollapsed ? "Show Detailed View" : "Show Collapsed View"}
+              title={isCollapsed ? "expand-all" : "collapse-all"}
             >
               {isCollapsed ? (
                 <svg
@@ -388,14 +533,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="lucide lucide-layout-list"
                 >
-                  <rect width="7" height="7" x="3" y="3" rx="1" />
-                  <rect width="7" height="7" x="3" y="14" rx="1" />
-                  <path d="M14 4h7" />
-                  <path d="M14 9h7" />
-                  <path d="M14 15h7" />
-                  <path d="M14 20h7" />
+                  {/* Chevron down */}
+                  <polyline points="6 9 12 15 18 9" />
+                  {/* Horizontal line below the chevron with more space */}
+                  <line x1="4" y1="19" x2="20" y2="19" />
                 </svg>
               ) : (
                 <svg
@@ -408,12 +550,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="lucide lucide-layout-grid"
                 >
-                  <rect width="7" height="7" x="3" y="3" rx="1" />
-                  <rect width="7" height="7" x="14" y="3" rx="1" />
-                  <rect width="7" height="7" x="14" y="14" rx="1" />
-                  <rect width="7" height="7" x="3" y="14" rx="1" />
+                  {/* Horizontal line above the chevron with more space */}
+                  <line x1="4" y1="5" x2="20" y2="5" />
+                  {/* Chevron up */}
+                  <polyline points="18 15 12 9 6 15" />
                 </svg>
               )}
             </Button>

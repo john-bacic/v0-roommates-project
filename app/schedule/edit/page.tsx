@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScheduleEditor } from "@/components/schedule-editor"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 
 // Add the getTextColor helper function
 const getTextColor = (bgColor: string) => {
@@ -14,9 +15,11 @@ const getTextColor = (bgColor: string) => {
 }
 
 interface TimeBlock {
+  id?: string
   start: string
   end: string
   label: string
+  allDay?: boolean
 }
 
 // Update the component to include userColor state
@@ -34,24 +37,118 @@ export default function EditSchedule() {
     Sunday: [],
   })
 
+  // Function to load user data and schedules from Supabase
+  const loadUserData = async (userName: string) => {
+    try {
+      // Get user data from Supabase
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('name', userName)
+        .single();
+      
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        return;
+      }
+      
+      if (userData) {
+        // Set user color from Supabase
+        setUserColor(userData.color);
+        
+        // Get user schedules from Supabase
+        const { data: schedulesData, error: schedulesError } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('user_id', userData.id);
+        
+        if (schedulesError) {
+          console.error('Error fetching schedules:', schedulesError);
+          return;
+        }
+        
+        // Transform schedules data to the format needed by the editor
+        const formattedSchedule: Record<string, TimeBlock[]> = {
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+          Sunday: [],
+        };
+        
+        if (schedulesData && schedulesData.length > 0) {
+          schedulesData.forEach(item => {
+            if (!formattedSchedule[item.day]) {
+              formattedSchedule[item.day] = [];
+            }
+            
+            formattedSchedule[item.day].push({
+              id: item.id,
+              start: item.start_time,
+              end: item.end_time,
+              label: item.label,
+              allDay: item.all_day
+            });
+          });
+        }
+        
+        setSchedule(formattedSchedule);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  };
+
+  // Set up real-time subscription to schedule changes
+  useEffect(() => {
+    if (!userName) return;
+
+    // Set up subscription for schedule changes
+    const scheduleSubscription = supabase
+      .channel('schedules-changes-edit')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
+        // Reload data when any schedule changes
+        loadUserData(userName);
+      })
+      .subscribe();
+
+    // Set up subscription for user changes (like color updates)
+    const usersSubscription = supabase
+      .channel('users-changes-edit')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        // Reload data when any user changes
+        loadUserData(userName);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(scheduleSubscription);
+      supabase.removeChannel(usersSubscription);
+    };
+  }, [userName]);
+
+  // State to track the return path
+  const [returnPath, setReturnPath] = useState("/dashboard")
+
   useEffect(() => {
     // Get the user's name from localStorage
     const storedName = localStorage.getItem("userName")
+    // Get the return path from URL if available
+    const urlParams = new URLSearchParams(window.location.search)
+    const from = urlParams.get('from')
+    if (from) {
+      setReturnPath(decodeURIComponent(from))
+    }
+    
     if (storedName) {
       // Check if the name is one of the roommates
       if (["Riko", "Narumi", "John"].includes(storedName)) {
         setUserName(storedName)
-
-        // Get the user's color from localStorage
-        const savedColor = localStorage.getItem(`userColor_${storedName}`)
-        if (savedColor) {
-          setUserColor(savedColor)
-        } else {
-          // Set default colors based on user
-          if (storedName === "Riko") setUserColor("#BB86FC")
-          else if (storedName === "Narumi") setUserColor("#03DAC6")
-          else if (storedName === "John") setUserColor("#CF6679")
-        }
+        
+        // Load user data and schedules from Supabase
+        loadUserData(storedName);
       } else {
         // If not a roommate, redirect to home page
         router.push("/")
@@ -59,66 +156,6 @@ export default function EditSchedule() {
     } else {
       // If no name is set, redirect to home page
       router.push("/")
-    }
-
-    // Load existing schedule if available
-    const savedSchedule = localStorage.getItem(`schedule_${storedName}`)
-    if (savedSchedule) {
-      try {
-        setSchedule(JSON.parse(savedSchedule))
-      } catch (e) {
-        console.error("Failed to parse saved schedule")
-        // Set default schedule based on the user
-        if (storedName === "Riko") {
-          setSchedule({
-            Monday: [
-              { start: "09:00", end: "12:00", label: "Class" },
-              { start: "14:00", end: "16:00", label: "Work" },
-            ],
-            Tuesday: [{ start: "09:00", end: "13:00", label: "Class" }],
-            Wednesday: [{ start: "13:00", end: "17:00", label: "Work" }],
-            Thursday: [
-              { start: "09:00", end: "11:00", label: "Class" },
-              { start: "15:00", end: "17:00", label: "Study Group" },
-            ],
-            Friday: [{ start: "11:00", end: "14:00", label: "Work" }],
-            Saturday: [],
-            Sunday: [],
-          })
-        } else if (storedName === "Narumi") {
-          setSchedule({
-            Monday: [{ start: "12:00", end: "15:00", label: "Work" }],
-            Tuesday: [
-              { start: "09:00", end: "11:00", label: "Gym" },
-              { start: "15:00", end: "17:00", label: "Work" },
-            ],
-            Wednesday: [{ start: "09:00", end: "12:00", label: "Work" }],
-            Thursday: [{ start: "13:00", end: "16:00", label: "Work" }],
-            Friday: [
-              { start: "09:00", end: "11:00", label: "Appointment" },
-              { start: "14:00", end: "16:00", label: "Work" },
-            ],
-            Saturday: [{ start: "10:00", end: "12:00", label: "Work" }],
-            Sunday: [],
-          })
-        } else if (storedName === "John") {
-          setSchedule({
-            Monday: [
-              { start: "09:00", end: "11:00", label: "Class" },
-              { start: "15:00", end: "17:00", label: "Work" },
-            ],
-            Tuesday: [{ start: "11:00", end: "14:00", label: "Class" }],
-            Wednesday: [
-              { start: "09:00", end: "11:00", label: "Class" },
-              { start: "15:00", end: "17:00", label: "Work" },
-            ],
-            Thursday: [{ start: "11:00", end: "14:00", label: "Class" }],
-            Friday: [{ start: "14:00", end: "17:00", label: "Work" }],
-            Saturday: [],
-            Sunday: [{ start: "14:00", end: "16:00", label: "Study Group" }],
-          })
-        }
-      }
     }
 
     // Add event listener for custom color change events
@@ -136,11 +173,68 @@ export default function EditSchedule() {
     }
   }, [router])
 
-  const handleSave = () => {
-    // Save schedule to localStorage
-    if (userName) {
-      localStorage.setItem(`schedule_${userName}`, JSON.stringify(schedule))
-      router.push("/dashboard")
+  const handleSave = async () => {
+    if (!userName) return;
+    
+    try {
+      // Get user ID from Supabase
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('name', userName)
+        .single();
+      
+      if (userError) {
+        console.error('Error fetching user ID:', userError);
+        return;
+      }
+      
+      const userId = userData.id;
+      
+      // First, delete all existing schedules for this user to avoid duplicates
+      const { error: deleteError } = await supabase
+        .from('schedules')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteError) {
+        console.error('Error deleting existing schedules:', deleteError);
+      }
+      
+      // Prepare schedule data for insertion
+      const schedulesToInsert = [];
+      
+      for (const [day, timeBlocks] of Object.entries(schedule)) {
+        for (const block of timeBlocks) {
+          schedulesToInsert.push({
+            user_id: userId,
+            day: day,
+            start_time: block.start,
+            end_time: block.end,
+            label: block.label,
+            all_day: block.allDay || false
+          });
+        }
+      }
+      
+      // Insert all schedules at once
+      if (schedulesToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('schedules')
+          .insert(schedulesToInsert);
+        
+        if (insertError) {
+          console.error('Error inserting schedules:', insertError);
+        }
+      }
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem(`schedule_${userName}`, JSON.stringify(schedule));
+      
+      // Navigate back to the page that triggered the edit
+      router.push(returnPath);
+    } catch (error) {
+      console.error('Error saving schedules:', error);
     }
   }
 
@@ -179,14 +273,7 @@ export default function EditSchedule() {
             <h1 className="text-xl font-bold">Edit Your Schedule</h1>
           </div>
 
-          <Button
-            onClick={handleSave}
-            style={{ backgroundColor: userColor, color: getTextColor(userColor) }}
-            className="hover:opacity-90"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </Button>
+          {/* Save button moved to schedule editor */}
         </div>
       </header>
 
@@ -198,7 +285,7 @@ export default function EditSchedule() {
         </div>
 
         <div className="bg-[#1E1E1E] rounded-lg p-4">
-          <ScheduleEditor schedule={schedule} onChange={handleScheduleChange} userColor={userColor} />
+          <ScheduleEditor schedule={schedule} onChange={handleScheduleChange} userColor={userColor} onSave={handleSave} />
         </div>
       </main>
     </div>

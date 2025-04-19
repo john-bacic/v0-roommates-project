@@ -3,19 +3,83 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+
+// Initial users data as fallback
+const initialUsers = [
+  {
+    id: 1,
+    name: "Riko",
+    color: "#BB86FC",
+    initial: "R",
+    description: "Classes: Mon-Fri, Works part-time on weekends",
+    availableDays: [0, 1, 2, 3, 4] // Monday to Friday
+  },
+  { 
+    id: 2, 
+    name: "Narumi", 
+    color: "#03DAC6", 
+    initial: "N", 
+    description: "Works: Tue-Sat, Free on Sun-Mon",
+    availableDays: [1, 2, 3, 4, 5] // Tuesday to Saturday
+  },
+  { 
+    id: 3, 
+    name: "John", 
+    color: "#FFD54F", 
+    initial: "J", 
+    description: "Classes: Mon-Thu, Works evenings on Fri",
+    availableDays: [0, 1, 2, 3] // Monday to Thursday
+  },
+]
 
 export default function Roommates() {
-  const roommates = [
-    {
-      id: 1,
-      name: "Riko",
-      color: "#BB86FC",
-      initial: "R",
-      description: "Classes: Mon-Fri, Works part-time on weekends",
-    },
-    { id: 2, name: "Narumi", color: "#03DAC6", initial: "N", description: "Works: Tue-Sat, Free on Sun-Mon" },
-    { id: 3, name: "John", color: "#CF6679", initial: "J", description: "Classes: Mon-Thu, Works evenings on Fri" },
-  ]
+  const [roommates, setRoommates] = useState(initialUsers)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data: usersData, error } = await supabase
+          .from('users')
+          .select('*')
+
+        if (error) {
+          console.error('Error fetching users:', error)
+        } else if (usersData && usersData.length > 0) {
+          // Map the users to include the description and availableDays properties
+          const mappedUsers = usersData.map(user => {
+            const initialUser = initialUsers.find(u => u.id === user.id);
+            return {
+              ...user,
+              description: initialUser?.description || "Available times vary",
+              availableDays: initialUser?.availableDays || []
+            };
+          });
+          setRoommates(mappedUsers);
+        }
+      } catch (error) {
+        console.error('Error in fetchUsers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+
+    // Set up real-time subscription
+    const usersSubscription = supabase
+      .channel('users-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+        fetchUsers();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(usersSubscription);
+    };
+  }, [])
 
   return (
     <div className="flex flex-col min-h-screen bg-[#121212] text-white">
@@ -56,17 +120,14 @@ export default function Roommates() {
                   <div className="grid grid-cols-7 gap-1">
                     {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
                       <div key={index} className="text-center">
-                        <div className="text-xs mb-1">{day}</div>
-                        <div
-                          className={`h-2 rounded-full ${
-                            roommate.id === 1 && index < 5
-                              ? "bg-[#BB86FC]"
-                              : roommate.id === 2 && index > 0 && index < 6
-                                ? "bg-[#03DAC6]"
-                                : roommate.id === 3 && index < 4
-                                  ? "bg-[#CF6679]"
-                                  : "bg-[#333333]"
-                          }`}
+                        <div className="text-xs mb-1 text-white">{day}</div>
+                        <div 
+                          className="h-2 rounded-full" 
+                          style={{ 
+                            backgroundColor: roommate.availableDays.includes(index) 
+                              ? roommate.color 
+                              : '#333333' 
+                          }}
                         ></div>
                       </div>
                     ))}

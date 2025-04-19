@@ -32,6 +32,15 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Custom class for time label alignment in multi-day view */
+  .time-label {
+    position: absolute;
+    right: 0.5rem;
+    top: -0.75rem;
+    font-size: 0.75rem;
+    color: #666666;
+  }
 }
 
 @layer base {

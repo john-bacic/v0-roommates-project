@@ -98,8 +98,15 @@ export default function DayView() {
   // Add hours array and functions for time display
   const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6 to 24 (midnight)
 
-  // Format hour based on selected format (add this if it doesn't exist)
-  const [use24HourFormat, setUse24HourFormat] = useState(false) // Assuming a default value of false
+  // Format hour based on selected format
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedFormat = localStorage.getItem('use24HourFormat')
+      return savedFormat !== null ? savedFormat === 'true' : false
+    }
+    return false
+  })
 
   const formatHour = (hour: number): string => {
     if (use24HourFormat) {

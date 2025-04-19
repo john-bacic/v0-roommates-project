@@ -87,7 +87,14 @@ export default function ViewSchedule() {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Add a toggle state for time format (24h vs AM/PM)
-  const [use24HourFormat, setUse24HourFormat] = useState(true)
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedFormat = localStorage.getItem('use24HourFormat')
+      return savedFormat !== null ? savedFormat === 'true' : false
+    }
+    return false
+  })
 
   // State for quick schedule modal
   const [modalOpen, setModalOpen] = useState(false)
@@ -143,11 +150,7 @@ export default function ViewSchedule() {
       setSchedule(sampleSchedules[id])
     }
 
-    // Load time format preference from localStorage
-    const timeFormatPreference = localStorage.getItem("timeFormat")
-    if (timeFormatPreference) {
-      setUse24HourFormat(timeFormatPreference === "24h")
-    }
+    // Time format is now loaded in the useState initialization
 
     // Set used colors
     const colors = roommates.map((r) => {
@@ -210,7 +213,7 @@ export default function ViewSchedule() {
   const toggleTimeFormat = () => {
     const newFormat = !use24HourFormat
     setUse24HourFormat(newFormat)
-    localStorage.setItem("timeFormat", newFormat ? "24h" : "12h")
+    localStorage.setItem('use24HourFormat', newFormat.toString())
   }
 
   // Format hour based on selected format
