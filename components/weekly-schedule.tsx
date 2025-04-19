@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
 import { Plus, Edit2, Clock, ChevronUp, ChevronDown } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { getSupabase } from "@/lib/supabase"
 
 interface User {
   id: number
@@ -111,7 +111,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Set up real-time subscriptions for schedule and user changes
   useEffect(() => {
     // Set up subscription for schedule changes
-    const scheduleSubscription = supabase
+    const scheduleSubscription = getSupabase()
       .channel('schedules-changes-weekly')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, (payload) => {
         // Get the updated schedule data directly from Supabase
@@ -122,7 +122,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             const userId = payload.new?.user_id || payload.old?.user_id;
             if (userId) {
               // Fetch all schedules for this user
-              const { data: schedulesData, error } = await supabase
+              const { data: schedulesData, error } = await getSupabase()
                 .from('schedules')
                 .select('*')
                 .eq('user_id', userId);
@@ -162,7 +162,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       .subscribe();
 
     // Set up subscription for user changes
-    const usersSubscription = supabase
+    const usersSubscription = getSupabase()
       .channel('users-changes-weekly')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
         // Update the user data when it changes
@@ -176,8 +176,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       .subscribe();
 
     return () => {
-      supabase.removeChannel(scheduleSubscription);
-      supabase.removeChannel(usersSubscription);
+      getSupabase().removeChannel(scheduleSubscription);
+      getSupabase().removeChannel(usersSubscription);
     };
   }, []);
 
@@ -349,7 +349,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       // If editing, replace the existing time block
       if (editMode && selectedTimeBlock?.id) {
         // Update the time block in Supabase
-        const { error: updateError } = await supabase
+        const { error: updateError } = await getSupabase()
           .from('schedules')
           .update({
             start_time: timeBlock.start,
@@ -369,7 +369,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         )
       } else {
         // Create a new time block in Supabase - let Supabase generate the UUID
-        const { data: insertedData, error: insertError } = await supabase
+        const { data: insertedData, error: insertError } = await getSupabase()
           .from('schedules')
           .insert({
             user_id: userId,
@@ -427,7 +427,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       
       if (isValidUUID) {
         // Delete the time block from Supabase
-        const { error: deleteError } = await supabase
+        const { error: deleteError } = await getSupabase()
           .from('schedules')
           .delete()
           .eq('id', timeBlockId);
@@ -470,7 +470,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
     // Save the color to Supabase
     try {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('users')
         .update({ color })
         .eq('id', user.id);

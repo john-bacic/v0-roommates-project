@@ -13,22 +13,47 @@ const prodKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || prodUrl || defaultUrl;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || prodKey || defaultKey;
 
-// Create a function to get the Supabase client
-// This ensures we only create the client when needed and not during server-side rendering
+// We'll completely avoid creating any URL objects during server-side rendering
+// Instead, we'll create a proper browser-only client with proper checks
+
+// This variable will store our singleton client instance
 let supabaseInstance: ReturnType<typeof createClient> | null = null;
 
+/**
+ * Creates and returns a Supabase client, or a mock client during server-side rendering
+ */
 export const getSupabase = () => {
-  // If we already have an instance, return it
+  // If we already have a client instance, return it
   if (supabaseInstance) return supabaseInstance;
   
-  // Only create a new instance if we're in the browser
-  if (typeof window !== 'undefined') {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-    return supabaseInstance;
+  // Check if we're in the browser environment
+  const isBrowser = typeof window !== 'undefined';
+  
+  // Only create a real client in the browser
+  if (isBrowser) {
+    try {
+      // Use the environment variables or fallback URLs
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || prodUrl || defaultUrl;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || prodKey || defaultKey;
+      
+      // Create a real Supabase client
+      supabaseInstance = createClient(url, key);
+      return supabaseInstance;
+    } catch (error) {
+      console.error('Error creating Supabase client:', error);
+      // Return a mock client if creation fails
+      return createMockClient();
+    }
   }
   
   // For server-side rendering, return a mock client
-  // This prevents URL construction issues during SSR
+  return createMockClient();
+};
+
+/**
+ * Creates a mock Supabase client for server-side rendering
+ */
+function createMockClient() {
   return {
     from: () => ({
       select: () => ({ data: [], error: null }),
@@ -43,10 +68,20 @@ export const getSupabase = () => {
     }),
     removeChannel: () => {},
   } as unknown as ReturnType<typeof createClient>;
-};
+}
 
-// For backward compatibility
-export const supabase = typeof window !== 'undefined' ? createClient(supabaseUrl, supabaseAnonKey) : getSupabase();
+// For backward compatibility, we'll conditionally create the client
+// We ONLY create a real client in the browser, never during server-side rendering
+export const supabase = typeof window !== 'undefined' 
+  ? (() => {
+      try {
+        return createClient(supabaseUrl, supabaseAnonKey);
+      } catch (error) {
+        console.error('Error creating Supabase client:', error);
+        return createMockClient();
+      }
+    })()
+  : createMockClient();
 
 // User type definition
 export interface User {
