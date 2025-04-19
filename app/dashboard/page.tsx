@@ -121,61 +121,73 @@ export default function Dashboard() {
   }, [userName])
 
   useEffect(() => {
-    // Get the user's name from localStorage (we'll keep this for user preference)
-    const storedName = localStorage.getItem("userName")
-    if (storedName) {
-      setUserName(storedName)
-      
-      // Immediately check for the user's color in Supabase
-      const fetchUserColor = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('users')
-            .select('color')
-            .eq('name', storedName)
-            .single()
-            
-          if (!error && data) {
-            setUserColor(data.color)
+    // Check if window is defined (client-side only)
+    if (typeof window !== 'undefined') {
+      // Get the user's name from localStorage (we'll keep this for user preference)
+      const storedName = localStorage.getItem("userName")
+      if (storedName) {
+        setUserName(storedName)
+        
+        // Immediately check for the user's color in Supabase
+        const fetchUserColor = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('users')
+              .select('color')
+              .eq('name', storedName)
+              .single()
+              
+            if (!error && data) {
+              setUserColor(data.color)
+            }
+          } catch (error) {
+            console.error('Error fetching user color:', error)
           }
-        } catch (error) {
-          console.error('Error fetching user color:', error)
         }
+        
+        fetchUserColor()
       }
-      
-      fetchUserColor()
     }
     
     // Initial data load
     loadData()
 
-    // Add event listener for color changes
-    const handleColorChange = (event: StorageEvent) => {
-      if (storedName && event.key?.startsWith("userColor_")) {
-        const userName = event.key.replace("userColor_", "")
-        if (userName === storedName && event.newValue) {
-          setUserColor(event.newValue)
+    // Client-side only code
+    if (typeof window !== 'undefined') {
+      // Get stored name for event handlers
+      const storedName = localStorage.getItem("userName")
+      
+      // Add event listener for color changes
+      const handleColorChange = (event: StorageEvent) => {
+        if (storedName && event.key?.startsWith("userColor_")) {
+          const userName = event.key.replace("userColor_", "")
+          if (userName === storedName && event.newValue) {
+            setUserColor(event.newValue)
+          }
         }
       }
-    }
 
-    // Add event listener for custom color change events
-    const handleCustomColorChange = (event: CustomEvent) => {
-      if (storedName && event.detail.userName === storedName) {
-        setUserColor(event.detail.color)
+      // Add event listener for custom color change events
+      const handleCustomColorChange = (event: CustomEvent) => {
+        if (storedName && event.detail.userName === storedName) {
+          setUserColor(event.detail.color)
+        }
+      }
+
+      // Listen for storage events (when localStorage changes)
+      window.addEventListener("storage", handleColorChange)
+
+      // Listen for our custom event
+      window.addEventListener("userColorChange", handleCustomColorChange as EventListener)
+
+      return () => {
+        window.removeEventListener("storage", handleColorChange)
+        window.removeEventListener("userColorChange", handleCustomColorChange as EventListener)
       }
     }
-
-    // Listen for storage events (when localStorage changes)
-    window.addEventListener("storage", handleColorChange)
-
-    // Listen for our custom event
-    window.addEventListener("userColorChange", handleCustomColorChange as EventListener)
-
-    return () => {
-      window.removeEventListener("storage", handleColorChange)
-      window.removeEventListener("userColorChange", handleCustomColorChange as EventListener)
-    }
+    
+    // Return empty cleanup function for server-side rendering
+    return () => {}
   }, [])
 
   const formatWeekRange = (date: Date) => {
@@ -212,15 +224,18 @@ export default function Dashboard() {
     if (name === userName) {
       setUserColor(color)
       
-      // Also update localStorage for backup
-      localStorage.setItem(`userColor_${name}`, color)
-      
-      // Dispatch a custom event to notify other components
-      window.dispatchEvent(
-        new CustomEvent("userColorChange", {
-          detail: { userName: name, color },
-        })
-      )
+      // Client-side only code
+      if (typeof window !== 'undefined') {
+        // Also update localStorage for backup
+        localStorage.setItem(`userColor_${name}`, color)
+        
+        // Dispatch a custom event to notify other components
+        window.dispatchEvent(
+          new CustomEvent("userColorChange", {
+            detail: { userName: name, color },
+          })
+        )
+      }
     }
 
     // Update only the color in the users array without affecting schedules
