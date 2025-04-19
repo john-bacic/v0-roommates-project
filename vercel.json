@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install @supabase/supabase-js && npm run build",
-  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --legacy-peer-deps --force",
   "framework": "nextjs"
 }
