@@ -13,7 +13,40 @@ const prodKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || prodUrl || defaultUrl;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || prodKey || defaultKey;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create a function to get the Supabase client
+// This ensures we only create the client when needed and not during server-side rendering
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
+
+export const getSupabase = () => {
+  // If we already have an instance, return it
+  if (supabaseInstance) return supabaseInstance;
+  
+  // Only create a new instance if we're in the browser
+  if (typeof window !== 'undefined') {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    return supabaseInstance;
+  }
+  
+  // For server-side rendering, return a mock client
+  // This prevents URL construction issues during SSR
+  return {
+    from: () => ({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: null, error: null }),
+      update: () => ({ data: null, error: null }),
+      eq: () => ({ data: null, error: null }),
+      single: () => ({ data: null, error: null }),
+    }),
+    channel: () => ({
+      on: () => ({ subscribe: () => ({}) }),
+      subscribe: () => ({}),
+    }),
+    removeChannel: () => {},
+  } as unknown as ReturnType<typeof createClient>;
+};
+
+// For backward compatibility
+export const supabase = typeof window !== 'undefined' ? createClient(supabaseUrl, supabaseAnonKey) : getSupabase();
 
 // User type definition
 export interface User {

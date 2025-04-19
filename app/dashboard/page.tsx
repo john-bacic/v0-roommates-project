@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Edit2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WeeklySchedule } from "@/components/weekly-schedule"
 import Link from "next/link"
-import { supabase } from "@/lib/supabase"
+import { getSupabase } from "@/lib/supabase"
 
 // Initial users array
 const initialUsers = [
@@ -28,7 +28,7 @@ export default function Dashboard() {
     
     try {
       // Fetch users from Supabase
-      const { data: usersData, error: usersError } = await supabase
+      const { data: usersData, error: usersError } = await getSupabase()
         .from('users')
         .select('*')
       
@@ -51,7 +51,7 @@ export default function Dashboard() {
         const schedulesData: Record<number, Record<string, Array<any>>> = {}
         
         for (const user of usersData) {
-          const { data: userSchedules, error: schedulesError } = await supabase
+          const { data: userSchedules, error: schedulesError } = await getSupabase()
             .from('schedules')
             .select('*')
             .eq('user_id', user.id)
@@ -89,7 +89,7 @@ export default function Dashboard() {
 
   // Set up real-time subscriptions to schedule and user changes
   useEffect(() => {
-    const scheduleSubscription = supabase
+    const scheduleSubscription = getSupabase()
       .channel('schedules-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
         // Reload data when any schedule changes
@@ -98,7 +98,7 @@ export default function Dashboard() {
       .subscribe()
       
     // Subscribe to user changes to update colors in real-time
-    const userSubscription = supabase
+    const userSubscription = getSupabase()
       .channel('users-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload: any) => {
         // When a user record changes, check if it's the current user and update color if needed
@@ -115,8 +115,8 @@ export default function Dashboard() {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(scheduleSubscription)
-      supabase.removeChannel(userSubscription)
+      getSupabase().removeChannel(scheduleSubscription)
+      getSupabase().removeChannel(userSubscription)
     }
   }, [userName])
 
@@ -131,7 +131,7 @@ export default function Dashboard() {
         // Immediately check for the user's color in Supabase
         const fetchUserColor = async () => {
           try {
-            const { data, error } = await supabase
+            const { data, error } = await getSupabase()
               .from('users')
               .select('color')
               .eq('name', storedName)
@@ -244,7 +244,7 @@ export default function Dashboard() {
     // Update color in Supabase
     const userToUpdate = users.find(user => user.name === name)
     if (userToUpdate) {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('users')
         .update({ color })
         .eq('id', userToUpdate.id)
