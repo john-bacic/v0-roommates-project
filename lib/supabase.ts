@@ -1,17 +1,36 @@
 import { createClient } from '@supabase/supabase-js';
 
-// The environment variables take precedence over the hardcoded values
+// Use constants without any markdown or special formatting that might cause URL parsing issues
+
 // For local development with first Supabase instance
-const defaultUrl = 'https://lzfsuovymvkkqdegiurk.supabase.co';
-const defaultKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6ZnN1b3Z5bXZra3FkZWdpdXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MzIzNzAsImV4cCI6MjA2MDMwODM3MH0.fpfKpIRbXAQLjaJ7Bz7QYphrUYbwJ8BtfkFrmdq-a6E';
+// Using string literals to ensure clean URLs without any hidden characters
+const defaultUrl = `https://lzfsuovymvkkqdegiurk.supabase.co`;
+const defaultKey = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6ZnN1b3Z5bXZra3FkZWdpdXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MzIzNzAsImV4cCI6MjA2MDMwODM3MH0.fpfKpIRbXAQLjaJ7Bz7QYphrUYbwJ8BtfkFrmdq-a6E`;
 
 // For production with second Supabase instance
-const prodUrl = 'https://nwgzujsxzdprivookljo.supabase.co';
-const prodKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53Z3p1anN4emRwcml2b29rbGpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDA3NjEsImV4cCI6MjA2MDMxNjc2MX0.et6S7Lt-5PCx7YEQusfy--MZKT7s1yP3AfFoACbQurM';
+const prodUrl = `https://nwgzujsxzdprivookljo.supabase.co`;
+const prodKey = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53Z3p1anN4emRwcml2b29rbGpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDA3NjEsImV4cCI6MjA2MDMxNjc2MX0.et6S7Lt-5PCx7YEQusfy--MZKT7s1yP3AfFoACbQurM`;
 
-// Use environment variables first, then fallback to production values, then local values
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || prodUrl || defaultUrl;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || prodKey || defaultKey;
+// Determine which URL and key to use
+// Try to avoid any URL construction that might fail
+let supabaseUrl: string;
+let supabaseAnonKey: string;
+
+if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '') {
+  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+} else if (prodUrl) {
+  supabaseUrl = prodUrl;
+} else {
+  supabaseUrl = defaultUrl;
+}
+
+if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim() !== '') {
+  supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+} else if (prodKey) {
+  supabaseAnonKey = prodKey;
+} else {
+  supabaseAnonKey = defaultKey;
+}
 
 // We'll completely avoid creating any URL objects during server-side rendering
 // Instead, we'll create a proper browser-only client with proper checks
@@ -32,12 +51,9 @@ export const getSupabase = () => {
   // Only create a real client in the browser
   if (isBrowser) {
     try {
-      // Use the environment variables or fallback URLs
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || prodUrl || defaultUrl;
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || prodKey || defaultKey;
-      
-      // Create a real Supabase client
-      supabaseInstance = createClient(url, key);
+      // Create a real Supabase client with our cleanly formatted URLs
+      // No URL manipulation - just use the strings directly
+      supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
       return supabaseInstance;
     } catch (error) {
       console.error('Error creating Supabase client:', error);
@@ -70,18 +86,20 @@ function createMockClient() {
   } as unknown as ReturnType<typeof createClient>;
 }
 
-// For backward compatibility, we'll conditionally create the client
-// We ONLY create a real client in the browser, never during server-side rendering
-export const supabase = typeof window !== 'undefined' 
-  ? (() => {
+// For backward compatibility, ONLY create client when in browser
+// Never during server-side rendering to avoid URL parse errors
+export const supabase = typeof window === 'undefined' 
+  ? createMockClient() 
+  : (() => {
       try {
+        // Directly use the clean URL strings without any manipulation
+        // This should prevent URL parsing errors
         return createClient(supabaseUrl, supabaseAnonKey);
       } catch (error) {
         console.error('Error creating Supabase client:', error);
         return createMockClient();
       }
-    })()
-  : createMockClient();
+    })();
 
 // User type definition
 export interface User {
