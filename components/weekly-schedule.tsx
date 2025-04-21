@@ -65,6 +65,12 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
+  
+  // Helper function to determine text color based on background color
+  const getTextColor = (bgColor: string) => {
+    const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
+    return lightColors.includes(bgColor) ? "#000" : "#fff"
+  }
 
   // For mobile view, we'll show a simplified version
   const [isMobile, setIsMobile] = useState(false)
@@ -97,6 +103,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // State for quick schedule modal
   const [modalOpen, setModalOpen] = useState(false)
+  const [isColorPickerOnly, setIsColorPickerOnly] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [selectedDay, setSelectedDay] = useState<string>("Monday")
   const [editMode, setEditMode] = useState(false)
@@ -209,9 +216,23 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     // Global handler for _c button removed as requested
     
+    // Add event listener for the custom color picker modal event
+    const handleOpenColorPickerModal = (event: CustomEvent<{userName: string}>) => {
+      // Find the user by name
+      const user = users.find(u => u.name === event.detail.userName);
+      if (user) {
+        // Open the color picker modal for this user
+        openColorPicker(user);
+      }
+    };
+    
+    // Add event listener with type assertion for the custom event
+    document.addEventListener('openColorPickerModal', handleOpenColorPickerModal as EventListener);
+    
     return () => {
       // Clean up all event listeners
       window.removeEventListener("resize", checkMobile);
+      document.removeEventListener('openColorPickerModal', handleOpenColorPickerModal as EventListener);
     };
 
     // Time format is now loaded in the useState initialization
@@ -344,6 +365,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         label: "Work",
         allDay: false
       })
+      setIsColorPickerOnly(false) // Make sure it's in regular mode
+      setModalOpen(true)
+    }
+  }
+
+  // Open the color picker in color-only mode
+  const openColorPicker = (user: User) => {
+    if (user.name === currentUserName) {
+      setSelectedUser(user)
+      setSelectedDay("") // Not needed for color picker
+      setIsColorPickerOnly(true) // Switch to color-only mode
       setModalOpen(true)
     }
   }
@@ -439,6 +471,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const handleModalClose = () => {
     console.log('Closing modal, current editMode:', editMode);
     setModalOpen(false)
+    setIsColorPickerOnly(false) // Reset to regular mode when closing
     // Reset all modal state with a delay to avoid UI flicker
     setTimeout(() => {
       setEditMode(false)
@@ -816,14 +849,19 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         className={`flex items-center gap-2 ${isCurrentUser ? "cursor-pointer hover:opacity-80" : ""}`}
                         onClick={() => isCurrentUser && handleUserClick(user, day)}
                       >
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                            isCurrentUser ? "ring-2 ring-offset-2 ring-offset-[#121212] ring-[#444444]" : ""
-                          }`}
-                          style={{ backgroundColor: user.color, color: "#000" }}
+                        <span
+                          className="flex items-center justify-center h-6 w-6 rounded-full text-sm font-semibold cursor-pointer"
+                          style={{ backgroundColor: user.color, color: getTextColor(user.color) }}
+                          onClick={(e) => {
+                            if (isCurrentUser) {
+                              e.stopPropagation(); // Stop event from bubbling up
+                              openColorPicker(user);
+                            }
+                          }}
+                          title={isCurrentUser ? "Click to change your color" : user.name}
                         >
                           {user.initial}
-                        </div>
+                        </span>
                         <span className="text-sm">
                           {user.name}
                           {isCurrentUser && " (You)"}
@@ -865,7 +903,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                               left: `${startPos}%`,
                               width: `${width}%`,
                               backgroundColor: user.color,
-                              color: "#000",
+                              color: getTextColor(user.color),
                               top: isCollapsed ? "0" : undefined,
                             }}
                             title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
@@ -905,6 +943,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           editMode={editMode} // This controls if Delete button appears
           timeBlock={selectedTimeBlock}
           usedColors={usedColors}
+          isColorPickerOnly={isColorPickerOnly} // Use the new color-only mode
           onUserColorChange={(color) => {
             if (selectedUser) {
               updateUserColor(selectedUser, color)
