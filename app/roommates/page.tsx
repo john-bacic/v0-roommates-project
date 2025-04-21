@@ -136,8 +136,12 @@ export default function Roommates() {
 
                 <Button
                   asChild
-                  variant="outline"
-                  className="w-full mt-4 border-[#333333] hover:bg-[#242424] hover:text-white"
+                  className="w-full mt-4"
+                  style={{
+                    backgroundColor: roommate.color,
+                    color: ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate.color) ? "#000" : "#fff",
+                    border: "none"
+                  }}
                 >
                   <Link href={`/schedule/view/${roommate.id}`}>View Schedule</Link>
                 </Button>

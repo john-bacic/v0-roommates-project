@@ -414,6 +414,23 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   // Handle deleting a time block
+  // Format week range with month names (similar to Overview component)
+  const formatWeekRange = (date: Date) => {
+    const start = new Date(date)
+    start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
+
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6) // End of week (Saturday)
+
+    // Format with month name
+    const formatDate = (d: Date) => {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      return `${monthNames[d.getMonth()]} ${d.getDate()}`
+    }
+
+    return `${formatDate(start)} - ${formatDate(end)}`
+  }
+
   const handleDeleteTimeBlock = async (day: string, timeBlockId: string) => {
     if (!selectedUser) return
 
@@ -503,7 +520,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       <div className="sticky top-[57px] z-40 bg-[#121212] border-t border-[#333333]">
         <div className="flex justify-between items-center h-[36px] px-2">
           <div>
-            <h3 className="text-sm font-medium">Week of Apr 13 - Apr 19 Schedule</h3>
+            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)} Schedule</h3>
           </div>
           <div className="flex items-center gap-2">
             <Button
