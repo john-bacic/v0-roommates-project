@@ -71,25 +71,6 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
     return lightColors.includes(bgColor) ? "#000" : "#fff"
   }
-  
-  // Helper function to convert hex color to RGB format for CSS
-  const hexToRgb = (hex: string) => {
-    // Remove # if present
-    hex = hex.replace('#', '');
-    
-    // Handle shorthand hex format (e.g. #FFF)
-    if (hex.length === 3) {
-      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    
-    // Parse the hex values
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    
-    // Return the RGB values as a string
-    return `${r}, ${g}, ${b}`;
-  }
 
   // For mobile view, we'll show a simplified version
   const [isMobile, setIsMobile] = useState(false)
@@ -922,21 +903,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                               left: `${startPos}%`,
                               width: `${width}%`,
                               backgroundColor: block.allDay ? 'transparent' : user.color,
-                              color: getTextColor(user.color),
+                              color: block.allDay ? user.color : getTextColor(user.color),
                               top: isCollapsed ? "0" : undefined,
                               border: block.allDay ? `2px solid ${user.color}` : 'none',
-                              backgroundImage: block.allDay ? 
-                                `repeating-linear-gradient(45deg, rgba(${hexToRgb(user.color)}, 0.5) 0px, rgba(${hexToRgb(user.color)}, 0.5) 4px, transparent 4px, transparent 10px), 
-                                 repeating-linear-gradient(135deg, rgba(${hexToRgb(user.color)}, 0.5) 0px, rgba(${hexToRgb(user.color)}, 0.5) 4px, transparent 4px, transparent 10px)` : 'none',
-                              backgroundSize: block.allDay ? '10px 10px' : 'auto',
-                              boxSizing: 'border-box'
+                              backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
                             }}
                             title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                             onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
                           >
                             {!isCollapsed && width > 15 ? (
                               <div className="flex items-center justify-center w-full">
-                                <span className="text-xs font-medium truncate px-2">
+                                <span className={`text-xs font-medium truncate px-2 ${block.allDay ? 'font-bold' : ''}`}>
                                   {block.label}
                                   {block.allDay ? " (All Day)" : ""}
                                 </span>
