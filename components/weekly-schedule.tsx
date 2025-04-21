@@ -332,49 +332,74 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Handle opening the modal when clicking on the + button
   const handleAddClick = (user: User, day: string) => {
     if (user.name === currentUserName) {
+      // Clear any previous state completely
+      setModalOpen(false)
+      
       const { start, end } = getDefaultTimes()
       
-      // Important: Set edit mode first, then other state
-      setEditMode(false)
-      setSelectedUser(user)
-      setSelectedDay(day)
-      setSelectedTimeBlock({
+      // Create a new time block with default values
+      const newTimeBlock = {
         id: crypto.randomUUID(),
         start,
         end,
         label: "Work",
         allDay: false
-      })
+      }
       
       // Log the action for debugging
-      console.log('Opening add modal for:', day, 'with time range:', start, '-', end);
+      console.log('Opening add modal with newTimeBlock:', newTimeBlock);
       
-      // Open the modal last
-      setModalOpen(true)
+      // Important: Set edit mode and all state BEFORE opening modal
+      setEditMode(false)
+      setSelectedUser(user)
+      setSelectedDay(day)
+      setSelectedTimeBlock(newTimeBlock)
+      
+      // Small delay to ensure state is updated before modal opens
+      setTimeout(() => {
+        setModalOpen(true)
+      }, 10)
     }
   }
 
   // Handle opening the modal when clicking on a time block
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
     if (user.name === currentUserName) {
+      // Clear any previous state completely
+      setModalOpen(false)
+      
       // Ensure the timeBlock has a valid UUID if it doesn't already
-      if (!timeBlock.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timeBlock.id)) {
+      let validTimeBlock = {...timeBlock}
+      if (!validTimeBlock.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validTimeBlock.id)) {
         console.warn('Time block has invalid UUID, generating a new one for UI purposes');
-        timeBlock = { ...timeBlock, id: crypto.randomUUID() };
+        validTimeBlock.id = crypto.randomUUID();
       }
       
-      console.log('Opening edit modal for timeBlock:', timeBlock);
+      console.log('Opening edit modal for timeBlock:', validTimeBlock);
       
       // Important: Use the same state setup sequence as handleAddClick for consistency
       // but with edit mode set to true
       setEditMode(true) // Set edit mode first
       setSelectedUser(user)
       setSelectedDay(day)
-      setSelectedTimeBlock(timeBlock)
+      setSelectedTimeBlock(validTimeBlock)
       
-      // Open the modal last
-      setModalOpen(true)
+      // Small delay to ensure state is updated before modal opens
+      setTimeout(() => {
+        setModalOpen(true)
+      }, 10)
     }
+  }
+
+  // Close the modal and reset state
+  const handleModalClose = () => {
+    console.log('Closing modal, current editMode:', editMode);
+    setModalOpen(false)
+    // Reset all modal state with a delay to avoid UI flicker
+    setTimeout(() => {
+      setEditMode(false)
+      setSelectedTimeBlock(undefined)
+    }, 300)
   }
 
   // Check if a time block overlaps with existing time blocks
@@ -839,14 +864,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {selectedUser && (
         <QuickScheduleModal
           isOpen={modalOpen}
-          onClose={() => {
-            // Properly reset state when closing modal
-            setModalOpen(false)
-            if (editMode) {
-              // Small delay to avoid UI flicker
-              setTimeout(() => setEditMode(false), 300)
-            }
-          }}
+          onClose={handleModalClose}
           onSave={handleSaveSchedule}
           onDelete={handleDeleteTimeBlock}
           userName={selectedUser.name}
