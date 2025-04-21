@@ -38,7 +38,7 @@ interface QuickScheduleModalProps {
   onUserColorChange?: (color: string) => void
 }
 
-// Predefined colors for the color picker
+// Predefined colors for the color picker in a 3x3 grid
 const COLORS = [
   "#BB86FC", // Purple (default)
   "#03DAC6", // Teal
@@ -48,6 +48,7 @@ const COLORS = [
   "#81C784", // Green
   "#FFD54F", // Yellow
   "#E57373", // Red
+  "#CE93D8", // Light Purple
 ]
 
 export function QuickScheduleModal({
@@ -141,6 +142,8 @@ export function QuickScheduleModal({
     if (onUserColorChange) {
       onUserColorChange(newColor)
     }
+    // Keep the color picker open
+    setShowColorPicker(true)
     // Important: Don't call onClose() here to prevent losing schedule data
   }
 
@@ -189,24 +192,18 @@ export function QuickScheduleModal({
         {showColorPicker && (
           <div className="mb-4 p-3 bg-[#242424] rounded-md">
             <Label className="mb-2 block text-sm">Select Your Color</Label>
-            <div className="grid grid-cols-4 gap-2 mt-2">
+            <div className="grid grid-cols-3 gap-4 mt-2">
               {COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
-                  className="w-full h-8 rounded-md border border-[#333333] transition-all hover:scale-110"
+                  className={`w-12 h-12 rounded-full transition-all hover:scale-110 mx-auto ${currentColor === color ? 'ring-2 ring-white ring-offset-1 ring-offset-[#242424]' : 'border border-[#333333]'}`}
                   style={{ backgroundColor: color }}
                   onClick={() => handleColorChange(color)}
                 />
               ))}
             </div>
-            <input
-              type="color"
-              value={currentColor}
-              onChange={(e) => handleColorChange(e.target.value)}
-              className="w-full h-8 cursor-pointer"
-            />
-            <p className="text-xs text-[#A0A0A0] mt-2">This color will be applied to all your schedule items.</p>
+            <p className="text-xs text-[#A0A0A0] mt-5">This color will be applied to all your schedule items.</p>
           </div>
         )}
 
