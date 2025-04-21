@@ -118,8 +118,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         // This ensures we have the latest data without a full reload
         const fetchLatestData = async () => {
           try {
-            // Get the user_id from the payload
-            const userId = payload.new?.user_id || payload.old?.user_id;
+            // Get the user_id from the payload with proper type checking
+            const newData = payload.new as Record<string, any> | null;
+            const oldData = payload.old as Record<string, any> | null;
+            const userId = newData?.user_id || oldData?.user_id;
+            
             if (userId) {
               // Fetch all schedules for this user
               const { data: schedulesData, error } = await getSupabase()
@@ -129,26 +132,30 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               
               if (!error && schedulesData) {
                 // Transform the data into the format expected by the component
-                const formattedSchedules: Record<string, Array<any>> = {};
+                const formattedSchedules: Record<string, Array<TimeBlock>> = {};
                 
                 schedulesData.forEach(schedule => {
-                  if (!formattedSchedules[schedule.day]) {
-                    formattedSchedules[schedule.day] = [];
+                  // Ensure schedule is typed correctly
+                  const typedSchedule = schedule as Record<string, any>;
+                  const day = typedSchedule.day as string;
+                  
+                  if (!formattedSchedules[day]) {
+                    formattedSchedules[day] = [];
                   }
                   
-                  formattedSchedules[schedule.day].push({
-                    id: schedule.id,
-                    start: schedule.start_time,
-                    end: schedule.end_time,
-                    label: schedule.label,
-                    allDay: schedule.all_day
+                  formattedSchedules[day].push({
+                    id: typedSchedule.id as string,
+                    start: typedSchedule.start_time as string,
+                    end: typedSchedule.end_time as string,
+                    label: typedSchedule.label as string,
+                    allDay: typedSchedule.all_day as boolean
                   });
                 });
                 
                 // Update only the affected user's schedule
                 setSchedules(prev => ({
                   ...prev,
-                  [userId]: formattedSchedules
+                  [userId as number]: formattedSchedules
                 }));
               }
             }
@@ -165,12 +172,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const usersSubscription = getSupabase()
       .channel('users-changes-weekly')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        // Update the user data when it changes
+        // Update the user data when it changes with proper type checking
         if (payload.new) {
-          const updatedUser = payload.new;
-          setUsers(prev => prev.map(user => 
-            user.id === updatedUser.id ? { ...user, ...updatedUser } : user
-          ));
+          // Cast to a typed record for safety
+          const updatedUser = payload.new as Record<string, any>;
+          
+          // Only update if we have a valid ID to compare against
+          if (typeof updatedUser.id === 'number') {
+            setUsers(prev => prev.map(user => 
+              user.id === updatedUser.id ? { ...user, ...updatedUser } : user
+            ));
+          }
         }
       })
       .subscribe();
@@ -194,6 +206,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     if (storedName) {
       setCurrentUserName(storedName)
     }
+    
+    // Global handler for _c button removed as requested
+    
+    return () => {
+      // Clean up all event listeners
+      window.removeEventListener("resize", checkMobile);
+    };
 
     // Time format is now loaded in the useState initialization
 
@@ -289,44 +308,183 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return hours
   }
 
+  // Get smart default start and end times based on current view
+  const getDefaultTimes = (): { start: string, end: string } => {
+    // Current hour rounded down
+    const now = new Date()
+    const currentHour = now.getHours()
+    
+    // Default to current hour or 9am if before 6am or after 8pm
+    let startHour = (currentHour < 6 || currentHour > 20) ? 9 : currentHour
+    
+    // End time is 2 hours after start time, but not past 11pm
+    let endHour = Math.min(startHour + 2, 23)
+    
+    // Format hours as strings with leading zeros
+    const formatHour = (hour: number) => hour.toString().padStart(2, '0')
+    
+    return {
+      start: `${formatHour(startHour)}:00`,
+      end: `${formatHour(endHour)}:00`
+    }
+  }
+  
   // Handle opening the modal when clicking on a user
   const handleUserClick = (user: User, day: string) => {
     // Only allow editing your own schedule
     if (user.name === currentUserName) {
+      const { start, end } = getDefaultTimes()
       setSelectedUser(user)
       setSelectedDay(day)
       setEditMode(false)
-      setSelectedTimeBlock(undefined)
+      setSelectedTimeBlock({
+        id: crypto.randomUUID(),
+        start,
+        end,
+        label: "Work",
+        allDay: false
+      })
       setModalOpen(true)
+    }
+  }
+
+  /**
+   * Common function to open the modal with consistent behavior
+   * Used by both the + button and clicking directly on time blocks
+   */
+  const openScheduleModal = (
+    user: User, 
+    day: string, 
+    isEdit: boolean, 
+    timeBlockData: TimeBlock | null
+  ) => {
+    if (user.name === currentUserName) {
+      // First, close any open modal to reset state
+      setModalOpen(false)
+      
+      // Create appropriate time block data
+      let modalTimeBlock: TimeBlock;
+      
+      if (isEdit && timeBlockData) {
+        // For edit mode: ensure valid UUID
+        modalTimeBlock = {...timeBlockData}
+        if (!modalTimeBlock.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(modalTimeBlock.id)) {
+          console.warn('Time block has invalid UUID, generating a new one for modal');
+          modalTimeBlock.id = crypto.randomUUID();
+        }
+        console.log('Opening edit modal for:', modalTimeBlock);
+      } else {
+        // For add mode: create new time block with defaults
+        const { start, end } = getDefaultTimes()
+        modalTimeBlock = {
+          id: crypto.randomUUID(),
+          start,
+          end,
+          label: "Work",
+          allDay: false
+        }
+        console.log('Opening add modal with defaults:', modalTimeBlock);
+      }
+      
+      // Set all state BEFORE opening modal
+      setEditMode(isEdit)
+      setSelectedUser(user)
+      setSelectedDay(day)
+      setSelectedTimeBlock(modalTimeBlock)
+      
+      // Small delay to ensure state is updated before modal opens
+      setTimeout(() => {
+        setModalOpen(true)
+      }, 20)
     }
   }
 
   // Handle opening the modal when clicking on the + button
   const handleAddClick = (user: User, day: string) => {
-    if (user.name === currentUserName) {
-      setSelectedUser(user)
-      setSelectedDay(day)
-      setEditMode(false)
-      setSelectedTimeBlock(undefined)
-      setModalOpen(true)
-    }
+    // Close any previously open modal completely before opening a new one
+    setModalOpen(false);
+    
+    // For debugging - log that this specific handler was called
+    console.log('handleAddClick specifically called for user:', user.name, 'day:', day);
+    
+    // Small delay to ensure modal is fully closed before reopening
+    setTimeout(() => {
+      // Get default times for a new time block
+      const { start, end } = getDefaultTimes();
+      
+      // Direct state setup matching the QuickScheduleModal from the image
+      // Set editMode to true to ensure all 3 buttons (Delete, Cancel, Update) are shown
+      setEditMode(true);
+      setSelectedUser(user);
+      setSelectedDay(day);
+      setSelectedTimeBlock({
+        id: crypto.randomUUID(),
+        start,
+        end,
+        label: "Work",
+        allDay: false
+      });
+      
+      // Open the modal
+      setModalOpen(true);
+    }, 50);
   }
 
   // Handle opening the modal when clicking on a time block
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
-    if (user.name === currentUserName) {
-      // Ensure the timeBlock has a valid UUID if it doesn't already
-      if (!timeBlock.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timeBlock.id)) {
-        console.warn('Time block has invalid UUID, generating a new one for UI purposes');
-        timeBlock = { ...timeBlock, id: crypto.randomUUID() };
+    openScheduleModal(user, day, true, timeBlock);
+  }
+
+  // Close the modal and reset state
+  const handleModalClose = () => {
+    console.log('Closing modal, current editMode:', editMode);
+    setModalOpen(false)
+    // Reset all modal state with a delay to avoid UI flicker
+    setTimeout(() => {
+      setEditMode(false)
+      setSelectedTimeBlock(undefined)
+    }, 300)
+  }
+
+  // Check if a time block overlaps with existing time blocks
+  const checkOverlap = (day: string, timeBlock: TimeBlock, excludeId?: string): { hasOverlap: boolean, overlappingBlock?: TimeBlock } => {
+    const userId = selectedUser?.id
+    // Type guard to ensure userId exists and schedules are properly typed
+    if (!userId || !schedules[userId as number] || !schedules[userId as number][day]) return { hasOverlap: false }
+    
+    // For each existing block on this day
+    for (const existingBlock of schedules[userId as number][day]) {
+      // Skip the current block being edited
+      if (excludeId && existingBlock.id === excludeId) continue
+      
+      // Both blocks are all-day events - they definitely overlap
+      if (timeBlock.allDay && existingBlock.allDay) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
       }
       
-      setSelectedUser(user)
-      setSelectedDay(day)
-      setSelectedTimeBlock(timeBlock)
-      setEditMode(true)
-      setModalOpen(true)
+      // Only the new block is an all-day event - it overlaps with all existing events
+      if (timeBlock.allDay) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
+      
+      // Only the existing block is an all-day event - it overlaps with all new events
+      if (existingBlock.allDay) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
+      
+      // Neither is all-day, check time overlap
+      const timeStart = new Date(`2000-01-01T${timeBlock.start}`)
+      const timeEnd = new Date(`2000-01-01T${timeBlock.end}`)
+      const existingStart = new Date(`2000-01-01T${existingBlock.start}`)
+      const existingEnd = new Date(`2000-01-01T${existingBlock.end}`)
+      
+      // Check if there's an overlap - times can be equal (e.g., end of one = start of another) without overlapping
+      if (timeStart < existingEnd && timeEnd > existingStart) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
     }
+    
+    return { hasOverlap: false }
   }
 
   // Handle saving the schedule from the modal
@@ -334,22 +492,51 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     if (!selectedUser) return
 
     const userId = selectedUser.id
-    const newSchedules = { ...schedules }
-
-    // Initialize user's schedule for the day if it doesn't exist
-    if (!newSchedules[userId]) {
-      newSchedules[userId] = {}
+    const updatedSchedules = { ...schedules }
+    const userIdNum = userId as number
+    
+    // Create the user's schedule object if it doesn't exist yet
+    if (!updatedSchedules[userIdNum]) {
+      updatedSchedules[userIdNum] = {}
+    }
+    
+    // Create the day array if it doesn't exist yet
+    if (!updatedSchedules[userIdNum][day]) {
+      updatedSchedules[userIdNum][day] = []
+    }
+    
+    // Check for overlapping time blocks (exclude current block if editing)
+    const { hasOverlap, overlappingBlock } = checkOverlap(day, timeBlock, editMode ? selectedTimeBlock?.id : undefined)
+    
+    if (hasOverlap && overlappingBlock) {
+      const overlappingTime = overlappingBlock.allDay 
+        ? "all day" 
+        : `${overlappingBlock.start} - ${overlappingBlock.end}`;
+      
+      alert(`This schedule overlaps with an existing time block: "${overlappingBlock.label}" (${overlappingTime})\n\nPlease choose a different time.`);
+      return;
     }
 
-    if (!newSchedules[userId][day]) {
-      newSchedules[userId][day] = []
-    }
+    console.log('Saving timeBlock:', timeBlock)
 
     try {
       // If editing, replace the existing time block
       if (editMode && selectedTimeBlock?.id) {
-        // Update the time block in Supabase
-        const { error: updateError } = await getSupabase()
+        console.log('Editing existing timeBlock with ID:', selectedTimeBlock.id)
+        
+        // First update the local state for immediate feedback
+        updatedSchedules[userIdNum][day] = updatedSchedules[userIdNum][day].map((block) =>
+          block.id === selectedTimeBlock.id ? { 
+            id: selectedTimeBlock.id,
+            start: timeBlock.start,
+            end: timeBlock.end,
+            label: timeBlock.label,
+            allDay: timeBlock.allDay || false
+          } : block
+        )
+        
+        // Then update in Supabase
+        const { data: updatedData, error: updateError } = await getSupabase()
           .from('schedules')
           .update({
             start_time: timeBlock.start,
@@ -357,18 +544,28 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             label: timeBlock.label,
             all_day: timeBlock.allDay || false
           })
-          .eq('id', selectedTimeBlock.id);
+          .eq('id', selectedTimeBlock.id)
+          .select(); // Return the updated row to confirm changes
 
         if (updateError) {
           console.error('Error updating schedule in Supabase:', updateError);
+        } else {
+          console.log('Successfully updated schedule in Supabase:', updatedData);
         }
-
-        // Update local state
-        newSchedules[userId][day] = newSchedules[userId][day].map((block) =>
-          block.id === selectedTimeBlock.id ? { ...timeBlock, id: selectedTimeBlock.id } : block
-        )
       } else {
-        // Create a new time block in Supabase - let Supabase generate the UUID
+        console.log('Creating new timeBlock')
+        
+        // First create a temporary ID and update local state for immediate feedback
+        const tempId = crypto.randomUUID();
+        updatedSchedules[userIdNum][day].push({ 
+          id: tempId,
+          start: timeBlock.start,
+          end: timeBlock.end,
+          label: timeBlock.label,
+          allDay: timeBlock.allDay || false
+        });
+        
+        // Then create in Supabase
         const { data: insertedData, error: insertError } = await getSupabase()
           .from('schedules')
           .insert({
@@ -383,34 +580,38 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
         if (insertError) {
           console.error('Error inserting schedule in Supabase:', insertError);
-          // Still update local state with a temporary ID for UI purposes
-          const tempId = crypto.randomUUID();
-          newSchedules[userId][day].push({ ...timeBlock, id: tempId });
+          // Already updated local state above
         } else if (insertedData && insertedData.length > 0) {
-          // Update local state with the proper UUID from Supabase
-          const newId = insertedData[0].id;
-          newSchedules[userId][day].push({
-            ...timeBlock,
-            id: newId,
-            start: insertedData[0].start_time,
-            end: insertedData[0].end_time,
-            label: insertedData[0].label,
-            allDay: insertedData[0].all_day
-          });
+          console.log('Successfully inserted schedule in Supabase:', insertedData);
+          
+          // Update the temporary ID with the real one from Supabase
+          const newId = insertedData[0].id as string;
+          updatedSchedules[userIdNum][day] = updatedSchedules[userIdNum][day].map(block => 
+            block.id === tempId ? {
+              id: newId,
+              start: insertedData[0].start_time as string,
+              end: insertedData[0].end_time as string,
+              label: insertedData[0].label as string,
+              allDay: insertedData[0].all_day as boolean
+            } : block
+          );
         }
       }
 
-      // Update local state
-      setSchedules(newSchedules)
+      // Update local state immediately
+      setSchedules(updatedSchedules)
 
       // Save to localStorage as a fallback
-      localStorage.setItem('roommate-schedules', JSON.stringify(newSchedules))
+      localStorage.setItem('roommate-schedules', JSON.stringify(updatedSchedules))
     } catch (error) {
       console.error('Error saving schedule:', error);
     }
-
-    // Close the modal
-    setModalOpen(false)
+    
+    // Give time for the UI to update and Supabase changes to sync
+    // before closing the modal
+    setTimeout(() => {
+      setModalOpen(false)
+    }, 300)
   }
 
   // Handle deleting a time block
@@ -436,41 +637,37 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
     const userId = selectedUser.id
     const newSchedules = { ...schedules }
+    const userIdNum = userId as number
+    
+    // Check if the timeBlockId is a valid UUID before trying to delete from Supabase
+    // UUID format validation using a simple regex
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timeBlockId);
+    
+    if (isValidUUID) {
+      // Delete the time block from Supabase
+      const { error: deleteError } = await getSupabase()
+        .from('schedules')
+        .delete()
+        .eq('id', timeBlockId);
 
-    try {
-      // Check if the timeBlockId is a valid UUID before trying to delete from Supabase
-      // UUID format validation using a simple regex
-      const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(timeBlockId);
-      
-      if (isValidUUID) {
-        // Delete the time block from Supabase
-        const { error: deleteError } = await getSupabase()
-          .from('schedules')
-          .delete()
-          .eq('id', timeBlockId);
-
-        if (deleteError) {
-          console.error('Error deleting schedule from Supabase:', deleteError);
-        }
-      } else {
-        console.warn('Skipping Supabase delete - not a valid UUID:', timeBlockId);
+      if (deleteError) {
+        console.error('Error deleting schedule from Supabase:', deleteError);
       }
-
-      // Check if the user and day exist in the schedules
-      if (newSchedules[userId] && newSchedules[userId][day]) {
-        // Filter out the time block with the matching ID
-        newSchedules[userId][day] = newSchedules[userId][day].filter((block) => block.id !== timeBlockId)
-
-        // Update local state
-        setSchedules(newSchedules)
-
-        // Save to localStorage as a fallback
-        localStorage.setItem('roommate-schedules', JSON.stringify(newSchedules))
-      }
-    } catch (error) {
-      console.error('Error deleting schedule:', error);
+    } else {
+      console.warn('Skipping Supabase delete - not a valid UUID:', timeBlockId);
     }
 
+    // Check if the user and day exist in the schedules
+    if (newSchedules[userIdNum] && newSchedules[userIdNum][day]) {
+      // Filter out the time block with the matching ID
+      newSchedules[userIdNum][day] = newSchedules[userIdNum][day].filter((block) => block.id !== timeBlockId)
+
+      // Update local state
+      setSchedules(newSchedules)
+
+      // Save to localStorage as a fallback
+      localStorage.setItem('roommate-schedules', JSON.stringify(newSchedules))
+    }
     // Close the modal
     setModalOpen(false)
   }
@@ -633,18 +830,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         </span>
                       </div>
 
-                      {/* Add button for current user */}
-                      {isCurrentUser && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 rounded-full bg-[#333333] hover:bg-[#444444]"
-                          onClick={() => handleAddClick(user, day)}
-                        >
-                          <Plus className="h-3 w-3" />
-                          <span className="sr-only">Add schedule item</span>
-                        </Button>
-                      )}
+                       {/* User display only - button removed as requested */}
                     </div>
 
                     {/* Adjust the height based on collapsed state */}
@@ -710,13 +896,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {selectedUser && (
         <QuickScheduleModal
           isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={handleModalClose}
           onSave={handleSaveSchedule}
           onDelete={handleDeleteTimeBlock}
           userName={selectedUser.name}
           userColor={selectedUser.color}
           initialDay={selectedDay}
-          editMode={editMode}
+          editMode={editMode} // This controls if Delete button appears
           timeBlock={selectedTimeBlock}
           usedColors={usedColors}
           onUserColorChange={(color) => {
