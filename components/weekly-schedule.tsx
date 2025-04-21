@@ -65,6 +65,12 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
+  
+  // Helper function to determine text color based on background color
+  const getTextColor = (bgColor: string) => {
+    const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
+    return lightColors.includes(bgColor) ? "#000" : "#fff"
+  }
 
   // For mobile view, we'll show a simplified version
   const [isMobile, setIsMobile] = useState(false)
@@ -845,7 +851,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       >
                         <span
                           className="flex items-center justify-center h-6 w-6 rounded-full text-sm font-semibold cursor-pointer"
-                          style={{ backgroundColor: user.color, color: "#000" }}
+                          style={{ backgroundColor: user.color, color: getTextColor(user.color) }}
                           onClick={(e) => {
                             if (isCurrentUser) {
                               e.stopPropagation(); // Stop event from bubbling up
@@ -897,7 +903,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                               left: `${startPos}%`,
                               width: `${width}%`,
                               backgroundColor: user.color,
-                              color: "#000",
+                              color: getTextColor(user.color),
                               top: isCollapsed ? "0" : undefined,
                             }}
                             title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}

@@ -188,27 +188,13 @@ export function QuickScheduleModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div
-              className="flex justify-center items-center h-8 w-8 rounded-full text-white text-sm relative cursor-pointer group hover:ring-2 hover:ring-white transition-all"
-              style={{ backgroundColor: currentColor }}
-              onClick={(e) => {
-                e.stopPropagation();
-                // Only handle this if there's a color change handler
-                if (onUserColorChange && !isColorPickerOnly) {
-                  // Close this modal and tell parent to open color-only modal
-                  onClose();
-                  // We need to send a custom event that the WeeklySchedule component will listen for
-                  const event = new CustomEvent('openColorPickerModal', {
-                    detail: { userName: userName }
-                  });
-                  document.dispatchEvent(event);
-                }
+              className="flex justify-center items-center h-8 w-8 rounded-full text-sm relative"
+              style={{ 
+                backgroundColor: currentColor, 
+                color: getTextColor(currentColor) 
               }}
-              title="Click to change your color"
             >
               {userName.charAt(0).toUpperCase()}
-              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 rounded-full group-hover:bg-opacity-30 transition-all">
-                <Palette className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
             </div>
             <DialogTitle className="text-xl">{userName}'s {isColorPickerOnly ? 'Color' : 'Schedule'}</DialogTitle>
           </div>
@@ -217,11 +203,6 @@ export function QuickScheduleModal({
               ? 'Select your color preference below.'
               : 'Quickly add to your schedule for the selected day.'}
           </DialogDescription>
-          {!isColorPickerOnly && (
-            <DialogDescription className="text-gray-400 mt-1">
-              Click on your icon to change your color.
-            </DialogDescription>
-          )}
         </DialogHeader>
 
         {/* Show colors when showColorPicker OR isColorPickerOnly is true */}
