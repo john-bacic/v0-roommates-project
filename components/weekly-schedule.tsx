@@ -210,9 +210,23 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     // Global handler for _c button removed as requested
     
+    // Add event listener for the custom color picker modal event
+    const handleOpenColorPickerModal = (event: CustomEvent<{userName: string}>) => {
+      // Find the user by name
+      const user = users.find(u => u.name === event.detail.userName);
+      if (user) {
+        // Open the color picker modal for this user
+        openColorPicker(user);
+      }
+    };
+    
+    // Add event listener with type assertion for the custom event
+    document.addEventListener('openColorPickerModal', handleOpenColorPickerModal as EventListener);
+    
     return () => {
       // Clean up all event listeners
       window.removeEventListener("resize", checkMobile);
+      document.removeEventListener('openColorPickerModal', handleOpenColorPickerModal as EventListener);
     };
 
     // Time format is now loaded in the useState initialization

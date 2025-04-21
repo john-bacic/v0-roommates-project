@@ -156,8 +156,11 @@ export function QuickScheduleModal({
     if (onUserColorChange) {
       onUserColorChange(newColor)
     }
-    // Keep the color picker open
-    setShowColorPicker(true)
+    // In color-only mode, we want to keep the picker open
+    // In regular mode, auto-close the color picker after selection
+    if (!isColorPickerOnly) {
+      setShowColorPicker(false)
+    }
     // Important: Don't call onClose() here to prevent losing schedule data
   }
 
@@ -185,12 +188,27 @@ export function QuickScheduleModal({
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div
-              className="flex justify-center items-center h-8 w-8 rounded-full text-white text-sm relative"
+              className="flex justify-center items-center h-8 w-8 rounded-full text-white text-sm relative cursor-pointer group hover:ring-2 hover:ring-white transition-all"
               style={{ backgroundColor: currentColor }}
-              onClick={toggleColorPicker}
+              onClick={(e) => {
+                e.stopPropagation();
+                // Only handle this if there's a color change handler
+                if (onUserColorChange && !isColorPickerOnly) {
+                  // Close this modal and tell parent to open color-only modal
+                  onClose();
+                  // We need to send a custom event that the WeeklySchedule component will listen for
+                  const event = new CustomEvent('openColorPickerModal', {
+                    detail: { userName: userName }
+                  });
+                  document.dispatchEvent(event);
+                }
+              }}
+              title="Click to change your color"
             >
-              {showColorPicker && <Palette className="h-4 w-4 absolute" />}
-              {!showColorPicker && userName.charAt(0).toUpperCase()}
+              {userName.charAt(0).toUpperCase()}
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 rounded-full group-hover:bg-opacity-30 transition-all">
+                <Palette className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
             <DialogTitle className="text-xl">{userName}'s {isColorPickerOnly ? 'Color' : 'Schedule'}</DialogTitle>
           </div>
