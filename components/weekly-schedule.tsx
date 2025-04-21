@@ -345,11 +345,26 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       newSchedules[userId][day] = []
     }
 
+    console.log('Saving timeBlock:', timeBlock)
+
     try {
       // If editing, replace the existing time block
       if (editMode && selectedTimeBlock?.id) {
-        // Update the time block in Supabase
-        const { error: updateError } = await getSupabase()
+        console.log('Editing existing timeBlock with ID:', selectedTimeBlock.id)
+        
+        // First update the local state for immediate feedback
+        newSchedules[userId][day] = newSchedules[userId][day].map((block) =>
+          block.id === selectedTimeBlock.id ? { 
+            id: selectedTimeBlock.id,
+            start: timeBlock.start,
+            end: timeBlock.end,
+            label: timeBlock.label,
+            allDay: timeBlock.allDay || false
+          } : block
+        )
+        
+        // Then update in Supabase
+        const { data: updatedData, error: updateError } = await getSupabase()
           .from('schedules')
           .update({
             start_time: timeBlock.start,
@@ -357,18 +372,28 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             label: timeBlock.label,
             all_day: timeBlock.allDay || false
           })
-          .eq('id', selectedTimeBlock.id);
+          .eq('id', selectedTimeBlock.id)
+          .select(); // Return the updated row to confirm changes
 
         if (updateError) {
           console.error('Error updating schedule in Supabase:', updateError);
+        } else {
+          console.log('Successfully updated schedule in Supabase:', updatedData);
         }
-
-        // Update local state
-        newSchedules[userId][day] = newSchedules[userId][day].map((block) =>
-          block.id === selectedTimeBlock.id ? { ...timeBlock, id: selectedTimeBlock.id } : block
-        )
       } else {
-        // Create a new time block in Supabase - let Supabase generate the UUID
+        console.log('Creating new timeBlock')
+        
+        // First create a temporary ID and update local state for immediate feedback
+        const tempId = crypto.randomUUID();
+        newSchedules[userId][day].push({ 
+          id: tempId,
+          start: timeBlock.start,
+          end: timeBlock.end,
+          label: timeBlock.label,
+          allDay: timeBlock.allDay || false
+        });
+        
+        // Then create in Supabase
         const { data: insertedData, error: insertError } = await getSupabase()
           .from('schedules')
           .insert({
@@ -383,24 +408,25 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
         if (insertError) {
           console.error('Error inserting schedule in Supabase:', insertError);
-          // Still update local state with a temporary ID for UI purposes
-          const tempId = crypto.randomUUID();
-          newSchedules[userId][day].push({ ...timeBlock, id: tempId });
+          // Already updated local state above
         } else if (insertedData && insertedData.length > 0) {
-          // Update local state with the proper UUID from Supabase
-          const newId = insertedData[0].id;
-          newSchedules[userId][day].push({
-            ...timeBlock,
-            id: newId,
-            start: insertedData[0].start_time,
-            end: insertedData[0].end_time,
-            label: insertedData[0].label,
-            allDay: insertedData[0].all_day
-          });
+          console.log('Successfully inserted schedule in Supabase:', insertedData);
+          
+          // Update the temporary ID with the real one from Supabase
+          const newId = insertedData[0].id as string;
+          newSchedules[userId][day] = newSchedules[userId][day].map(block => 
+            block.id === tempId ? {
+              id: newId,
+              start: insertedData[0].start_time as string,
+              end: insertedData[0].end_time as string,
+              label: insertedData[0].label as string,
+              allDay: insertedData[0].all_day as boolean
+            } : block
+          );
         }
       }
 
-      // Update local state
+      // Update local state immediately
       setSchedules(newSchedules)
 
       // Save to localStorage as a fallback
@@ -408,9 +434,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     } catch (error) {
       console.error('Error saving schedule:', error);
     }
-
-    // Close the modal
-    setModalOpen(false)
+    
+    // Give time for the UI to update and Supabase changes to sync
+    // before closing the modal
+    setTimeout(() => {
+      setModalOpen(false)
+    }, 300)
   }
 
   // Handle deleting a time block
