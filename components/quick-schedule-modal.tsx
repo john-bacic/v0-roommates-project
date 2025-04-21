@@ -206,7 +206,8 @@ export function QuickScheduleModal({
           )}
         </DialogHeader>
 
-        {showColorPicker && (
+        {/* Show colors when showColorPicker OR isColorPickerOnly is true */}
+        {(showColorPicker || isColorPickerOnly) && (
           <div className="mb-4 p-3 bg-[#242424] rounded-md">
             <Label className="mb-2 block text-sm">Select Your Color</Label>
             <div className="grid grid-cols-3 gap-4 mt-2">
