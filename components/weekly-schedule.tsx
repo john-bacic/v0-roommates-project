@@ -333,9 +333,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const handleAddClick = (user: User, day: string) => {
     if (user.name === currentUserName) {
       const { start, end } = getDefaultTimes()
+      
+      // Important: Set edit mode first, then other state
+      setEditMode(false)
       setSelectedUser(user)
       setSelectedDay(day)
-      setEditMode(false)
       setSelectedTimeBlock({
         id: crypto.randomUUID(),
         start,
@@ -343,6 +345,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         label: "Work",
         allDay: false
       })
+      
+      // Log the action for debugging
+      console.log('Opening add modal for:', day, 'with time range:', start, '-', end);
+      
+      // Open the modal last
       setModalOpen(true)
     }
   }
@@ -358,11 +365,14 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       
       console.log('Opening edit modal for timeBlock:', timeBlock);
       
-      // Important: Set these in this specific order to ensure edit mode is properly applied
+      // Important: Use the same state setup sequence as handleAddClick for consistency
+      // but with edit mode set to true
       setEditMode(true) // Set edit mode first
       setSelectedUser(user)
       setSelectedDay(day)
       setSelectedTimeBlock(timeBlock)
+      
+      // Open the modal last
       setModalOpen(true)
     }
   }
