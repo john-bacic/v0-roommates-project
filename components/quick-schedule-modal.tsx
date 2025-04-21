@@ -51,6 +51,18 @@ const COLORS = [
   "#CE93D8", // Light Purple
 ]
 
+// Helper function to format time for display (24h -> 12h with AM/PM)
+function formatTimeForDisplay(time24h: string): string {
+  try {
+    const [hours, minutes] = time24h.split(':').map(Number)
+    const period = hours >= 12 ? 'PM' : 'AM'
+    const hours12 = hours % 12 || 12 // Convert 0 to 12 for 12 AM
+    return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`
+  } catch (e) {
+    return time24h // Fallback to original format if parsing fails
+  }
+}
+
 export function QuickScheduleModal({
   isOpen,
   onClose,
@@ -268,25 +280,35 @@ export function QuickScheduleModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="start-time">Start Time</Label>
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={timeBlock.start}
-                  onChange={(e) => setTimeBlock({ ...timeBlock, start: e.target.value })}
-                  className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
-                  style={{ backgroundColor: "#242424" }}
-                />
+                <div className="relative">
+                  <Input
+                    id="start-time"
+                    type="time"
+                    value={timeBlock.start}
+                    onChange={(e) => setTimeBlock({ ...timeBlock, start: e.target.value })}
+                    className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
+                    style={{ backgroundColor: "#242424" }}
+                  />
+                  <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
+                    {formatTimeForDisplay(timeBlock.start)}
+                  </div>
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="end-time">End Time</Label>
-                <Input
-                  id="end-time"
-                  type="time"
-                  value={timeBlock.end}
-                  onChange={(e) => setTimeBlock({ ...timeBlock, end: e.target.value })}
-                  className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
-                  style={{ backgroundColor: "#242424" }}
-                />
+                <div className="relative">
+                  <Input
+                    id="end-time"
+                    type="time"
+                    value={timeBlock.end}
+                    onChange={(e) => setTimeBlock({ ...timeBlock, end: e.target.value })}
+                    className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
+                    style={{ backgroundColor: "#242424" }}
+                  />
+                  <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
+                    {formatTimeForDisplay(timeBlock.end)}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -316,19 +338,15 @@ export function QuickScheduleModal({
             </Button>
           )}
           {!editMode && <div></div>} {/* Empty div to maintain spacing when delete button isn't shown */}
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={onClose}
-              className="bg-[#333333] hover:bg-[#444444] text-white border-none h-9 px-3 text-xs sm:text-sm"
-            >
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={onClose} className="bg-[#333333] text-white hover:bg-[#444444] border-[#444444]">
               Cancel
             </Button>
             {/* Use currentColor instead of userColor for the button */}
             <Button
               onClick={handleSave}
               style={{ backgroundColor: currentColor, color: getTextColor(currentColor) }}
-              className="h-9 px-3 text-xs sm:text-sm"
+              className="h-9 px-3 text-xs sm:text-sm hover:opacity-90"
             >
               {editMode ? "Update" : "Add"}
             </Button>

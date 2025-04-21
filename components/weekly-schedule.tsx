@@ -289,14 +289,42 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return hours
   }
 
+  // Get smart default start and end times based on current view
+  const getDefaultTimes = (): { start: string, end: string } => {
+    // Current hour rounded down
+    const now = new Date()
+    const currentHour = now.getHours()
+    
+    // Default to current hour or 9am if before 6am or after 8pm
+    let startHour = (currentHour < 6 || currentHour > 20) ? 9 : currentHour
+    
+    // End time is 2 hours after start time, but not past 11pm
+    let endHour = Math.min(startHour + 2, 23)
+    
+    // Format hours as strings with leading zeros
+    const formatHour = (hour: number) => hour.toString().padStart(2, '0')
+    
+    return {
+      start: `${formatHour(startHour)}:00`,
+      end: `${formatHour(endHour)}:00`
+    }
+  }
+  
   // Handle opening the modal when clicking on a user
   const handleUserClick = (user: User, day: string) => {
     // Only allow editing your own schedule
     if (user.name === currentUserName) {
+      const { start, end } = getDefaultTimes()
       setSelectedUser(user)
       setSelectedDay(day)
       setEditMode(false)
-      setSelectedTimeBlock(undefined)
+      setSelectedTimeBlock({
+        id: crypto.randomUUID(),
+        start,
+        end,
+        label: "Work",
+        allDay: false
+      })
       setModalOpen(true)
     }
   }
@@ -304,10 +332,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Handle opening the modal when clicking on the + button
   const handleAddClick = (user: User, day: string) => {
     if (user.name === currentUserName) {
+      const { start, end } = getDefaultTimes()
       setSelectedUser(user)
       setSelectedDay(day)
       setEditMode(false)
-      setSelectedTimeBlock(undefined)
+      setSelectedTimeBlock({
+        id: crypto.randomUUID(),
+        start,
+        end,
+        label: "Work",
+        allDay: false
+      })
       setModalOpen(true)
     }
   }
@@ -321,12 +356,55 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         timeBlock = { ...timeBlock, id: crypto.randomUUID() };
       }
       
+      console.log('Opening edit modal for timeBlock:', timeBlock);
+      
+      // Important: Set these in this specific order to ensure edit mode is properly applied
+      setEditMode(true) // Set edit mode first
       setSelectedUser(user)
       setSelectedDay(day)
       setSelectedTimeBlock(timeBlock)
-      setEditMode(true)
       setModalOpen(true)
     }
+  }
+
+  // Check if a time block overlaps with existing time blocks
+  const checkOverlap = (day: string, timeBlock: TimeBlock, excludeId?: string): { hasOverlap: boolean, overlappingBlock?: TimeBlock } => {
+    const userId = selectedUser?.id
+    if (!userId || !schedules[userId] || !schedules[userId][day]) return { hasOverlap: false }
+    
+    // For each existing block on this day
+    for (const existingBlock of schedules[userId][day]) {
+      // Skip the current block being edited
+      if (excludeId && existingBlock.id === excludeId) continue
+      
+      // Both blocks are all-day events - they definitely overlap
+      if (timeBlock.allDay && existingBlock.allDay) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
+      
+      // Only the new block is an all-day event - it overlaps with all existing events
+      if (timeBlock.allDay) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
+      
+      // Only the existing block is an all-day event - it overlaps with all new events
+      if (existingBlock.allDay) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
+      
+      // Neither is all-day, check time overlap
+      const timeStart = new Date(`2000-01-01T${timeBlock.start}`)
+      const timeEnd = new Date(`2000-01-01T${timeBlock.end}`)
+      const existingStart = new Date(`2000-01-01T${existingBlock.start}`)
+      const existingEnd = new Date(`2000-01-01T${existingBlock.end}`)
+      
+      // Check if there's an overlap - times can be equal (e.g., end of one = start of another) without overlapping
+      if (timeStart < existingEnd && timeEnd > existingStart) {
+        return { hasOverlap: true, overlappingBlock: existingBlock }
+      }
+    }
+    
+    return { hasOverlap: false }
   }
 
   // Handle saving the schedule from the modal
@@ -343,6 +421,18 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
     if (!newSchedules[userId][day]) {
       newSchedules[userId][day] = []
+    }
+    
+    // Check for overlapping time blocks (exclude current block if editing)
+    const { hasOverlap, overlappingBlock } = checkOverlap(day, timeBlock, editMode ? selectedTimeBlock?.id : undefined)
+    
+    if (hasOverlap && overlappingBlock) {
+      const overlappingTime = overlappingBlock.allDay 
+        ? "all day" 
+        : `${overlappingBlock.start} - ${overlappingBlock.end}`;
+      
+      alert(`This schedule overlaps with an existing time block: "${overlappingBlock.label}" (${overlappingTime})\n\nPlease choose a different time.`);
+      return;
     }
 
     console.log('Saving timeBlock:', timeBlock)
@@ -739,13 +829,20 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {selectedUser && (
         <QuickScheduleModal
           isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => {
+            // Properly reset state when closing modal
+            setModalOpen(false)
+            if (editMode) {
+              // Small delay to avoid UI flicker
+              setTimeout(() => setEditMode(false), 300)
+            }
+          }}
           onSave={handleSaveSchedule}
           onDelete={handleDeleteTimeBlock}
           userName={selectedUser.name}
           userColor={selectedUser.color}
           initialDay={selectedDay}
-          editMode={editMode}
+          editMode={editMode} // This controls if Delete button appears
           timeBlock={selectedTimeBlock}
           usedColors={usedColors}
           onUserColorChange={(color) => {
