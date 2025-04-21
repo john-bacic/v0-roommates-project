@@ -902,9 +902,15 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                             style={{
                               left: `${startPos}%`,
                               width: `${width}%`,
-                              backgroundColor: user.color,
+                              backgroundColor: block.allDay ? 'transparent' : user.color,
                               color: getTextColor(user.color),
                               top: isCollapsed ? "0" : undefined,
+                              border: block.allDay ? `2px solid ${user.color}` : 'none',
+                              backgroundImage: block.allDay ? 
+                                `repeating-linear-gradient(45deg, ${user.color}50, ${user.color}50 4px, transparent 4px, transparent 10px), 
+                                 repeating-linear-gradient(135deg, ${user.color}50, ${user.color}50 4px, transparent 4px, transparent 10px)` : 'none',
+                              backgroundSize: block.allDay ? '10px 10px' : 'auto',
+                              boxSizing: 'border-box'
                             }}
                             title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                             onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
