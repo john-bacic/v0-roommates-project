@@ -206,6 +206,72 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     if (storedName) {
       setCurrentUserName(storedName)
     }
+    
+    // Global click handler for any add button with data-component-name="_c"
+    const handleGlobalAddButtonClick = (event: MouseEvent) => {
+      // Find if the click was on any element inside a button with data-component-name="_c"
+      let targetElement = event.target as HTMLElement;
+      let addButton = null;
+      
+      // Traverse up the DOM to find if we clicked inside a button with data-component-name="_c"
+      while (targetElement && !addButton) {
+        if (targetElement.getAttribute && targetElement.getAttribute('data-component-name') === '_c') {
+          addButton = targetElement;
+          break;
+        }
+        targetElement = targetElement.parentElement as HTMLElement;
+      }
+      
+      // If we found a matching button, determine which user and day to use
+      if (addButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // Find the current user data 
+        const user = users.find(u => u.name === currentUserName);
+        if (user) {
+          console.log('Global handler caught click on + button with _c attr');
+          
+          // First, reset any existing modal state
+          setModalOpen(false);
+          
+          // Find the day from the UI context if possible, otherwise default to Monday
+          // Look for data attributes or nearest day indicators in the DOM
+          let day = days[0]; // Default to first day
+          
+          // Use a short timeout to ensure previous modal is fully closed
+          setTimeout(() => {
+            // Set up a new time block with default start/end times
+            const { start, end } = getDefaultTimes();
+            const newTimeBlock = {
+              id: crypto.randomUUID(),
+              start,
+              end,
+              label: "Work",
+              allDay: false
+            };
+            
+            // Direct state setup to match the modal in the image
+            setEditMode(false);
+            setSelectedUser(user);
+            setSelectedDay(day);
+            setSelectedTimeBlock(newTimeBlock);
+            
+            // Open the modal
+            setModalOpen(true);
+          }, 50);
+        }
+      }
+    };
+    
+    // Add global event listener for any + button clicks
+    document.addEventListener('click', handleGlobalAddButtonClick);
+    
+    return () => {
+      // Clean up all event listeners
+      window.removeEventListener("resize", checkMobile);
+      document.removeEventListener('click', handleGlobalAddButtonClick);
+    };
 
     // Time format is now loaded in the useState initialization
 
@@ -394,7 +460,32 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Handle opening the modal when clicking on the + button
   const handleAddClick = (user: User, day: string) => {
-    openScheduleModal(user, day, false, null);
+    // Close any previously open modal completely before opening a new one
+    setModalOpen(false);
+    
+    // For debugging - log that this specific handler was called
+    console.log('handleAddClick specifically called for user:', user.name, 'day:', day);
+    
+    // Small delay to ensure modal is fully closed before reopening
+    setTimeout(() => {
+      // Get default times for a new time block
+      const { start, end } = getDefaultTimes();
+      
+      // Direct state setup matching the QuickScheduleModal from the image
+      setEditMode(false);
+      setSelectedUser(user);
+      setSelectedDay(day);
+      setSelectedTimeBlock({
+        id: crypto.randomUUID(),
+        start,
+        end,
+        label: "Work",
+        allDay: false
+      });
+      
+      // Open the modal
+      setModalOpen(true);
+    }, 50);
   }
 
   // Handle opening the modal when clicking on a time block
@@ -804,6 +895,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           size="icon"
                           className="h-6 w-6 rounded-full bg-[#333333] hover:bg-[#444444]"
                           onClick={() => handleAddClick(user, day)}
+                          data-component-name="_c"
                         >
                           <Plus className="h-3 w-3" />
                           <span className="sr-only">Add schedule item</span>
