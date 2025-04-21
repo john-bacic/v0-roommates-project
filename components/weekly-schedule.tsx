@@ -508,10 +508,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       window.dispatchEvent(event)
     }
 
-    // Close the modal if it's open
-    if (modalOpen) {
-      setModalOpen(false)
-    }
+    // Don't close the modal when changing colors
+    // This allows users to try multiple colors before closing
   }
 
   return (
