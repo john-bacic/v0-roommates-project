@@ -98,7 +98,7 @@ export default function Overview() {
   // Set up real-time subscription to schedule changes
   useEffect(() => {
     const scheduleSubscription = supabase
-      .channel('schedules-changes-overview')
+      .channel('schedules-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
         // Reload data when any schedule changes
         loadData()
@@ -106,7 +106,7 @@ export default function Overview() {
       .subscribe()
 
     const usersSubscription = supabase
-      .channel('users-changes-overview')
+      .channel('users-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
         // Reload data when any user changes (like color updates)
         loadData()

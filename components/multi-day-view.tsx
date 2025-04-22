@@ -72,8 +72,8 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   const [currentUserName, setCurrentUserName] = useState<string>("")
   const [screenWidth, setScreenWidth] = useState(0)
 
-  // Calculate hours to display from 6am to 2am (next day) to match other views
-  const hours = Array.from({ length: 20 }, (_, i) => (i + 6) % 24)
+  // Calculate hours to display from 5am to 2am (next day) to match other views
+  const hours = Array.from({ length: 21 }, (_, i) => (i + 5) % 24)
 
   // Format hour display based on user preference
   const formatHour = (hour: number): string => {
@@ -146,7 +146,6 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
 
   // Handle clicking on an existing schedule block to edit
   const handleBlockClick = (user: User, day: string, block: TimeBlock) => {
-    // Only allow editing your own schedule
     if (user.name === currentUserName) {
       setSelectedUser(user)
       setSelectedDay(day)
@@ -159,8 +158,8 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   }
 
   // Handle saving a schedule
-  const handleSaveSchedule = (timeBlock: TimeBlock) => {
-    // Close the modal
+  const handleSaveSchedule = (day: string, timeBlock: TimeBlock) => {
+    // Implementation would go here
     setModalOpen(false)
   }
 
@@ -233,6 +232,75 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                   const userBlocks = schedules[user.id]?.[day] || [];
                   
                   return userBlocks.map((block) => {
+                    // Special handling for all-day events
+                    if (block.allDay) {
+                      // Calculate the relative position within the day column
+                      const userIndex = users.findIndex(u => u.id === user.id);
+                      const totalUsers = users.length;
+                      const columnWidth = 100 / totalUsers;
+                      const leftPosition = userIndex * columnWidth + (columnWidth / 2);
+                      
+                      // For the first hour, render the user initial at the top
+                      if (hour === hours[0]) {
+                        return (
+                          <div key={`all-day-${block.id || `${day}-${user.id}`}`}>
+                            {/* Full-height all-day line */}
+                            <div 
+                              className="absolute cursor-pointer"
+                              style={{
+                                top: "0",
+                                height: "100%", // Full height of the hour cell
+                                left: `${leftPosition}%`,
+                                width: "4px", // Thinner line for all-day events
+                                transform: "translateX(-50%)",
+                                backgroundColor: user.color,
+                                opacity: 0.5,
+                                zIndex: 10,
+                              }}
+                              onClick={() => handleBlockClick(user, day, block)}
+                              title={`${user.name}: ${block.label} (All Day)`}
+                            />
+                            
+                            {/* User initial for all-day event */}
+                            <div 
+                              className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20"
+                              style={{
+                                top: "10px", // Position below the days row
+                                left: `${leftPosition}%`,
+                                transform: "translate(-50%, 0)",
+                                backgroundColor: user.color,
+                                color: getTextColor(user.color),
+                              }}
+                            >
+                              {user.initial}
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // For all other hours, just render the line without the initial
+                      return (
+                        <div key={`all-day-${block.id || `${day}-${user.id}-${hour}`}`}>
+                          <div 
+                            className="absolute cursor-pointer"
+                            style={{
+                              top: "0",
+                              height: "100%", // Full height of the hour cell
+                              left: `${leftPosition}%`,
+                              width: "4px", // Thinner line for all-day events
+                              transform: "translateX(-50%)",
+                              backgroundColor: user.color,
+                              opacity: 0.5,
+                              zIndex: 10,
+                            }}
+                            onClick={() => handleBlockClick(user, day, block)}
+                            title={`${user.name}: ${block.label} (All Day)`}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Regular time-bound events
                     const startPercent = calculateTimePosition(block.start);
                     const endPercent = calculateTimePosition(block.end);
                     const startHour = parseInt(block.start.split(":")[0]);
@@ -335,7 +403,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
         editMode={editMode}
         timeBlock={selectedTimeBlock}
         usedColors={usedColors}
-        onChange={(color) => {
+        onUserColorChange={(color: string) => {
           if (selectedUser) {
             // Update the user's color
           }

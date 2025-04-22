@@ -64,7 +64,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
+  const hours = Array.from({ length: 22 }, (_, i) => i + 5) // 5 to 26 (2am)
   
   // Helper function to determine text color based on background color
   const getTextColor = (bgColor: string) => {
@@ -119,7 +119,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   useEffect(() => {
     // Set up subscription for schedule changes
     const scheduleSubscription = getSupabase()
-      .channel('schedules-changes-weekly')
+      .channel('schedules-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, (payload) => {
         // Get the updated schedule data directly from Supabase
         // This ensures we have the latest data without a full reload
@@ -177,7 +177,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
     // Set up subscription for user changes
     const usersSubscription = getSupabase()
-      .channel('users-changes-weekly')
+      .channel('users-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
         // Update the user data when it changes with proper type checking
         if (payload.new) {
