@@ -887,9 +887,26 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       {/* Schedule blocks */}
                       {userSchedule.map((block, index) => {
                         // For all-day events, span the entire width
-                        const startPos = block.allDay ? 0 : timeToPosition(block.start)
-                        const endPos = block.allDay ? 100 : timeToPosition(block.end)
-                        const width = block.allDay ? 100 : endPos - startPos
+                        let startPos, endPos, width;
+                        
+                        if (block.allDay) {
+                          startPos = 0;
+                          endPos = 100;
+                          width = 100;
+                        } else {
+                          // Calculate the position and width of the time block
+                          const startHour = parseInt(block.start.split(":")[0])
+                          const startMinute = parseInt(block.start.split(":")[1])
+                          const endHour = parseInt(block.end.split(":")[0])
+                          const endMinute = parseInt(block.end.split(":")[1])
+                          
+                          // Calculate the start and end positions as percentages
+                          // Adjust calculation to match the time row markers exactly
+                          const hourWidth = 100 / hours.length
+                          startPos = (startHour - hours[0]) * hourWidth + (startMinute / 60) * hourWidth
+                          endPos = (endHour - hours[0]) * hourWidth + (endMinute / 60) * hourWidth
+                          width = endPos - startPos
+                        }
 
                         return (
                           <div
@@ -912,12 +929,14 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                             onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
                           >
                             {!isCollapsed && width > 15 ? (
-                              <div className="flex items-center justify-center w-full">
-                                <span className={`text-xs font-medium truncate px-2 ${block.allDay ? 'font-bold' : ''}`}>
+                              <div className="flex flex-row items-center justify-center w-full h-full">
+                                <span className={`text-xs font-medium truncate ${block.allDay ? 'font-bold' : ''}`}>
                                   {block.label}
                                   {block.allDay ? " (All Day)" : ""}
                                 </span>
-                                {isCurrentUser && width > 30 && <Edit2 className="h-3 w-3 opacity-70" />}
+                                {isCurrentUser && width > 30 && (
+                                  <Edit2 className="h-3 w-3 opacity-70 ml-1" />
+                                )}
                               </div>
                             ) : null}
                           </div>
