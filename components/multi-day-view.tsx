@@ -259,20 +259,48 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                               }}
                               onClick={() => handleBlockClick(user, day, block)}
                               title={`${user.name}: ${block.label} (All Day)`}
-                            />
-                            
-                            {/* User initial for all-day event */}
-                            <div 
-                              className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20"
-                              style={{
-                                top: "10px", // Position below the days row
-                                left: `${leftPosition}%`,
-                                transform: "translate(-50%, 0)",
-                                backgroundColor: user.color,
-                                color: getTextColor(user.color),
-                              }}
                             >
-                              {user.initial}
+                              {/* User initial and time label */}
+                              <div 
+                                className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20"
+                                style={{
+                                  top: "10px", // Position below the days row
+                                  left: `${leftPosition}%`,
+                                  transform: "translate(-50%, 0)",
+                                  backgroundColor: user.color,
+                                  color: getTextColor(user.color),
+                                }}
+                              >
+                                {user.initial}
+                              </div>
+                              
+                              {/* Label for the block */}
+                              <div 
+                                className="absolute text-xs font-medium z-10 whitespace-nowrap overflow-hidden"
+                                style={{
+                                  top: "15px",
+                                  left: `${leftPosition + 10}%`,
+                                  maxWidth: "100px",
+                                  textOverflow: "ellipsis",
+                                  color: getTextColor(user.color),
+                                }}
+                              >
+                                {block.label}
+                              </div>
+                              
+                              {/* Time indicator */}
+                              <div 
+                                className="absolute text-[10px] z-10 whitespace-nowrap overflow-hidden opacity-80"
+                                style={{
+                                  top: "30px",
+                                  left: `${leftPosition + 10}%`,
+                                  maxWidth: "100px",
+                                  textOverflow: "ellipsis",
+                                  color: getTextColor(user.color),
+                                }}
+                              >
+                                {block.start} - {block.end}
+                              </div>
                             </div>
                           </div>
                         );
@@ -301,10 +329,10 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                     }
                     
                     // Regular time-bound events
-                    const startPercent = calculateTimePosition(block.start);
-                    const endPercent = calculateTimePosition(block.end);
                     const startHour = parseInt(block.start.split(":")[0]);
+                    const startMinute = parseInt(block.start.split(":")[1]);
                     const endHour = parseInt(block.end.split(":")[0]);
+                    const endMinute = parseInt(block.end.split(":")[1]);
                     
                     // Only render if this block starts or ends in this hour
                     // or if it spans this entire hour
@@ -320,21 +348,20 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                       const leftPosition = userIndex * columnWidth + (columnWidth / 2);
                       
                       // For the first hour, we'll offset the top position by the minutes
+                      // Ensure precise alignment with the time row
                       let topPosition = 0;
                       if (startHour === hour) {
-                        const startMinutes = parseInt(block.start.split(":")[1]);
-                        topPosition = (startMinutes / 60) * 100;
+                        topPosition = (startMinute / 60) * 100;
                       }
                       
                       // For the last hour, we'll adjust the height based on the minutes
+                      // Ensure precise alignment with the time row
                       let heightPercent = 100;
                       if (endHour === hour) {
-                        const endMinutes = parseInt(block.end.split(":")[1]);
-                        heightPercent = (endMinutes / 60) * 100;
+                        heightPercent = (endMinute / 60) * 100;
                       } else if (startHour === hour) {
                         // If it's the start hour, adjust height accounting for start minutes
-                        const startMinutes = parseInt(block.start.split(":")[1]);
-                        heightPercent = 100 - (startMinutes / 60) * 100;
+                        heightPercent = 100 - (startMinute / 60) * 100;
                       }
                       
                       return (
@@ -356,20 +383,38 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                             title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
                           />
                           
-                          {/* User initial at the top of the line - only on the first hour */}
+                          {/* User initial and time information - only on the first hour */}
                           {isFirstHour && (
-                            <div 
-                              className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20"
-                              style={{
-                                top: "0", // Always at the top of the timeline
-                                left: `${leftPosition}%`,
-                                transform: "translate(-50%, 0)", // Changed from -50% to 0 for Y-axis
-                                backgroundColor: user.color,
-                                color: getTextColor(user.color),
-                              }}
-                            >
-                              {user.initial}
-                            </div>
+                            <>
+                              <div 
+                                className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20"
+                                style={{
+                                  top: "0", // Always at the top of the timeline
+                                  left: `${leftPosition}%`,
+                                  transform: "translate(-50%, 0)", // Changed from -50% to 0 for Y-axis
+                                  backgroundColor: user.color,
+                                  color: getTextColor(user.color),
+                                }}
+                              >
+                                {user.initial}
+                              </div>
+                              
+
+                              
+                              {/* Label for the block */}
+                              <div 
+                                className="absolute text-xs font-medium z-20 whitespace-nowrap overflow-hidden"
+                                style={{
+                                  top: "10px",
+                                  left: `${leftPosition + 10}%`,
+                                  maxWidth: "100px",
+                                  textOverflow: "ellipsis",
+                                  color: "white",
+                                }}
+                              >
+                                {block.label}
+                              </div>
+                            </>
                           )}
                         </div>
                       );
