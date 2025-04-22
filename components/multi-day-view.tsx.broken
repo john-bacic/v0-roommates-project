@@ -1,0 +1,521 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { QuickScheduleModal } from "@/components/quick-schedule-modal"
+import { Plus, Edit2, Clock } from "lucide-react"
+
+interface User {
+  id: number
+  name: string
+  color: string
+  initial: string
+}
+
+interface TimeBlock {
+  id?: string
+  start: string
+  end: string
+  label: string
+  allDay?: boolean
+}
+
+interface MultiDayViewProps {
+  users: User[]
+  schedules: Record<number, Record<string, Array<TimeBlock>>>
+  days: string[]
+}
+
+// Helper function to get text color based on background color for contrast
+const getTextColor = (bgColor: string): string => {
+  // Convert hex to RGB
+  const hex = bgColor.replace("#", "")
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+
+  // Calculate luminance (perceived brightness)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+  // Return white for dark colors, black for light colors
+  return luminance > 0.5 ? "#000000" : "#ffffff"
+}
+
+export function MultiDayView({ users: initialUsers, schedules: initialSchedules, days }: MultiDayViewProps) {
+  // Initialize isCollapsed state from localStorage or default to true
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedState = localStorage.getItem('multiDayViewCollapsed')
+      return savedState !== null ? savedState === 'true' : true
+    }
+    return true
+  })
+  
+  // Change the hours array to start at 6am and end at 2am
+  const hours = Array.from({ length: 21 }, (_, i) => i + 6) // 6 to 26 (2am)
+
+  // Add a toggle state for time format (24h vs AM/PM)
+  const [use24HourFormat, setUse24HourFormat] = useState(true)
+
+  // State for users (now mutable)
+  const [users, setUsers] = useState<User[]>(initialUsers)
+
+  // State for schedules
+  const [schedules, setSchedules] = useState(initialSchedules)
+
+  // State for quick schedule modal
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string>("Monday")
+  const [editMode, setEditMode] = useState(false)
+  const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlock | undefined>(undefined)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+
+  // Get current user name from localStorage
+  const [currentUserName, setCurrentUserName] = useState("")
+
+  // Track used colors
+  const [usedColors, setUsedColors] = useState<string[]>([])
+
+  // Add a state for tracking screen width
+  const [screenWidth, setScreenWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1024)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Helper function to find the hour when the first event of the day starts
+  const getFirstEventHour = (daySchedule: TimeBlock[]): number => {
+    if (!daySchedule || daySchedule.length === 0) return 0;
+    
+    // Sort by start time and get the first event
+    const sortedEvents = [...daySchedule].sort((a, b) => {
+      const aStart = a.start.split(":").map(Number);
+      const bStart = b.start.split(":").map(Number);
+      return (aStart[0] * 60 + aStart[1]) - (bStart[0] * 60 + bStart[1]);
+    });
+    
+    // Get the hour of the first event
+    const firstEvent = sortedEvents[0];
+    const startHour = parseInt(firstEvent.start.split(":")[0]);
+    return startHour;
+  };
+
+  useEffect(() => {
+    // Get current user name
+    const storedName = localStorage.getItem("userName")
+    if (storedName) {
+      setCurrentUserName(storedName)
+    }
+
+    // Load schedules from localStorage
+    const loadedSchedules = { ...initialSchedules }
+    users.forEach((user) => {
+      const savedSchedule = localStorage.getItem(`schedule_${user.name}`)
+      if (savedSchedule) {
+        try {
+          loadedSchedules[user.id] = JSON.parse(savedSchedule)
+        } catch (e) {
+          console.error(`Failed to parse saved schedule for ${user.name}`)
+        }
+      }
+    })
+    setSchedules(loadedSchedules)
+
+    // Load time format preference from localStorage
+    const timeFormatPreference = localStorage.getItem("timeFormat")
+    if (timeFormatPreference) {
+      setUse24HourFormat(timeFormatPreference === "24h")
+    }
+
+    // Load user colors from localStorage
+    users.forEach((user) => {
+      const savedColor = localStorage.getItem(`userColor_${user.name}`)
+      if (savedColor) {
+        updateUserColor(user, savedColor, false)
+      }
+    })
+
+    // Function to update screen width
+    const handleResize = () => {
+      const width = window.innerWidth
+      setScreenWidth(width)
+      setIsMobile(width < 768)
+    }
+
+    // Initial check
+    handleResize()
+
+    // Add event listener
+    window.addEventListener("resize", handleResize)
+
+    // Clean up
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  // Update used colors whenever users change
+  useEffect(() => {
+    const colors = users.map((user) => user.color)
+    setUsedColors(colors)
+  }, [users])
+
+  const toggleView = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    // Save to localStorage
+    localStorage.setItem('multiDayViewCollapsed', String(newState))
+  }
+
+  // Add a toggle function for time format
+  const toggleTimeFormat = () => {
+    const newFormat = !use24HourFormat
+    setUse24HourFormat(newFormat)
+    localStorage.setItem("timeFormat", newFormat ? "24h" : "12h")
+  }
+
+  // Add a function to determine which hours to display based on screen width
+  const getVisibleHours = () => {
+    // On very small screens, only show every 4 hours
+    if (screenWidth < 400) {
+      return hours.filter((hour) => hour % 4 === 6)
+    }
+    // On small screens, show every 3 hours
+    else if (screenWidth < 600) {
+      return hours.filter((hour) => hour % 3 === 0)
+    }
+    // On medium screens, show every 2 hours
+    else if (screenWidth < 900) {
+      return hours.filter((hour) => hour % 2 === 0)
+    }
+    // On desktop, show all hours
+    return hours
+  }
+
+  // Format hour based on selected format
+  const formatHour = (hour: number): string => {
+    if (use24HourFormat) {
+      if (hour === 24) return "00:00"
+      if (hour === 25) return "01:00"
+      if (hour === 26) return "02:00"
+      return `${hour}:00`
+    } else {
+      if (hour === 0 || hour === 24) {
+        return "12AM"
+      }
+      if (hour === 25) {
+        return "1AM"
+      }
+      if (hour === 26) {
+        return "2AM"
+      }
+      const period = hour >= 12 ? "PM" : "AM"
+      const displayHour = hour > 12 ? hour - 12 : hour
+      return `${displayHour}${period}`
+    }
+  }
+
+  // Convert time string to position percentage
+  const timeToPosition = (time: string): number => {
+    const [hours, minutes] = time.split(":").map(Number)
+    const totalMinutes = hours * 60 + minutes
+    const startMinutes = 6 * 60 // 6:00 AM
+    const endMinutes = 26 * 60 // 2:00 AM
+    const totalDuration = endMinutes - startMinutes
+
+    // Calculate the position ensuring it aligns with the grid lines
+    return ((totalMinutes - startMinutes) / totalDuration) * 100
+  }
+
+  // Handle opening the modal when clicking on a user
+  const handleUserClick = (user: User, day: string) => {
+    // Only allow editing your own schedule
+    if (user.name === currentUserName) {
+      setSelectedUser(user)
+      setSelectedDay(day)
+      setEditMode(false)
+      setSelectedTimeBlock(undefined)
+      setModalOpen(true)
+    }
+  }
+
+  // Handle opening the modal when clicking on the + button
+  const handleAddClick = (user: User, day: string) => {
+    if (user.name === currentUserName) {
+      setSelectedUser(user)
+      setSelectedDay(day)
+      setEditMode(false)
+      setSelectedTimeBlock(undefined)
+      setModalOpen(true)
+    }
+  }
+
+  // Handle opening the modal when clicking on a time block
+  const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
+    if (user.name === currentUserName) {
+      setSelectedUser(user)
+      setSelectedDay(day)
+      setEditMode(true)
+      setSelectedTimeBlock(timeBlock)
+      setModalOpen(true)
+    }
+  }
+
+  // Handle saving the schedule from the modal
+  const handleSaveSchedule = (day: string, timeBlock: TimeBlock) => {
+    if (!selectedUser) return
+
+    const userId = selectedUser.id
+    const newSchedules = { ...schedules }
+
+    // Make sure the day exists in the user's schedule
+    if (!newSchedules[userId][day]) {
+      newSchedules[userId][day] = []
+    }
+
+    if (editMode && selectedTimeBlock?.id) {
+      // Update existing time block
+      const index = newSchedules[userId][day].findIndex((block) => block.id === selectedTimeBlock.id)
+      if (index !== -1) {
+        newSchedules[userId][day][index] = timeBlock
+      }
+    } else {
+      // Add the new time block with a unique ID if it doesn't have one
+      if (!timeBlock.id) {
+        timeBlock.id = crypto.randomUUID()
+      }
+
+      // Sort the time blocks by start time after adding the new one
+      newSchedules[userId][day].push(timeBlock)
+      newSchedules[userId][day].sort((a, b) => {
+        const aTime = a.start.split(":").map(Number)
+        const bTime = b.start.split(":").map(Number)
+        return aTime[0] * 60 + aTime[1] - (bTime[0] * 60 + bTime[1])
+      })
+    }
+
+    // Update state
+    setSchedules(newSchedules)
+
+    // Save to localStorage
+    localStorage.setItem(`schedule_${selectedUser.name}`, JSON.stringify(newSchedules[userId]))
+  }
+
+  // Handle deleting a time block
+  const handleDeleteTimeBlock = (day: string, timeBlockId: string) => {
+    if (!selectedUser) return
+
+    const userId = selectedUser.id
+    const newSchedules = { ...schedules }
+
+    // Filter out the time block with the matching ID
+    if (newSchedules[userId][day]) {
+      if (timeBlockId === "current" && selectedTimeBlock) {
+        // If we're deleting the currently selected time block without an ID
+        newSchedules[userId][day] = newSchedules[userId][day].filter((block) => block !== selectedTimeBlock)
+      } else {
+        // Normal case - filter by ID
+        newSchedules[userId][day] = newSchedules[userId][day].filter((block) => block.id !== timeBlockId)
+      }
+
+      // Update state
+      setSchedules(newSchedules)
+
+      // Save to localStorage
+      localStorage.setItem(`schedule_${selectedUser.name}`, JSON.stringify(newSchedules[userId]))
+    }
+  }
+
+  // Handle changing a user's color
+  const updateUserColor = (user: User, color: string, saveToStorage = true) => {
+    // Update the user's color in the users array
+    const updatedUsers = users.map((u) => {
+      if (u.id === user.id) {
+        return { ...u, color }
+      }
+      return u
+    })
+    setUsers(updatedUsers)
+
+    // Save to localStorage if needed
+    if (saveToStorage) {
+      localStorage.setItem(`userColor_${user.name}`, color)
+    }
+  }
+
+  return (
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-sm font-medium">All Schedules</h3>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTimeFormat}
+            className="h-8 w-8 text-white hover:bg-[#333333]"
+            title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
+          >
+            <Clock className="h-4 w-4" />
+          </Button>
+
+        </div>
+      </div>
+
+      {/* Vertical calendar layout */}
+      <div className="relative">
+        {/* Day headers across the top */}
+        <div className="sticky top-[57px] z-40 bg-[#1E1E1E] flex border-b border-[#333333]">
+          {/* Empty cell for time column */}
+          <div className="w-16 min-w-16 border-r border-[#333333] py-2"></div>
+          
+          {/* Day headers */}
+          {days.map((day) => (
+            <div key={day} className="flex-1 text-center py-2 px-1">
+              <h4 className="text-sm font-medium">{day}</h4>
+              
+              {/* No user icons here - they'll be placed at the top of each line */}
+            </div>
+          ))}
+        </div>
+
+        {/* Time slots and events */}
+        <div className="relative">
+          {hours.map((hour) => (
+            <div key={hour} className="flex border-b border-[#333333]">
+              {/* Time label - positioned to align with the horizontal grid line */}
+              <div className="w-16 min-w-16 border-r border-[#333333] relative py-2">
+                <span className="text-xs text-[#666666] absolute right-2 -top-3">
+                  {formatHour(hour)}
+                </span>
+              </div>
+              
+              {/* Day columns */}
+              {days.map((day) => (
+                <div key={`${day}-${hour}`} className="flex-1 relative h-12 border-r border-[#333333]">
+                  {/* User columns with thin vertical lines */}
+                  {users.map((user, userIndex) => {
+                    const userSchedule = schedules[user.id]?.[day] || [];
+                    const isCurrentUser = user.name === currentUserName;
+                    const columnWidth = 100 / users.length;
+                    const leftPosition = userIndex * columnWidth;
+                    
+                    // Check if there's an event in this hour
+                    const eventsInThisHour = userSchedule.filter(block => {
+                      const startParts = block.start.split(":").map(Number);
+                      const endParts = block.end.split(":").map(Number);
+                      const startHour = startParts[0] + startParts[1] / 60;
+                      const endHour = endParts[0] + endParts[1] / 60;
+                      return (startHour <= hour + 1 && endHour >= hour);
+                    });
+                    
+                    return (
+                      <div 
+                        key={`${day}-${user.id}-${hour}-column`}
+                        className="absolute h-full"
+                        style={{
+                          left: `${leftPosition}%`,
+                          width: `${columnWidth}%`,
+                        }}
+                      >
+                        {/* Only show vertical line during scheduled times */}
+                          
+                          {/* User icon at the start of the first event */}
+                          {showUserIcon && (
+                            <div 
+                              className="absolute left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center"
+                              style={{
+                                top: `${startPercent - 10}%`
+                              }}
+                            >
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md"
+                          const isAllDay = block.allDay;
+                          const showUserIcon = isFirstEventOfDay || (blockIndex === 0 && hour === getFirstEventHour(userSchedule)) || (isAllDay && hour === 6);
+                          
+                          return (
+                            <div key={`line-${block.id || `${day}-${user.id}-${hour}-${block.start}`}`}>
+                              {/* Line segment */}
+                              <div 
+                                className="absolute left-1/2 transform -translate-x-1/2"
+                                style={{
+                                  top: `${startPercent}%`,
+                                  height: `${heightPercent}%`,
+                                  width: '10px',
+                                  backgroundColor: user.color,
+                                  opacity: 0.9,
+                                  zIndex: 5,
+                                  borderRadius: endHour < hour + 1 || hour === 26 ? '0 0 10px 10px' : '0'
+                                }}
+                                title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
+                                onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
+                              />
+                              
+                              {/* User icon at the start of the first event */}
+                              {showUserIcon && (
+                                <div 
+                                  className="absolute left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center"
+                                  style={{
+                                    top: `${startPercent - 10}%`
+                                  }}
+                                >
+                                  <div
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md"
+                                    style={{
+                                      backgroundColor: user.color,
+                                      color: getTextColor(user.color),
+                                      border: '2px solid ' + getTextColor(user.color)
+                                    }}
+                                  >
+                                    {user.initial}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {/* Add button for current user */}
+                        {isCurrentUser && (
+                          <div 
+                            className="absolute top-0 right-0 opacity-0 hover:opacity-100 p-1 z-20"
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 bg-[#333333] text-white hover:bg-[#444444] rounded-full"
+                              onClick={() => handleAddClick(user, day)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Schedule Modal */}
+      {selectedUser && (
+        <QuickScheduleModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSaveSchedule}
+          onDelete={handleDeleteTimeBlock}
+          userName={selectedUser.name}
+          userColor={selectedUser.color}
+          initialDay={selectedDay}
+          editMode={editMode}
+          timeBlock={selectedTimeBlock}
+          usedColors={usedColors}
+          onUserColorChange={(color) => {
+            if (selectedUser) {
+              updateUserColor(selectedUser, color);
+            }
+          }}
+        />
+      )}
+    </div>
+  )
+}
