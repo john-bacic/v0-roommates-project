@@ -281,6 +281,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                               width: "10px",
                               transform: "translateX(-50%)",
                               backgroundColor: user.color,
+                              opacity: block.allDay ? 0.5 : 1,
                               zIndex: 10,
                             }}
                             onClick={() => handleBlockClick(user, day, block)}
