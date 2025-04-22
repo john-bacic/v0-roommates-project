@@ -178,7 +178,7 @@ export default function Overview() {
       <main className="flex-1 pt-0 px-4 pb-4 max-w-7xl mx-auto w-full">
         {/* Removed spacing div */}
 
-        <div className="bg-[#1E1E1E] rounded-lg p-4">
+        <div className="bg-[#121212] rounded-lg p-4">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>

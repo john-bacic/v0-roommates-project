@@ -308,6 +308,29 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     }
   }
 
+  // Format time string (HH:MM) based on selected format
+  const formatTimeDisplay = (timeString: string): string => {
+    const [hours, minutes] = timeString.split(":")
+    const hour = parseInt(hours)
+    
+    if (use24HourFormat) {
+      // 24-hour format
+      return timeString
+    } else {
+      // AM/PM format
+      if (hour === 0) {
+        return `12:${minutes}am`
+      }
+      if (hour === 12) {
+        return `12:${minutes}pm`
+      }
+      if (hour > 12) {
+        return `${hour - 12}:${minutes}pm`
+      }
+      return `${hour}:${minutes}am`
+    }
+  }
+
   // Add a function to determine which hours to display based on screen width
   // Add this after the formatHour function
   const getVisibleHours = () => {
@@ -807,16 +830,16 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         </div>
       </div>
 
-      {days.map((day) => (
+      {days.map((day, dayIndex) => (
         <div key={day} className="mb-8">
           {/* Day header - stays sticky */}
-          <div className="sticky top-[93px] z-30 bg-[#121212]">
+          <div className={`sticky top-[93px] z-30 ${dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#121212]'}`}>
             <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
           </div>
 
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
-            <div className="min-w-[800px] md:min-w-0 pl-2">
+            <div className={`min-w-[800px] md:min-w-0 pl-2 ${dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
               {/* Time header - now scrolls with content */}
               <div className="bg-[#121212] mb-6">
                 <div className="relative h-6">
@@ -929,14 +952,21 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                             onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
                           >
                             {!isCollapsed && width > 15 ? (
-                              <div className="flex flex-row items-center justify-center w-full h-full">
-                                <span className={`text-xs font-medium truncate ${block.allDay ? 'font-bold' : ''}`}>
-                                  {block.label}
-                                  {block.allDay ? " (All Day)" : ""}
-                                </span>
-                                {isCurrentUser && width > 30 && (
-                                  <Edit2 className="h-3 w-3 opacity-70 ml-1" />
-                                )}
+                              <div className="flex flex-row items-center justify-start w-full h-full pl-4">
+                                <div className="flex flex-row items-center justify-start">
+                                  {!block.allDay ? (
+                                    <span className="text-xs opacity-80 mr-1 font-bold">
+                                      {formatTimeDisplay(block.start)} - {formatTimeDisplay(block.end)}
+                                    </span>
+                                  ) : null}
+                                  <span className="text-xs font-bold">
+                                    {block.label}
+                                    {block.allDay ? " (All Day)" : ""}
+                                    {isCurrentUser && width > 30 && (
+                                      <Edit2 className="h-3 w-3 opacity-70 ml-1 inline" />
+                                    )}
+                                  </span>
+                                </div>
                               </div>
                             ) : null}
                           </div>

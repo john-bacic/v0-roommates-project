@@ -202,10 +202,10 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
         <div className="w-12 min-w-12 sm:w-16 sm:min-w-16"></div>
         
         {/* Day columns */}
-        {days.map((day) => (
+        {days.map((day, dayIndex) => (
           <div 
             key={day} 
-            className="flex-1 py-2 text-center font-medium border-r border-[#333333]"
+            className={`flex-1 py-2 text-center font-medium border-r border-[#333333] ${dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}
           >
             <span className="hidden sm:inline">{day}</span>
             <span className="inline sm:hidden">{day.substring(0, 3)}</span>
@@ -225,8 +225,8 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
             </div>
             
             {/* Day columns */}
-            {days.map((day) => (
-              <div key={`${day}-${hour}`} className="flex-1 relative h-12 border-r border-[#333333]">
+            {days.map((day, dayIndex) => (
+              <div key={`${day}-${hour}`} className={`flex-1 relative h-12 border-r border-[#333333] ${dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
                 {/* Line segments for this day/hour */}
                 {users.map((user) => {
                   const userBlocks = schedules[user.id]?.[day] || [];
@@ -274,33 +274,9 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                                 {user.initial}
                               </div>
                               
-                              {/* Label for the block */}
-                              <div 
-                                className="absolute text-xs font-medium z-10 whitespace-nowrap overflow-hidden"
-                                style={{
-                                  top: "15px",
-                                  left: `${leftPosition + 10}%`,
-                                  maxWidth: "100px",
-                                  textOverflow: "ellipsis",
-                                  color: getTextColor(user.color),
-                                }}
-                              >
-                                {block.label}
-                              </div>
+                              {/* Label removed as requested */}
                               
-                              {/* Time indicator */}
-                              <div 
-                                className="absolute text-[10px] z-10 whitespace-nowrap overflow-hidden opacity-80"
-                                style={{
-                                  top: "30px",
-                                  left: `${leftPosition + 10}%`,
-                                  maxWidth: "100px",
-                                  textOverflow: "ellipsis",
-                                  color: getTextColor(user.color),
-                                }}
-                              >
-                                {block.start} - {block.end}
-                              </div>
+                              {/* Time indicator removed as requested */}
                             </div>
                           </div>
                         );
@@ -401,19 +377,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                               
 
                               
-                              {/* Label for the block */}
-                              <div 
-                                className="absolute text-xs font-medium z-20 whitespace-nowrap overflow-hidden"
-                                style={{
-                                  top: "10px",
-                                  left: `${leftPosition + 10}%`,
-                                  maxWidth: "100px",
-                                  textOverflow: "ellipsis",
-                                  color: "white",
-                                }}
-                              >
-                                {block.label}
-                              </div>
+                              {/* Label removed as requested */}
                             </>
                           )}
                         </div>
