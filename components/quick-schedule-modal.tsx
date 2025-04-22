@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Trash2, Check, Palette } from "lucide-react"
 
 // Update the TimeBlock interface to include allDay property
@@ -249,18 +250,16 @@ export function QuickScheduleModal({
 
         {/* All Day Toggle - Only show if not in color picker only mode */}
         {!isColorPickerOnly && (
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="all-day" className="flex items-center cursor-pointer">
-              <input
-                id="all-day"
-                type="checkbox"
-                checked={timeBlock.allDay}
-                onChange={toggleAllDay}
-                className="mr-2 form-checkbox h-4 w-4 text-[var(--focus-ring-color)] rounded border-[#555555] bg-[#333333] focus:ring-0 focus:ring-offset-0"
-                style={{ accentColor: currentColor }}
-              />
+          <div className="flex items-center justify-between">
+            <Label htmlFor="all-day" className="cursor-pointer">
               <span>All Day</span>
             </Label>
+            <Switch
+              id="all-day"
+              checked={timeBlock.allDay}
+              onCheckedChange={toggleAllDay}
+              className="data-[state=checked]:bg-[var(--focus-ring-color)]"
+            />
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Trash2 } from "lucide-react"
 
 interface TimeBlock {
@@ -97,22 +98,15 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
         {schedule[activeDay]?.map((block, index) => (
           <div key={index} className="mb-4">
-            {/* iOS Toggle Switch - Exact Match */}
+            {/* Toggle Switch */}
             <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-medium">All Day</div>
-              
-              {/* iOS-style toggle that matches the screenshot */}
-              <label 
-                htmlFor={`all-day-toggle-${index}`}
-                className="relative inline-block w-12 h-6 rounded-full cursor-pointer"
-                style={{ 
-                  backgroundColor: block.allDay ? '#4CD964' : '#404040',
-                  transition: 'background-color 0.3s'
-                }}
-                onClick={(e) => {
-                  // Prevent default to handle toggle ourselves
-                  e.preventDefault();
-                  
+              <Label htmlFor={`all-day-toggle-${index}`} className="cursor-pointer">
+                <span>All Day</span>
+              </Label>
+              <Switch
+                id={`all-day-toggle-${index}`}
+                checked={block.allDay || false}
+                onCheckedChange={(checked) => {
                   // Copy the current schedule
                   const newSchedule = {...schedule};
                   if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
@@ -124,38 +118,20 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                     label: block.label || ""
                   };
                   
-                  // Toggle the allDay state
-                  const newAllDay = !currentBlock.allDay;
-                  
                   // Update the block
                   newSchedule[activeDay][index] = {
                     ...currentBlock,
-                    allDay: newAllDay,
+                    allDay: checked,
                     // If turning on all day, set to full day
-                    start: newAllDay ? "00:00" : currentBlock.start,
-                    end: newAllDay ? "23:59" : currentBlock.end
+                    start: checked ? "00:00" : currentBlock.start,
+                    end: checked ? "23:59" : currentBlock.end
                   };
                   
                   // Apply the update
                   onChange(newSchedule);
                 }}
-              >
-                <input 
-                  id={`all-day-toggle-${index}`}
-                  type="checkbox"
-                  className="sr-only"
-                  checked={block.allDay || false}
-                  readOnly // controlled by the onClick handler on the label
-                />
-                <div 
-                  className="absolute w-5 h-5 bg-white rounded-full shadow-md" 
-                  style={{
-                    top: '2px',
-                    left: block.allDay ? '25px' : '2px',
-                    transition: 'left 0.3s'
-                  }}
-                />
-              </label>
+                className="data-[state=checked]:bg-[var(--focus-ring-color)]"
+              />
             </div>
             
             {/* Time Fields - Only shown when All Day is OFF */}
