@@ -175,16 +175,16 @@ export default function Overview() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 pt-0 px-4 pb-4 max-w-7xl mx-auto w-full">
+      <main className="flex-1 pt-0 md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
         {/* Removed spacing div */}
 
-        <div className="bg-[#121212] rounded-lg p-4">
+        <div className="bg-[#121212] rounded-lg md:p-4 p-2">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>
             </div>
           ) : (
-            <MultiDayView users={usersList} schedules={schedules} days={days} />
+            <MultiDayView users={usersList} schedules={schedules} days={days} useAlternatingBg={true} />
           )}
         </div>
       </main>

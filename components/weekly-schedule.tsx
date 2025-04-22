@@ -26,6 +26,7 @@ interface WeeklyScheduleProps {
   currentWeek: Date
   onColorChange?: (name: string, color: string) => void
   schedules?: Record<number, Record<string, Array<TimeBlock>>>
+  useAlternatingBg?: boolean
 }
 
 // Sample schedule data - in a real app, this would be loaded from localStorage or a database
@@ -62,7 +63,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
   },
 }
 
-export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules }: WeeklyScheduleProps) {
+export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const hours = Array.from({ length: 22 }, (_, i) => i + 5) // 5 to 26 (2am)
   
@@ -201,51 +202,96 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }, []);
 
   useEffect(() => {
+    // Check if mobile view
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768)
     }
-
+    
+    // Check mobile on initial load
     checkMobile()
+    
+    // Listen for resize events
     window.addEventListener("resize", checkMobile)
-
+    
     // Get current user name
     const storedName = localStorage.getItem("userName")
     if (storedName) {
       setCurrentUserName(storedName)
     }
     
-    // Global handler for _c button removed as requested
-    
     // Add event listener for the custom color picker modal event
     const handleOpenColorPickerModal = (event: CustomEvent<{userName: string}>) => {
       // Find the user by name
-      const user = users.find(u => u.name === event.detail.userName);
+      const user = users.find(u => u.name === event.detail.userName)
       if (user) {
         // Open the color picker modal for this user
-        openColorPicker(user);
+        openColorPicker(user)
       }
-    };
+    }
     
-    // Add event listener with type assertion for the custom event
-    document.addEventListener('openColorPickerModal', handleOpenColorPickerModal as EventListener);
+    window.addEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
     
+    // Check if we're in the Dashboard and move controls if possible
+    const dashboardControls = document.getElementById('weekly-schedule-controls')
+    if (dashboardControls) {
+      // We're in the Dashboard, so we'll move our controls there
+      const controlsElement = document.createElement('div')
+      controlsElement.className = 'flex items-center gap-2'
+      controlsElement.innerHTML = `
+        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium 
+          ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 
+          focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 
+          [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-8 w-8 
+          text-white hover:bg-[#333333]" id="toggle-time-format">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
+            stroke-linejoin="round" class="lucide lucide-clock h-4 w-4">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </button>
+        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium 
+          ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 
+          focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 
+          [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-8 w-8 
+          text-white hover:bg-[#333333]" id="toggle-view">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
+            stroke-linejoin="round" id="toggle-view-icon">
+            ${isCollapsed ? 
+              `<polyline points="6 9 12 15 18 9"></polyline><line x1="4" y1="19" x2="20" y2="19"></line>` : 
+              `<line x1="4" y1="5" x2="20" y2="5"></line><polyline points="18 15 12 9 6 15"></polyline>`
+            }
+          </svg>
+        </button>
+      `
+      dashboardControls.appendChild(controlsElement)
+      
+      // Add event listeners to the new buttons
+      const timeFormatBtn = document.getElementById('toggle-time-format')
+      const viewToggleBtn = document.getElementById('toggle-view')
+      
+      if (timeFormatBtn) {
+        timeFormatBtn.addEventListener('click', toggleTimeFormat)
+        timeFormatBtn.title = use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"
+      }
+      
+      if (viewToggleBtn) {
+        viewToggleBtn.addEventListener('click', toggleView)
+        viewToggleBtn.title = isCollapsed ? "expand-all" : "collapse-all"
+      }
+    }
+
     return () => {
-      // Clean up all event listeners
-      window.removeEventListener("resize", checkMobile);
-      document.removeEventListener('openColorPickerModal', handleOpenColorPickerModal as EventListener);
-    };
-
-    // Time format is now loaded in the useState initialization
-
-    // Load user colors from localStorage
-    users.forEach((user) => {
-      const savedColor = localStorage.getItem(`userColor_${user.name}`)
-      if (savedColor) {
-        updateUserColor(user, savedColor, false)
+      window.removeEventListener("resize", checkMobile)
+      window.removeEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
+      
+      // Clean up dashboard controls if they exist
+      const dashboardControls = document.getElementById('weekly-schedule-controls')
+      if (dashboardControls) {
+        dashboardControls.innerHTML = ''
       }
-    })
-
-    return () => window.removeEventListener("resize", checkMobile)
+    }
   }, [])
 
   // Update users when initialUsers changes
@@ -288,23 +334,25 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Format hour based on selected format
   const formatHour = (hour: number): string => {
     if (use24HourFormat) {
-      if (hour === 24) return "00:00"
-      if (hour === 25) return "01:00"
-      if (hour === 26) return "02:00"
-      return `${hour}:00`
+      if (hour === 24) {
+        return "00"
+      }
+      if (hour > 24) {
+        return `${hour - 24}`
+      }
+      return `${hour}`
     } else {
+      // AM/PM format
       if (hour === 0 || hour === 24) {
-        return "12AM"
+        return "12am"
       }
-      if (hour === 25) {
-        return "1AM"
+      if (hour === 12) {
+        return "12pm"
       }
-      if (hour === 26) {
-        return "2AM"
+      if (hour > 12) {
+        return `${hour - 12}${hour < 24 ? "pm" : "am"}`
       }
-      const period = hour >= 12 ? "PM" : "AM"
-      const displayHour = hour > 12 ? hour - 12 : hour
-      return `${displayHour}${period}`
+      return `${hour}am`
     }
   }
 
@@ -768,8 +816,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   return (
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky with no bottom padding */}
-      <div className="sticky top-[57px] z-40 bg-[#121212] border-t border-[#333333]">
-        <div className="flex justify-between items-center h-[36px] px-2">
+      <div className="sticky top-[57px] z-40 bg-[#121212] border-b border-[#333333] w-full overflow-hidden">
+        <div className="flex justify-between items-center h-[36px] w-full">
           <div>
             <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)} Schedule</h3>
           </div>
@@ -833,13 +881,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-8">
           {/* Day header - stays sticky */}
-          <div className={`sticky top-[93px] z-30 ${dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#121212]'}`}>
+          <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#121212]'}`}>
             <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
           </div>
 
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
-            <div className={`min-w-[800px] md:min-w-0 pl-2 ${dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
+            <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
               {/* Time header - now scrolls with content */}
               <div className="bg-[#121212] mb-6">
                 <div className="relative h-6">

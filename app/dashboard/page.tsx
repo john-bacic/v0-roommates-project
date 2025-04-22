@@ -266,14 +266,17 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-[#121212] text-white">
       {/* Main header - always fixed at the top with exact height */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#121212] shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#121212] shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4">
           {/* Update the header title */}
           <h1 className="text-xl font-bold">Roommate Schedules</h1>
 
           {/* Add a link to the overview page in the header section */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-[#A0A0A0]">Hi, {userName || "Friend"}</span>
+            <span className="text-sm text-[#A0A0A0] mr-2">Hi, {userName || "Friend"}</span>
+            <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
+              {/* This div will be used by the WeeklySchedule component */}
+            </div>
             <Link href="/roommates">
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Users className="h-4 w-4" />
@@ -321,6 +324,7 @@ export default function Dashboard() {
               currentWeek={currentWeek} 
               onColorChange={handleColorUpdate} 
               schedules={schedules}
+              useAlternatingBg={false}
             />
           )}
         </div>
