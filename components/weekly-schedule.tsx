@@ -66,6 +66,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const hours = Array.from({ length: 22 }, (_, i) => i + 5) // 5 to 26 (2am)
+  const [currentTime, setCurrentTime] = useState(new Date())
   
   // Helper function to determine text color based on background color
   const getTextColor = (bgColor: string) => {
@@ -115,6 +116,19 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Track used colors
   const [usedColors, setUsedColors] = useState<string[]>([])
+
+  // Set up a timer to update current time every minute
+  useEffect(() => {
+    // Update current time immediately
+    setCurrentTime(new Date())
+    
+    // Set up interval to update time every minute
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+    
+    return () => clearInterval(interval)
+  }, [])
 
   // Set up real-time subscriptions for schedule and user changes
   useEffect(() => {
@@ -816,6 +830,46 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     // This allows users to try multiple colors before closing
   }
 
+  // Helper function to check if the current day is in the visible week
+  const isCurrentDayInWeek = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ...
+    const dayName = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1] // Convert to our days array index
+    
+    // Check if the current week includes today
+    const weekStart = new Date(currentWeek)
+    weekStart.setDate(currentWeek.getDate() - currentWeek.getDay() + (currentWeek.getDay() === 0 ? -6 : 1)) // Start of week (Monday)
+    
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6) // End of week (Sunday)
+    
+    const isInCurrentWeek = today >= weekStart && today <= weekEnd
+    
+    return isInCurrentWeek ? dayName : null
+  }
+  
+  // Helper function to get the current time position as a percentage
+  const getCurrentTimePosition = () => {
+    const now = new Date()
+    const hours = now.getHours()
+    const minutes = now.getMinutes()
+    
+    // Convert to decimal hours (e.g., 14:30 = 14.5)
+    const decimalHours = hours + (minutes / 60)
+    
+    // Calculate position as percentage within our time range (5am to 2am next day)
+    // If current time is before 5am, it will be negative
+    // If current time is after 2am next day, it will be > 100%
+    let position = ((decimalHours - 5) / 21) * 100
+    
+    // Handle times after midnight
+    if (hours < 5) {
+      position = ((hours + 24 - 5) / 21) * 100
+    }
+    
+    return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
+  }
+
   return (
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky with no bottom padding */}
@@ -901,6 +955,19 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               <div className="bg-[#121212] mb-6">
                 <div className="relative h-6">
                   <div className="absolute inset-0 flex">
+                    {/* Current time indicator */}
+                    {isCurrentDayInWeek() === day && (
+                      <div 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20" 
+                        style={{ 
+                          left: `${getCurrentTimePosition()}%`,
+                          height: 'calc(100% + 15rem)' // Make it extend beyond the schedule area
+                        }}
+                      >
+                        <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
+                      </div>
+                    )}
+                    
                     {hours.map((hour) => (
                       <div key={hour} className="flex-1 relative">
                         {getVisibleHours().includes(hour) && (
