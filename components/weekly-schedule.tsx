@@ -934,7 +934,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
-                          height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 20rem)' // Ensure it reaches the bottom of the 3rd name in both states
+                          height: isMobile ? 'calc(100% + 5rem)' : isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 15rem)' // Shorter on mobile, appropriate for desktop in both states
                         }}
                       >
                         <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
