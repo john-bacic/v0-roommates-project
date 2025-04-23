@@ -869,14 +869,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     // Convert to decimal hours (e.g., 14:30 = 14.5)
     const decimalHours = hours + (minutes / 60)
     
-    // Calculate position as percentage within our time range (5am to 2am next day)
-    // If current time is before 5am, it will be negative
-    // If current time is after 2am next day, it will be > 100%
-    let position = ((decimalHours - 5) / 21) * 100
+    // Match the calculation used for hour markers: ((hour - 6) / 18) * 100
+    // Our visible range is 6am to midnight (18 hours)
+    let position
     
-    // Handle times after midnight
-    if (hours < 5) {
-      position = ((hours + 24 - 5) / 21) * 100
+    // Handle times after midnight (0-5am)
+    if (hours < 6) {
+      // For hours 0-5, show them at the end of the previous day (after hour 24)
+      position = ((hours + 24 - 6) / 18) * 100
+    } else {
+      // For normal hours (6am-11pm)
+      position = ((decimalHours - 6) / 18) * 100
     }
     
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
