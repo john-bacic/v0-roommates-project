@@ -349,8 +349,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       if (hour === 12) {
         return "12pm"
       }
-      if (hour > 12) {
-        return `${hour - 12}${hour < 24 ? "pm" : "am"}`
+      if (hour > 12 && hour < 24) {
+        return `${hour - 12}pm`
+      }
+      if (hour >= 24) {
+        return `${hour - 24}am`
       }
       return `${hour}am`
     }
