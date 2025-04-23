@@ -819,14 +819,15 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       <div className="sticky top-[57px] z-40 bg-[#121212] border-b border-[#333333] w-full overflow-hidden">
         <div className="flex justify-between items-center h-[36px] w-full">
           <div>
-            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)} Schedule</h3>
+            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTimeFormat}
-              className="h-8 w-8 text-white hover:bg-[#333333]"
+              className="h-8 w-8 text-white hover:bg-[#333333] md:hidden"
+              id="toggle-time-format"
               title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
             >
               <Clock className="h-4 w-4" />
@@ -835,7 +836,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               variant="ghost"
               size="icon"
               onClick={toggleView}
-              className="h-8 w-8 text-white hover:bg-[#333333]"
+              className="h-8 w-8 text-white hover:bg-[#333333] md:hidden"
+              id="toggle-view"
               title={isCollapsed ? "expand-all" : "collapse-all"}
             >
               {isCollapsed ? (
@@ -882,7 +884,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         <div key={day} className="mb-8">
           {/* Day header - stays sticky */}
           <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#121212]'}`}>
-            <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+            <div className="flex justify-between items-center pr-2">
+              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+              
+              {/* No toggle buttons in desktop view as requested */}
+            </div>
           </div>
 
           {/* Scrollable container for both time header and user content */}

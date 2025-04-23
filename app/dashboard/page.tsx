@@ -14,12 +14,28 @@ const initialUsers = [
   { id: 3, name: "John", color: "#CF6679", initial: "J" },
 ]
 
+// Type guard function to check if an object is a valid user
+function isValidUser(obj: unknown): obj is { id: number; name: string; color: string; initial: string } {
+  return obj !== null && 
+         typeof obj === 'object' && 
+         'id' in obj && 
+         'name' in obj && 
+         'color' in obj && 
+         'initial' in obj;
+}
+
 export default function Dashboard() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
   const [users, setUsers] = useState(initialUsers)
   const [userColor, setUserColor] = useState("#BB86FC") // Default color
-  const [schedules, setSchedules] = useState<Record<number, Record<string, any>>>({})
+  const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{
+    id: string;
+    start: string;
+    end: string;
+    label: string;
+    allDay: boolean;
+  }>>>>({})
   const [loading, setLoading] = useState(true)
 
   // Function to load data from Supabase
@@ -28,53 +44,107 @@ export default function Dashboard() {
     
     try {
       // Fetch users from Supabase
-      const { data: usersData, error: usersError } = await getSupabase()
+      const { data, error: usersError } = await getSupabase()
         .from('users')
         .select('*')
+        
+      // Ensure data is an array and filter for valid user objects
+      const rawData = Array.isArray(data) ? data : []
+      const usersData = rawData.filter(isValidUser)
       
       if (usersError) {
         console.error('Error fetching users:', usersError)
         // Fall back to initial users if there's an error
         setUsers(initialUsers)
       } else if (usersData && usersData.length > 0) {
-        setUsers(usersData)
+        // Ensure the data matches the expected User type
+        const typedUsers = usersData.map(user => ({
+          id: typeof user.id === 'number' ? user.id : parseInt(String(user.id)),
+          name: String(user.name || ''),
+          color: String(user.color || '#BB86FC'),
+          initial: String(user.initial || '')
+        }))
+        setUsers(typedUsers)
         
         // Set current user's color if they exist in the users list
         if (userName) {
-          const currentUser = usersData.find(u => u.name === userName)
-          if (currentUser) {
-            setUserColor(currentUser.color)
+          // Find the current user by name with safe type handling
+          const currentUser = usersData.find(u => u && typeof u === 'object' && 'name' in u && String(u.name) === userName)
+          if (currentUser && currentUser.color) {
+            setUserColor(String(currentUser.color))
           }
         }
         
         // Fetch schedules for each user
-        const schedulesData: Record<number, Record<string, Array<any>>> = {}
+        const schedulesData: Record<number, Record<string, Array<{
+          id: string;
+          start: string;
+          end: string;
+          label: string;
+          allDay: boolean;
+        }>>> = {}
         
         for (const user of usersData) {
-          const { data: userSchedules, error: schedulesError } = await getSupabase()
+          // Define the expected schedule type
+          interface ScheduleRecord {
+            id: string;
+            user_id: number;
+            day: string;
+            start_time: string;
+            end_time: string;
+            label: string;
+            all_day: boolean;
+            created_at?: string;
+          }
+          
+          const { data, error: schedulesError } = await getSupabase()
             .from('schedules')
             .select('*')
             .eq('user_id', user.id)
-          
-          if (!schedulesError && userSchedules) {
-            // Transform the data into the format expected by the app
-            const formattedSchedules: Record<string, Array<any>> = {}
             
-            userSchedules.forEach(schedule => {
-              if (!formattedSchedules[schedule.day]) {
-                formattedSchedules[schedule.day] = []
+          // Ensure data is an array
+          const userSchedules = Array.isArray(data) ? data : []
+            
+          // Map the data to ensure it has the correct structure
+          const typedSchedules = userSchedules.map(schedule => ({
+            id: String(schedule?.id || ''),
+            user_id: typeof schedule?.user_id === 'number' ? schedule.user_id : parseInt(String(schedule?.user_id || '0')),
+            day: String(schedule?.day || ''),
+            start_time: String(schedule?.start_time || ''),
+            end_time: String(schedule?.end_time || ''),
+            label: String(schedule?.label || ''),
+            all_day: Boolean(schedule?.all_day),
+            created_at: String(schedule?.created_at || '')
+          }))
+          
+          if (!schedulesError && typedSchedules.length > 0) {
+            // Transform the data into the format expected by the app
+            const formattedSchedules: Record<string, Array<{
+              id: string;
+              start: string;
+              end: string;
+              label: string;
+              allDay: boolean;
+            }>> = {}
+            
+            typedSchedules.forEach(schedule => {
+              const day = String(schedule.day || '')
+              if (!formattedSchedules[day]) {
+                formattedSchedules[day] = []
               }
               
-              formattedSchedules[schedule.day].push({
-                id: schedule.id,
-                start: schedule.start_time,
-                end: schedule.end_time,
-                label: schedule.label,
-                allDay: schedule.all_day
+              formattedSchedules[day].push({
+                id: String(schedule.id || ''),
+                start: String(schedule.start_time || ''),
+                end: String(schedule.end_time || ''),
+                label: String(schedule.label || ''),
+                allDay: Boolean(schedule.all_day)
               })
             })
             
-            schedulesData[user.id] = formattedSchedules
+            // Ensure user.id is treated as a number key
+            const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id))
+            schedulesData[userId] = formattedSchedules
           }
         }
         
@@ -100,12 +170,12 @@ export default function Dashboard() {
     // Subscribe to user changes to update colors in real-time
     const userSubscription = getSupabase()
       .channel('users-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload: { new?: Record<string, any> }) => {
         // When a user record changes, check if it's the current user and update color if needed
         if (payload.new && typeof payload.new === 'object' && 'name' in payload.new && 'color' in payload.new) {
           // Check if this is the current user
-          if (userName === payload.new.name) {
-            setUserColor(payload.new.color)
+          if (userName === String(payload.new.name)) {
+            setUserColor(String(payload.new.color))
           }
         }
         
@@ -134,17 +204,18 @@ export default function Dashboard() {
             const { data, error } = await getSupabase()
               .from('users')
               .select('color')
-              .eq('name', storedName)
+              .eq('name', storedName) // Use storedName directly since it's guaranteed to exist here
               .single()
-              
-            if (!error && data) {
-              setUserColor(data.color)
+            
+            if (!error && data && typeof data === 'object' && 'color' in data) {
+              setUserColor(String(data.color))
             }
           } catch (error) {
             console.error('Error fetching user color:', error)
           }
         }
         
+        // Call the function to fetch user color
         fetchUserColor()
       }
     }
@@ -269,7 +340,7 @@ export default function Dashboard() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#121212] shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4">
           {/* Update the header title */}
-          <h1 className="text-xl font-bold">Roommate Schedules</h1>
+          <h1 className="text-xl font-bold">Roomies Schedules</h1>
 
           {/* Add a link to the overview page in the header section */}
           <div className="flex items-center gap-2">
@@ -335,10 +406,11 @@ export default function Dashboard() {
         <div className="fixed bottom-6 right-6 z-40">
           <Button
             asChild
-            className="rounded-full h-14 w-14"
+            className="rounded-full h-14 w-14 border-2"
             style={{
               backgroundColor: userColor,
               color: getTextColor(userColor),
+              borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
             <Link href="/schedule/edit?from=%2Fdashboard">

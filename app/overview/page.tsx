@@ -14,6 +14,12 @@ const initialUsers = [
   { id: 3, name: "John", color: "#CF6679", initial: "J" },
 ]
 
+// Helper function to determine text color based on background color
+const getTextColor = (bgColor: string): string => {
+  const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
+  return lightColors.includes(bgColor) ? "#000" : "#fff"
+}
+
 export default function Overview() {
   // Initialize users state with the initial users data
   const [usersList, setUsersList] = useState<typeof initialUsers>(initialUsers)
@@ -33,6 +39,17 @@ export default function Overview() {
       const storedName = localStorage.getItem("userName")
       if (storedName) {
         setUserName(storedName)
+        
+        // Immediately fetch the user's color
+        const { data, error } = await supabase
+          .from('users')
+          .select('color')
+          .eq('name', storedName)
+          .single()
+        
+        if (!error && data && typeof data === 'object' && 'color' in data) {
+          setUserColor(String(data.color))
+        }
       }
       
       // Fetch users from Supabase
@@ -194,11 +211,11 @@ export default function Overview() {
         <div className="fixed bottom-6 right-6 z-40">
           <Button
             asChild
-            className="rounded-full h-14 w-14"
+            className="rounded-full h-14 w-14 border-2"
             style={{
               backgroundColor: userColor,
-              color: userColor === "#BB86FC" || userColor === "#03DAC6" || userColor === "#FFB74D" || 
-                    userColor === "#64B5F6" || userColor === "#81C784" || userColor === "#FFD54F" ? "#000" : "#fff",
+              color: getTextColor(userColor),
+              borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
             <Link href="/schedule/edit?from=%2Foverview">
