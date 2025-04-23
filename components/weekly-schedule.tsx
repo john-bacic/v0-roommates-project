@@ -239,67 +239,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       const user = users.find(u => u.name === event.detail.userName)
       if (user) {
         // Open the color picker modal for this user
-        openColorPicker(user)
+        setSelectedUser(user)
+        setIsColorPickerOnly(true)
+        setModalOpen(true)
       }
     }
     
     window.addEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
     
-    // Check if we're in the Dashboard and move controls if possible
-    const dashboardControls = document.getElementById('weekly-schedule-controls')
-    if (dashboardControls) {
-      // We're in the Dashboard, so we'll move our controls there
-      const controlsElement = document.createElement('div')
-      controlsElement.className = 'flex items-center gap-2'
-      controlsElement.innerHTML = `
-        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium 
-          ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 
-          focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 
-          [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-8 w-8 
-          text-white hover:bg-[#333333]" id="toggle-time-format">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" 
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
-            stroke-linejoin="round" class="lucide lucide-clock h-4 w-4">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </button>
-        <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium 
-          ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 
-          focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 
-          [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:text-accent-foreground h-8 w-8 
-          text-white hover:bg-[#333333]" id="toggle-view">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" 
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" 
-            stroke-linejoin="round" id="toggle-view-icon">
-            ${isCollapsed ? 
-              `<polyline points="6 9 12 15 18 9"></polyline><line x1="4" y1="19" x2="20" y2="19"></line>` : 
-              `<line x1="4" y1="5" x2="20" y2="5"></line><polyline points="18 15 12 9 6 15"></polyline>`
-            }
-          </svg>
-        </button>
-      `
-      dashboardControls.appendChild(controlsElement)
-      
-      // Add event listeners to the new buttons
-      const timeFormatBtn = document.getElementById('toggle-time-format')
-      const viewToggleBtn = document.getElementById('toggle-view')
-      
-      if (timeFormatBtn) {
-        timeFormatBtn.addEventListener('click', toggleTimeFormat)
-        timeFormatBtn.title = use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"
-      }
-      
-      if (viewToggleBtn) {
-        viewToggleBtn.addEventListener('click', toggleView)
-        viewToggleBtn.title = isCollapsed ? "expand-all" : "collapse-all"
-      }
-    }
-
     return () => {
       window.removeEventListener("resize", checkMobile)
       window.removeEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
-      
       // Clean up dashboard controls if they exist
       const dashboardControls = document.getElementById('weekly-schedule-controls')
       if (dashboardControls) {
@@ -897,8 +847,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleTimeFormat}
-              className="h-8 w-8 text-white hover:bg-[#333333] md:hidden"
+              onClick={() => {
+                const newFormat = !use24HourFormat
+                setUse24HourFormat(newFormat)
+                localStorage.setItem('use24HourFormat', newFormat.toString())
+              }}
+              className="h-8 w-8 text-white hover:bg-[#333333]"
               id="toggle-time-format"
               title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
             >
@@ -907,8 +861,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleView}
-              className="h-8 w-8 text-white hover:bg-[#333333] md:hidden"
+              onClick={() => {
+                const newState = !isCollapsed
+                setIsCollapsed(newState)
+                localStorage.setItem('weeklyScheduleCollapsed', String(newState))
+              }}
+              className="h-8 w-8 text-white hover:bg-[#333333]"
               id="toggle-view"
               title={isCollapsed ? "expand-all" : "collapse-all"}
             >
