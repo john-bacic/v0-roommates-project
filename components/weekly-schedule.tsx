@@ -831,19 +831,31 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   // Helper function to check if the current day is in the visible week
-  const isCurrentDayInWeek = () => {
+  // Returns the day to show the current time indicator on
+  const getCurrentTimeDay = () => {
     const today = new Date()
-    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ...
+    const hours = today.getHours()
+    
+    // If time is between midnight and 5am, show on previous day
+    let adjustedDate = new Date(today)
+    if (hours < 5) {
+      adjustedDate.setDate(today.getDate() - 1)
+    }
+    
+    const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
     const dayName = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1] // Convert to our days array index
     
-    // Check if the current week includes today
+    // Check if the current week includes the adjusted date
     const weekStart = new Date(currentWeek)
     weekStart.setDate(currentWeek.getDate() - currentWeek.getDay() + (currentWeek.getDay() === 0 ? -6 : 1)) // Start of week (Monday)
     
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of week (Sunday)
     
-    const isInCurrentWeek = today >= weekStart && today <= weekEnd
+    const isInCurrentWeek = (
+      (adjustedDate >= weekStart && adjustedDate <= weekEnd) || 
+      (today >= weekStart && today <= weekEnd)
+    )
     
     return isInCurrentWeek ? dayName : null
   }
@@ -955,8 +967,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               <div className="bg-[#121212] mb-6">
                 <div className="relative h-6">
                   <div className="absolute inset-0 flex">
-                    {/* Current time indicator */}
-                    {isCurrentDayInWeek() === day && (
+                    {/* Current time indicator - only show in expanded mode or if this is the current day */}
+                    {getCurrentTimeDay() === day && (!isCollapsed || day === getCurrentTimeDay()) && (
                       <div 
                         className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20" 
                         style={{ 
