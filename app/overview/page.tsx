@@ -205,8 +205,8 @@ export default function Overview() {
   
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
-      {/* Header - now sticky */}
-      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
+      {/* Header - fixed at the top */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] px-4 py-2 shadow-md opacity-90" data-component-name="Overview">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
             <div className="flex items-center group">
@@ -247,11 +247,11 @@ export default function Overview() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 pt-0 md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
-        {/* Day selector tabs - only visible in day view - now sticky */}
+      {/* Main content - add padding to account for fixed header */}
+      <main className="flex-1 pt-[45px] md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
+        {/* Day selector tabs - only visible in day view - now fixed below header */}
         {!showFullWeek && (
-          <div className="sticky top-[57px] z-40 flex overflow-x-auto scrollbar-hide mb-4 pt-2 pb-2 px-2 bg-[#282828] border-b border-[#333333] shadow-sm" data-component-name="Overview">
+          <div className="fixed top-[41px] left-0 right-0 z-40 flex overflow-x-auto scrollbar-hide mb-4 pt-6 pb-2 px-2 bg-[#282828] border-b border-[#333333] shadow-sm opacity-90" data-component-name="Overview">
             {days.map((day) => (
               <Button
                 key={day}
@@ -272,7 +272,8 @@ export default function Overview() {
           </div>
         )}
 
-        <div className="bg-[#282828] rounded-lg md:p-4 p-2 mt-4">
+        {/* Add extra padding to account for fixed day selector tabs */}
+        <div className="bg-[#282828] rounded-lg md:p-4 p-2 mt-[68px]">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>

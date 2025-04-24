@@ -1080,6 +1080,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                       {formatTimeDisplay(block.start)} - {formatTimeDisplay(block.end)}
                                     </span>
                                   ) : null}
+                                  {!block.allDay && <span className="text-xs opacity-60 mr-1">|</span>}
                                   <span className="text-xs font-bold">
                                     {block.label}
                                     {block.allDay ? " (All Day)" : ""}
