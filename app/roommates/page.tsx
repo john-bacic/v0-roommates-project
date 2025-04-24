@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { ArrowLeft, Share2 } from "lucide-react"
+import { ArrowLeft, Share2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
@@ -40,6 +40,7 @@ export default function Roommates() {
   const [roommates, setRoommates] = useState(initialUsers)
   const [loading, setLoading] = useState(true)
   const [currentUrl, setCurrentUrl] = useState("")
+  const [copied, setCopied] = useState(false)
   const pathname = usePathname()
 
   // Effect to get the current URL
@@ -181,8 +182,33 @@ export default function Roommates() {
               <Share2 className="h-5 w-5 mr-2" />
               Share This App
             </h3>
+            <div className="flex items-center justify-center mb-4">
+              <div className="relative flex items-center max-w-md w-full">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={currentUrl || "https://v0-minimal-web-app-design.vercel.app"}
+                  className="w-full bg-[#333333] border border-[#444444] rounded-md py-2 px-3 pr-10 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#63D7C6]"
+                />
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentUrl || "https://v0-minimal-web-app-design.vercel.app")
+                      .then(() => {
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      })
+                  }}
+                  className="absolute right-2 p-1 rounded-md hover:bg-[#444444] transition-colors"
+                  aria-label="Copy URL"
+                >
+                  {copied ? 
+                    <Check className="h-4 w-4 text-green-500" /> : 
+                    <Copy className="h-4 w-4 text-[#A0A0A0]" />}
+                </button>
+              </div>
+            </div>
             <p className="text-[#A0A0A0] text-sm max-w-md mx-auto">
-              Scan this QR code to access the Roomies Schedule app on any device.
+              Scan this QR code or copy the URL to access the Roomies Schedule app on any device.
               Share with your roommates to coordinate schedules easily!
             </p>
           </div>
