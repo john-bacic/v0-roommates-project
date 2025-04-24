@@ -206,31 +206,15 @@ export default function Overview() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at the top */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] px-4 py-2 shadow-md opacity-90" data-component-name="Overview">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] px-4 py-2 shadow-md" data-component-name="Overview">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
-            <div className="flex items-center group">
-              <Link href="/dashboard" className="flex items-center text-[#A0A0A0] group-hover:text-white mr-2">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Link>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4 mx-2 text-[#A0A0A0] group-hover:text-white transition-colors duration-200"
-              >
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </div>
+              <div className="flex items-center group">
+                <Link href="/dashboard" className="flex items-center text-[#A0A0A0] group-hover:text-white mr-2">
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back
+                </Link>
+              </div>
             <h1 className="text-xl font-bold">
               {showFullWeek ? `Week of ${formatWeekRange(currentWeek)}` : (selectedDay || days[0])}
             </h1>
