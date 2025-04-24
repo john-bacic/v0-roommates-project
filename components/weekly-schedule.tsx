@@ -289,11 +289,28 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     localStorage.setItem('weeklyScheduleCollapsed', String(newState))
   }
 
-  // Add a toggle function for time format
+  // Toggle between 12-hour and 24-hour time format
   const toggleTimeFormat = () => {
     const newFormat = !use24HourFormat
     setUse24HourFormat(newFormat)
     localStorage.setItem('use24HourFormat', newFormat.toString())
+    
+    // Update all time inputs in the document
+    const timeInputs = document.querySelectorAll('input[type="time"]')
+    timeInputs.forEach(input => {
+      const htmlInput = input as HTMLInputElement
+      htmlInput.setAttribute('data-time-format', newFormat ? '24h' : '12h')
+    })
+    
+    // Dispatch event to notify other components
+    const event = new CustomEvent('timeFormatChange', {
+      detail: { use24Hour: newFormat }
+    })
+    window.dispatchEvent(event)
+    
+    if (onTimeFormatChange) {
+      onTimeFormatChange(newFormat)
+    }
   }
 
   // Format hour based on selected format

@@ -47,6 +47,19 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     } else {
       document.documentElement.classList.remove('use-24h-time')
     }
+    
+    // Force refresh of time inputs to apply the new format
+    const timeInputs = document.querySelectorAll('input[type="time"]')
+    timeInputs.forEach(input => {
+      const htmlInput = input as HTMLInputElement
+      const currentValue = htmlInput.value
+      // Update the data-time-format attribute
+      htmlInput.setAttribute('data-time-format', use24HourFormat ? '24h' : '12h')
+      // Force a refresh by temporarily changing the value
+      const tempValue = currentValue === '00:00' ? '00:01' : '00:00'
+      htmlInput.value = tempValue
+      htmlInput.value = currentValue
+    })
   }, [use24HourFormat])
 
   // Helper function to determine text color based on background color
