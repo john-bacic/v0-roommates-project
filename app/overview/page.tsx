@@ -249,9 +249,9 @@ export default function Overview() {
 
       {/* Main content */}
       <main className="flex-1 pt-0 md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
-        {/* Day selector tabs - only visible in day view */}
+        {/* Day selector tabs - only visible in day view - now sticky */}
         {!showFullWeek && (
-          <div className="flex overflow-x-auto scrollbar-hide mb-4 mt-2 px-2">
+          <div className="sticky top-[57px] z-40 flex overflow-x-auto scrollbar-hide mb-4 pt-2 pb-2 px-2 bg-[#282828] border-b border-[#333333] shadow-sm" data-component-name="Overview">
             {days.map((day) => (
               <Button
                 key={day}
@@ -272,7 +272,7 @@ export default function Overview() {
           </div>
         )}
 
-        <div className="bg-[#282828] rounded-lg md:p-4 p-2">
+        <div className="bg-[#282828] rounded-lg md:p-4 p-2 mt-4">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>
