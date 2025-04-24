@@ -30,14 +30,30 @@ export default function Overview() {
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#BB86FC") // Default color
   
+  // Helper function to get current day of the week
+  const getCurrentDay = (): string => {
+    const dayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, ...
+    // Convert to our day format (we use Monday as first day)
+    const dayMap = {
+      0: "Sunday",
+      1: "Monday",
+      2: "Tuesday",
+      3: "Wednesday",
+      4: "Thursday",
+      5: "Friday",
+      6: "Saturday"
+    };
+    return dayMap[dayIndex as keyof typeof dayMap];
+  }
+  
   // State for day-by-day view
-  const [selectedDay, setSelectedDay] = useState<string | null>(null) // null means show all days
+  const [selectedDay, setSelectedDay] = useState<string>(getCurrentDay())
   const [showFullWeek, setShowFullWeek] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedView = localStorage.getItem('overviewShowFullWeek')
-      return savedView !== null ? savedView === 'true' : true
+      return savedView !== null ? savedView === 'true' : false // Default to day view (false)
     }
-    return true
+    return false // Default to day view
   })
 
   // Function to load data from Supabase
@@ -172,9 +188,12 @@ export default function Overview() {
     setShowFullWeek(newState)
     localStorage.setItem('overviewShowFullWeek', newState.toString())
     
-    // If switching to day view and no day is selected, select Monday
-    if (!newState && !selectedDay) {
-      setSelectedDay(days[0])
+    // If switching to day view, ensure a day is selected (use current day)
+    if (!newState) {
+      // If no day is selected or we want to reset to current day
+      if (!selectedDay) {
+        setSelectedDay(getCurrentDay())
+      }
     }
   }
   
