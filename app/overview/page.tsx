@@ -214,7 +214,7 @@ export default function Overview() {
               </svg>
             </div>
             <h1 className="text-xl font-bold">
-              {showFullWeek ? `Week of ${formatWeekRange(currentWeek)}` : selectedDay || days[0]}
+              {showFullWeek ? `Week of ${formatWeekRange(currentWeek)}` : (selectedDay || days[0])}
             </h1>
           </div>
           
@@ -248,7 +248,7 @@ export default function Overview() {
                   borderColor: userColor 
                 } : {}}
               >
-                {day}
+                {day.substring(0, 3)}
               </Button>
             ))}
           </div>

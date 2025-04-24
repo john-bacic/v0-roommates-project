@@ -202,7 +202,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
               className={`flex-1 py-2 text-center font-medium ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}
             >
               <span className="hidden sm:inline">{day}</span>
-              <span className="inline sm:hidden">{day.substring(0, 3)}</span>
+              <span className="inline sm:hidden">{days.length === 1 ? day : day.substring(0, 3)}</span>
             </div>
           ))}
         </div>
