@@ -1,10 +1,11 @@
 "use client"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import { QRCodeSVG } from "qrcode.react"
 
 // Initial users data as fallback
 const initialUsers = [
@@ -148,6 +149,30 @@ export default function Roommates() {
               </CardContent>
             </Card>
           ))}
+        </div>
+        
+        {/* QR Code Section */}
+        <div className="mt-12 mb-8 flex flex-col items-center justify-center">
+          <div className="bg-white p-4 rounded-lg mb-4">
+            <QRCodeSVG 
+              value="https://roomies-schedule.netlify.app" 
+              size={200} 
+              bgColor="#FFFFFF" 
+              fgColor="#000000" 
+              level="H" 
+              includeMargin={false}
+            />
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-bold mb-2 flex items-center justify-center">
+              <Share2 className="h-5 w-5 mr-2" />
+              Share This App
+            </h3>
+            <p className="text-[#A0A0A0] text-sm max-w-md mx-auto">
+              Scan this QR code to access the Roomies Schedule app on any device.
+              Share with your roommates to coordinate schedules easily!
+            </p>
+          </div>
         </div>
       </main>
     </div>

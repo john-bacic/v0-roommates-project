@@ -855,7 +855,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   return (
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky right below the Dashboard header */}
-      <div className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md" data-component-name="WeeklySchedule">
+      <div className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90" data-component-name="WeeklySchedule">
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
             <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
