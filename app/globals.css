@@ -59,6 +59,9 @@ html {
   scroll-behavior: smooth;
   height: 100%;
   overflow-y: auto;
+  /* Prevent Safari swipe navigation */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Ensure sticky headers work properly */

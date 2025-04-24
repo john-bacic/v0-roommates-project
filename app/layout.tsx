@@ -11,6 +11,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Roommate Scheduler',
+    startupImage: [
+      '/splash.png',
+    ],
   },
   viewport: {
     width: 'device-width',
