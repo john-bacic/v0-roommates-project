@@ -29,6 +29,16 @@ export default function Overview() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#BB86FC") // Default color
+  
+  // State for day-by-day view
+  const [selectedDay, setSelectedDay] = useState<string | null>(null) // null means show all days
+  const [showFullWeek, setShowFullWeek] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedView = localStorage.getItem('overviewShowFullWeek')
+      return savedView !== null ? savedView === 'true' : true
+    }
+    return true
+  })
 
   // Function to load data from Supabase
   const loadData = async () => {
@@ -156,6 +166,25 @@ export default function Overview() {
     return `${formatDate(start)} - ${formatDate(end)}`
   }
 
+  // Toggle between full week and day-by-day view
+  const toggleViewMode = () => {
+    const newState = !showFullWeek
+    setShowFullWeek(newState)
+    localStorage.setItem('overviewShowFullWeek', newState.toString())
+    
+    // If switching to day view and no day is selected, select Monday
+    if (!newState && !selectedDay) {
+      setSelectedDay(days[0])
+    }
+  }
+  
+  // Select a specific day
+  const selectDay = (day: string) => {
+    setSelectedDay(day)
+    setShowFullWeek(false)
+    localStorage.setItem('overviewShowFullWeek', 'false')
+  }
+  
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - now sticky */}
@@ -185,15 +214,45 @@ export default function Overview() {
               </svg>
             </div>
             <h1 className="text-xl font-bold">
-              Week of {formatWeekRange(currentWeek)}
+              {showFullWeek ? `Week of ${formatWeekRange(currentWeek)}` : selectedDay || days[0]}
             </h1>
           </div>
+          
+          {/* View toggle button */}
+          <Button 
+            onClick={toggleViewMode} 
+            variant="outline" 
+            className="text-sm bg-transparent border-[#444444] hover:bg-[#444444] text-white"
+          >
+            {showFullWeek ? "Day View" : "Week View"}
+          </Button>
         </div>
       </header>
 
       {/* Main content */}
       <main className="flex-1 pt-0 md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
-        {/* Removed spacing div */}
+        {/* Day selector tabs - only visible in day view */}
+        {!showFullWeek && (
+          <div className="flex overflow-x-auto scrollbar-hide mb-4 mt-2 px-2">
+            {days.map((day) => (
+              <Button
+                key={day}
+                onClick={() => selectDay(day)}
+                variant={selectedDay === day ? "default" : "outline"}
+                className={`mr-2 whitespace-nowrap ${selectedDay === day 
+                  ? '' 
+                  : 'bg-transparent border-[#444444] text-white hover:bg-[#444444]'}`}
+                style={selectedDay === day ? { 
+                  backgroundColor: userColor, 
+                  color: getTextColor(userColor),
+                  borderColor: userColor 
+                } : {}}
+              >
+                {day}
+              </Button>
+            ))}
+          </div>
+        )}
 
         <div className="bg-[#282828] rounded-lg md:p-4 p-2">
           {loading ? (
@@ -201,7 +260,12 @@ export default function Overview() {
               <p className="text-[#A0A0A0]">Loading schedules...</p>
             </div>
           ) : (
-            <MultiDayView users={usersList} schedules={schedules} days={days} useAlternatingBg={true} />
+            <MultiDayView 
+              users={usersList} 
+              schedules={schedules} 
+              days={showFullWeek ? days : [selectedDay || days[0]]} 
+              useAlternatingBg={true} 
+            />
           )}
         </div>
       </main>
