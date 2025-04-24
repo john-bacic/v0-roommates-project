@@ -8,6 +8,16 @@
   --background-end-rgb: 40, 40, 40;
 }
 
+/* Ensure buttons with colored backgrounds always have dark text */
+button[style*="background-color"] {
+  color: #000 !important;
+}
+
+/* Exception for buttons with dark backgrounds - they should have light text */
+button[data-dark-bg="true"] {
+  color: inherit !important;
+}
+
 /* Time input format control */
 .use-24h-time input[type="time"] {
   color-scheme: dark;

@@ -200,7 +200,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
         <div className="flex flex-col sm:flex-row gap-2 mt-2">
           <Button
             onClick={onSave || (() => window.location.href = "/dashboard")}
-            style={{ backgroundColor: userColor, color: getTextColor(userColor) }}
+            style={{ backgroundColor: userColor, color: "#000" }}
             className="hover:opacity-90 w-full"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
@@ -213,7 +213,8 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           <Button
             onClick={addTimeBlock}
             className="w-full sm:w-auto px-4 py-2 h-10 text-sm border-2"
-            style={{ backgroundColor: getTextColor(userColor), color: userColor, borderColor: userColor }}
+            style={{ backgroundColor: "#000", color: userColor, borderColor: userColor }}
+            data-dark-bg="true"
           >
             +ADD
           </Button>

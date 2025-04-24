@@ -262,7 +262,7 @@ export default function Overview() {
                   : 'bg-transparent border-[#444444] text-white hover:bg-[#444444]'}`}
                 style={selectedDay === day ? { 
                   backgroundColor: userColor, 
-                  color: getTextColor(userColor),
+                  color: "#000 !important",
                   borderColor: userColor 
                 } : {}}
               >

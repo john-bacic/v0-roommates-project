@@ -358,7 +358,7 @@ export function QuickScheduleModal({
                 {/* Use currentColor instead of userColor for the button */}
                 <Button
                   onClick={handleSave}
-                  style={{ backgroundColor: currentColor, color: getTextColor(currentColor) }}
+                  style={{ backgroundColor: currentColor, color: "#000" }}
                   className="h-9 px-3 text-xs sm:text-sm hover:opacity-90"
                 >
                   {editMode ? "Update" : "Add"}
@@ -371,7 +371,7 @@ export function QuickScheduleModal({
       <style jsx global>{`
         [data-state="checked"] {
           background-color: ${currentColor};
-          color: ${getTextColor(currentColor)};
+          color: #000;
         }
         
         .focus-visible:focus-visible {
