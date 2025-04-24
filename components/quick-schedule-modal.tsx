@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TimeInput } from "@/components/ui/time-input"
 import {
   Dialog,
   DialogContent,
@@ -283,17 +284,13 @@ export function QuickScheduleModal({
         {!timeBlock.allDay && !isColorPickerOnly && (
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="start-time">Start Time</Label>
               <div className="relative">
-                <Input
+                <TimeInput
                   id="start-time"
-                  type="time"
+                  label="Start Time"
                   value={timeBlock.start}
-                  onChange={(e) => setTimeBlock({ ...timeBlock, start: e.target.value })}
-                  className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
-                  style={{ backgroundColor: "#242424" }}
-                  step="60"
-                  data-time-format={use24HourFormat ? '24h' : '12h'}
+                  onChange={(value) => setTimeBlock({ ...timeBlock, start: value })}
+                  use24HourFormat={use24HourFormat}
                 />
                 <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
                   {formatTimeForDisplay(timeBlock.start, use24HourFormat)}
@@ -301,17 +298,13 @@ export function QuickScheduleModal({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="end-time">End Time</Label>
               <div className="relative">
-                <Input
+                <TimeInput
                   id="end-time"
-                  type="time"
+                  label="End Time"
                   value={timeBlock.end}
-                  onChange={(e) => setTimeBlock({ ...timeBlock, end: e.target.value })}
-                  className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
-                  style={{ backgroundColor: "#242424" }}
-                  step="60"
-                  data-time-format={use24HourFormat ? '24h' : '12h'}
+                  onChange={(value) => setTimeBlock({ ...timeBlock, end: value })}
+                  use24HourFormat={use24HourFormat}
                 />
                 <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
                   {formatTimeForDisplay(timeBlock.end, use24HourFormat)}

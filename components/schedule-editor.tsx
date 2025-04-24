@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { TimeInput } from "@/components/ui/time-input"
 import { Trash2 } from "lucide-react"
 
 interface TimeBlock {
@@ -14,7 +15,6 @@ interface TimeBlock {
   allDay?: boolean
 }
 
-// Update the interface to accept userColor prop
 interface ScheduleEditorProps {
   schedule: Record<string, TimeBlock[]>
   onChange: (schedule: Record<string, TimeBlock[]>) => void
@@ -23,46 +23,36 @@ interface ScheduleEditorProps {
   use24HourFormat?: boolean
 }
 
-// Update the component to use the userColor prop
 export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave, use24HourFormat = true }: ScheduleEditorProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const [activeDay, setActiveDay] = useState(days[0])
 
-  // Add state to track focus ring color
   const [focusRingColor, setFocusRingColor] = useState(userColor)
 
-  // Update focus ring color when userColor changes
   useEffect(() => {
     setFocusRingColor(userColor)
 
-    // Update CSS variable for focus styles
     document.documentElement.style.setProperty("--focus-ring-color", userColor)
   }, [userColor])
   
-  // Add effect to sync time format preference with localStorage and document class
   useEffect(() => {
-    // Apply a CSS class to the document to control time input display
     if (use24HourFormat) {
       document.documentElement.classList.add('use-24h-time')
     } else {
       document.documentElement.classList.remove('use-24h-time')
     }
     
-    // Force refresh of time inputs to apply the new format
     const timeInputs = document.querySelectorAll('input[type="time"]')
     timeInputs.forEach(input => {
       const htmlInput = input as HTMLInputElement
       const currentValue = htmlInput.value
-      // Update the data-time-format attribute
       htmlInput.setAttribute('data-time-format', use24HourFormat ? '24h' : '12h')
-      // Force a refresh by temporarily changing the value
       const tempValue = currentValue === '00:00' ? '00:01' : '00:00'
       htmlInput.value = tempValue
       htmlInput.value = currentValue
     })
   }, [use24HourFormat])
 
-  // Helper function to determine text color based on background color
   const getTextColor = (bgColor: string) => {
     const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
     return lightColors.includes(bgColor) ? "#000" : "#fff"
@@ -131,27 +121,22 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                 id={`all-day-toggle-${index}`}
                 checked={block.allDay || false}
                 onCheckedChange={(checked) => {
-                  // Copy the current schedule
                   const newSchedule = {...schedule};
                   if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
                   
-                  // Get current block with all required TimeBlock properties
                   const currentBlock = newSchedule[activeDay][index] || {
                     start: block.start || "09:00",
                     end: block.end || "17:00",
                     label: block.label || ""
                   };
                   
-                  // Update the block
                   newSchedule[activeDay][index] = {
                     ...currentBlock,
                     allDay: checked,
-                    // If turning on all day, set to full day
                     start: checked ? "00:00" : currentBlock.start,
                     end: checked ? "23:59" : currentBlock.end
                   };
                   
-                  // Apply the update
                   onChange(newSchedule);
                 }}
                 className="data-[state=checked]:bg-[var(--focus-ring-color)]"
@@ -162,31 +147,21 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
             {!block.allDay && (
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="flex flex-col">
-                  <Label htmlFor={`start-${index}`} className="text-xs mb-1">
-                    Start Time
-                  </Label>
-                  <Input
+                  <TimeInput
                     id={`start-${index}`}
-                    type="time"
+                    label="Start"
                     value={block.start || ''}
-                    className="bg-[#242424] border-[#333333] text-white"
-                    onChange={(e) => updateTimeBlock(activeDay, index, "start", e.target.value)}
-                    data-time-format={use24HourFormat ? '24h' : '12h'}
-                    step="60"
+                    onChange={(value) => updateTimeBlock(activeDay, index, "start", value)}
+                    use24HourFormat={use24HourFormat}
                   />
                 </div>
                 <div className="flex flex-col">
-                  <Label htmlFor={`end-${index}`} className="text-xs mb-1">
-                    End Time
-                  </Label>
-                  <Input
+                  <TimeInput
                     id={`end-${index}`}
-                    type="time"
+                    label="End"
                     value={block.end || ''}
-                    className="bg-[#242424] border-[#333333] text-white"
-                    onChange={(e) => updateTimeBlock(activeDay, index, "end", e.target.value)}
-                    data-time-format={use24HourFormat ? '24h' : '12h'}
-                    step="60"
+                    onChange={(value) => updateTimeBlock(activeDay, index, "end", value)}
+                    use24HourFormat={use24HourFormat}
                   />
                 </div>
               </div>
