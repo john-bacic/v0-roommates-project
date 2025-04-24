@@ -419,8 +419,8 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Add padding to account for the fixed header */}
-      <main className="flex-1 pt-[57px] p-4 max-w-7xl mx-auto w-full">
+      {/* Add padding to account for both fixed headers */}
+      <main className="flex-1 pt-[93px] p-4 max-w-7xl mx-auto w-full">
 
 
         {/* Schedule content */}
