@@ -42,17 +42,17 @@ interface QuickScheduleModalProps {
   use24HourFormat?: boolean // New prop to control time format display
 }
 
-// Predefined colors for the color picker in a 3x3 grid
+// Predefined colors for the color picker in a 3x3 grid - exact hex codes from image
 const COLORS = [
-  "#FF7DB1", // Hot Pink
-  "#FFC7C1", // Light Pink
-  "#FF9089", // Coral
-  "#FFC346", // Yellow
-  "#F8D667", // Middle Yellow
-  "#63D7C6", // Mint
-  "#89FA96", // Light Green
-  "#8EBDFF", // Sky Blue
-  "#B388F5", // Lavender
+  "#FF7DB1", // Top left - Hot Pink
+  "#FFC7C1", // Top middle - Light Pink
+  "#FF746A", // Top right - Coral
+  "#FF9F21", // Middle left - Orange
+  "#F8D667", // Middle middle - Yellow
+  "#63D7C6", // Middle right - Mint
+  "#89FA96", // Bottom left - Light Green
+  "#8EBDFF", // Bottom middle - Sky Blue
+  "#B388F5", // Bottom right - Lavender
 ]
 
 // Helper function to format time for display (24h -> 12h with AM/PM)

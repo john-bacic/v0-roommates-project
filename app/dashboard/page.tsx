@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
   const [users, setUsers] = useState(initialUsers)
-  const [userColor, setUserColor] = useState("#BB86FC") // Default color
+  const [userColor, setUserColor] = useState("#B388F5") // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
     // Only run in client-side
     if (typeof window !== 'undefined') {

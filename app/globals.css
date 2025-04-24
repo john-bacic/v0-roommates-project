@@ -48,6 +48,10 @@ input[type="time"] {
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+  /* Disable overscroll behavior to prevent swipe navigation */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Add smooth scrolling for better sticky header experience */
