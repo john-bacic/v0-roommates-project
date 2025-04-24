@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { QRCodeSVG } from "qrcode.react"
+import { usePathname } from "next/navigation"
 
 // Initial users data as fallback
 const initialUsers = [
@@ -38,6 +39,18 @@ const initialUsers = [
 export default function Roommates() {
   const [roommates, setRoommates] = useState(initialUsers)
   const [loading, setLoading] = useState(true)
+  const [currentUrl, setCurrentUrl] = useState("")
+  const pathname = usePathname()
+
+  // Effect to get the current URL
+  useEffect(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      // Get the base URL (protocol + host)
+      const baseUrl = window.location.origin
+      setCurrentUrl(baseUrl)
+    }
+  }, [])
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -155,7 +168,7 @@ export default function Roommates() {
         <div className="mt-12 mb-8 flex flex-col items-center justify-center">
           <div className="bg-white p-4 rounded-lg mb-4">
             <QRCodeSVG 
-              value="https://roomies-schedule.netlify.app" 
+              value={currentUrl || "https://v0-minimal-web-app-design.vercel.app"} 
               size={200} 
               bgColor="#FFFFFF" 
               fgColor="#000000" 
