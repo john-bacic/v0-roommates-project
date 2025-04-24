@@ -26,6 +26,14 @@ interface TimeBlock {
 export default function EditSchedule() {
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#BB86FC") // Default color
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedFormat = localStorage.getItem('use24HourFormat')
+      return savedFormat !== null ? savedFormat === 'true' : false
+    }
+    return false
+  })
   const router = useRouter()
   const [schedule, setSchedule] = useState<Record<string, TimeBlock[]>>({
     Monday: [],
@@ -132,6 +140,7 @@ export default function EditSchedule() {
   // State to track the return path
   const [returnPath, setReturnPath] = useState("/dashboard")
 
+  // Effect for initialization and routing
   useEffect(() => {
     // Get the user's name from localStorage
     const storedName = localStorage.getItem("userName")
@@ -157,21 +166,39 @@ export default function EditSchedule() {
       // If no name is set, redirect to home page
       router.push("/")
     }
+  }, [router]);
 
-    // Add event listener for custom color change events
-    const handleCustomColorChange = (event: CustomEvent) => {
-      if (storedName && event.detail.userName === storedName) {
+  // Effect for color and time format changes
+  useEffect(() => {
+    const handleColorChange = (event: CustomEvent<{userName: string, color: string}>) => {
+      if (event.detail.userName === userName) {
         setUserColor(event.detail.color)
       }
     }
-
-    // Listen for our custom event
-    window.addEventListener("userColorChange", handleCustomColorChange as EventListener)
-
-    return () => {
-      window.removeEventListener("userColorChange", handleCustomColorChange as EventListener)
+    
+    // Add listener for time format changes
+    const handleTimeFormatChange = (event: CustomEvent<{use24Hour: boolean}>) => {
+      setUse24HourFormat(event.detail.use24Hour)
     }
-  }, [router])
+    
+    window.addEventListener('userColorChange', handleColorChange as EventListener)
+    window.addEventListener('timeFormatChange', handleTimeFormatChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('userColorChange', handleColorChange as EventListener)
+      window.removeEventListener('timeFormatChange', handleTimeFormatChange as EventListener)
+    }
+  }, [userName])
+  
+  // Apply time format class to document
+  useEffect(() => {
+    // Apply a CSS class to the document to control time input display
+    if (use24HourFormat) {
+      document.documentElement.classList.add('use-24h-time')
+    } else {
+      document.documentElement.classList.remove('use-24h-time')
+    }
+  }, [use24HourFormat])
 
   const handleSave = async () => {
     if (!userName) return;
@@ -285,7 +312,7 @@ export default function EditSchedule() {
         </div>
 
         <div className="bg-[#333333] rounded-lg p-4">
-          <ScheduleEditor schedule={schedule} onChange={handleScheduleChange} userColor={userColor} onSave={handleSave} />
+          <ScheduleEditor schedule={schedule} onChange={handleScheduleChange} userColor={userColor} onSave={handleSave} use24HourFormat={use24HourFormat} />
         </div>
       </main>
     </div>

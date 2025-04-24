@@ -29,6 +29,24 @@ export default function Dashboard() {
   const [userName, setUserName] = useState("")
   const [users, setUsers] = useState(initialUsers)
   const [userColor, setUserColor] = useState("#BB86FC") // Default color
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedFormat = localStorage.getItem('use24HourFormat')
+      return savedFormat !== null ? savedFormat === 'true' : false
+    }
+    return false
+  })
+  
+  // Apply the time format class to the document
+  useEffect(() => {
+    if (use24HourFormat) {
+      document.documentElement.classList.add('use-24h-time')
+    } else {
+      document.documentElement.classList.remove('use-24h-time')
+    }
+  }, [use24HourFormat])
+
   const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{
     id: string;
     start: string;
@@ -396,6 +414,7 @@ export default function Dashboard() {
               onColorChange={handleColorUpdate} 
               schedules={schedules}
               useAlternatingBg={false}
+              onTimeFormatChange={setUse24HourFormat}
             />
           )}
         </div>

@@ -27,6 +27,7 @@ interface WeeklyScheduleProps {
   onColorChange?: (name: string, color: string) => void
   schedules?: Record<number, Record<string, Array<TimeBlock>>>
   useAlternatingBg?: boolean
+  onTimeFormatChange?: (use24Hour: boolean) => void
 }
 
 // Sample schedule data - in a real app, this would be loaded from localStorage or a database
@@ -63,7 +64,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
   },
 }
 
-export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false }: WeeklyScheduleProps) {
+export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false, onTimeFormatChange }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const hours = Array.from({ length: 22 }, (_, i) => i + 5) // 5 to 26 (2am)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -851,6 +852,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                 const newFormat = !use24HourFormat
                 setUse24HourFormat(newFormat)
                 localStorage.setItem('use24HourFormat', newFormat.toString())
+                // Notify parent components about the time format change
+                if (onTimeFormatChange) {
+                  onTimeFormatChange(newFormat)
+                }
+                // Dispatch an event for other components to listen to
+                window.dispatchEvent(new CustomEvent('timeFormatChange', { detail: { use24Hour: newFormat } }))
               }}
               className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
               id="toggle-time-format"
@@ -1094,6 +1101,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           timeBlock={selectedTimeBlock}
           usedColors={usedColors}
           isColorPickerOnly={isColorPickerOnly} // Use the new color-only mode
+          use24HourFormat={use24HourFormat} // Pass the time format preference
           onUserColorChange={(color) => {
             if (selectedUser) {
               updateUserColor(selectedUser, color)

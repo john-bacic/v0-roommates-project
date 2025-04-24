@@ -38,6 +38,7 @@ interface QuickScheduleModalProps {
   usedColors?: string[]
   onUserColorChange?: (color: string) => void
   isColorPickerOnly?: boolean // New prop to show only color picker
+  use24HourFormat?: boolean // New prop to control time format display
 }
 
 // Predefined colors for the color picker in a 3x3 grid
@@ -54,7 +55,11 @@ const COLORS = [
 ]
 
 // Helper function to format time for display (24h -> 12h with AM/PM)
-function formatTimeForDisplay(time24h: string): string {
+function formatTimeForDisplay(time24h: string, use24Hour: boolean = false): string {
+  if (use24Hour) {
+    return time24h; // Return as is for 24-hour format
+  }
+  
   try {
     const [hours, minutes] = time24h.split(':').map(Number)
     const period = hours >= 12 ? 'PM' : 'AM'
@@ -78,6 +83,7 @@ export function QuickScheduleModal({
   usedColors = [],
   onUserColorChange,
   isColorPickerOnly = false,
+  use24HourFormat = true,
 }: QuickScheduleModalProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const [day, setDay] = useState(initialDay)
@@ -132,6 +138,16 @@ export function QuickScheduleModal({
   useEffect(() => {
     document.documentElement.style.setProperty("--focus-ring-color", currentColor)
   }, [currentColor])
+  
+  // Apply time format class to document
+  useEffect(() => {
+    // Apply a CSS class to the document to control time input display
+    if (use24HourFormat) {
+      document.documentElement.classList.add('use-24h-time')
+    } else {
+      document.documentElement.classList.remove('use-24h-time')
+    }
+  }, [use24HourFormat])
 
   const handleSave = () => {
     onSave(day, timeBlock)
@@ -278,7 +294,7 @@ export function QuickScheduleModal({
                   style={{ backgroundColor: "#242424" }}
                 />
                 <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
-                  {formatTimeForDisplay(timeBlock.start)}
+                  {formatTimeForDisplay(timeBlock.start, use24HourFormat)}
                 </div>
               </div>
             </div>
@@ -294,7 +310,7 @@ export function QuickScheduleModal({
                   style={{ backgroundColor: "#242424" }}
                 />
                 <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
-                  {formatTimeForDisplay(timeBlock.end)}
+                  {formatTimeForDisplay(timeBlock.end, use24HourFormat)}
                 </div>
               </div>
             </div>

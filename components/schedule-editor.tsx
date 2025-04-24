@@ -20,10 +20,11 @@ interface ScheduleEditorProps {
   onChange: (schedule: Record<string, TimeBlock[]>) => void
   userColor?: string
   onSave?: () => void
+  use24HourFormat?: boolean
 }
 
 // Update the component to use the userColor prop
-export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave }: ScheduleEditorProps) {
+export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave, use24HourFormat = true }: ScheduleEditorProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const [activeDay, setActiveDay] = useState(days[0])
 
@@ -37,6 +38,16 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     // Update CSS variable for focus styles
     document.documentElement.style.setProperty("--focus-ring-color", userColor)
   }, [userColor])
+  
+  // Add effect to sync time format preference with localStorage and document class
+  useEffect(() => {
+    // Apply a CSS class to the document to control time input display
+    if (use24HourFormat) {
+      document.documentElement.classList.add('use-24h-time')
+    } else {
+      document.documentElement.classList.remove('use-24h-time')
+    }
+  }, [use24HourFormat])
 
   // Helper function to determine text color based on background color
   const getTextColor = (bgColor: string) => {
@@ -147,6 +158,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                     value={block.start || ''}
                     className="bg-[#242424] border-[#333333] text-white"
                     onChange={(e) => updateTimeBlock(activeDay, index, "start", e.target.value)}
+                    data-time-format={use24HourFormat ? '24h' : '12h'}
                   />
                 </div>
                 <div className="flex flex-col">
@@ -159,6 +171,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                     value={block.end || ''}
                     className="bg-[#242424] border-[#333333] text-white"
                     onChange={(e) => updateTimeBlock(activeDay, index, "end", e.target.value)}
+                    data-time-format={use24HourFormat ? '24h' : '12h'}
                   />
                 </div>
               </div>
@@ -209,13 +222,14 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           </Button>
           <Button
             onClick={addTimeBlock}
-            className="w-full sm:w-auto text-white px-4 py-2 h-10 text-sm"
-            style={{ backgroundColor: userColor, color: getTextColor(userColor) }}
+            className="w-full sm:w-auto px-4 py-2 h-10 text-sm border-2"
+            style={{ backgroundColor: getTextColor(userColor), color: userColor, borderColor: userColor }}
           >
             +ADD
           </Button>
         </div>
       </div>
+
     </div>
   )
 }

@@ -8,6 +8,22 @@
   --background-end-rgb: 40, 40, 40;
 }
 
+/* Time input format control */
+.use-24h-time input[type="time"] {
+  color-scheme: dark;
+}
+
+/* Force 24-hour display */
+.use-24h-time input[type="time"]::-webkit-datetime-edit-hour-field,
+.use-24h-time input[type="time"]::-webkit-datetime-edit-minute-field {
+  color: white;
+}
+
+/* Hide AM/PM field when in 24-hour mode */
+.use-24h-time input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
