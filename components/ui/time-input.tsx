@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import "./time-input.css"
 
 interface TimeInputProps {
   id: string
@@ -77,6 +78,11 @@ export function TimeInput({
   const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let newHours = e.target.value
     
+    // Only allow digits
+    if (!/^\d*$/.test(newHours)) {
+      return
+    }
+    
     if (newHours === "") {
       setHours("")
       return
@@ -106,12 +112,22 @@ export function TimeInput({
   // Handle minutes input
   const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let newMinutes = e.target.value
+    
+    // Only allow digits
+    if (!/^\d*$/.test(newMinutes)) {
+      return
+    }
+    
     // Ensure minutes are between 0-59
     if (newMinutes === "") {
       setMinutes("")
     } else {
       const numericMinutes = parseInt(newMinutes, 10)
       if (!isNaN(numericMinutes) && numericMinutes >= 0 && numericMinutes <= 59) {
+        // Pad with leading zero if single digit
+        if (newMinutes.length === 1) {
+          newMinutes = newMinutes.padStart(2, '0')
+        }
         setMinutes(newMinutes)
         updateTime(hours, newMinutes, period)
       }
@@ -131,23 +147,23 @@ export function TimeInput({
       <div className="flex items-center bg-[#242424] border border-[#333333] rounded-md">
         <Input
           id={`${id}-hours`}
-          type="number"
-          min={use24HourFormat ? "0" : "1"}
-          max={use24HourFormat ? "23" : "12"}
+          type="text"
+          inputMode="numeric"
+          pattern={use24HourFormat ? "[0-9]{1,2}" : "[1-9]|1[0-2]"}
           value={hours}
           onChange={handleHoursChange}
-          className="w-12 border-none bg-transparent text-white text-center"
+          className="w-12 border-none bg-transparent text-white text-center no-spinners"
           placeholder={use24HourFormat ? "00" : "12"}
         />
         <span className="text-white mx-1">:</span>
         <Input
           id={`${id}-minutes`}
-          type="number"
-          min="0"
-          max="59"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-5][0-9]"
           value={minutes}
           onChange={handleMinutesChange}
-          className="w-12 border-none bg-transparent text-white text-center"
+          className="w-12 border-none bg-transparent text-white text-center no-spinners"
           placeholder="00"
         />
         {!use24HourFormat && (
