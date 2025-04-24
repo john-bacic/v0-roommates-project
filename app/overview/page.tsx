@@ -157,9 +157,9 @@ export default function Overview() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#121212] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - now sticky */}
-      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#121212] p-4 shadow-sm">
+      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#282828] p-4 shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
             <div className="flex items-center group">
@@ -195,7 +195,7 @@ export default function Overview() {
       <main className="flex-1 pt-0 md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
         {/* Removed spacing div */}
 
-        <div className="bg-[#121212] rounded-lg md:p-4 p-2">
+        <div className="bg-[#282828] rounded-lg md:p-4 p-2">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>

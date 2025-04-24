@@ -277,14 +277,14 @@ export default function DayView() {
   }
 
   if (!roommate || !schedule || !day) {
-    return <div className="flex min-h-screen items-center justify-center bg-[#121212] text-white">Loading...</div>
+    return <div className="flex min-h-screen items-center justify-center bg-[#282828] text-white">Loading...</div>
   }
 
   const isCurrentUser = roommate.name === currentUserName
   const daySchedule = schedule[day] || []
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#121212] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header */}
       <header className="border-b border-[#333333] p-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -326,7 +326,7 @@ export default function DayView() {
           )}
         </div>
 
-        <div className="bg-[#1E1E1E] rounded-lg p-4">
+        <div className="bg-[#333333] rounded-lg p-4">
           <TimeBlockList
             day={day}
             timeBlocks={daySchedule}

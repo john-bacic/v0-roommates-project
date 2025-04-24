@@ -60,7 +60,7 @@ export default function ViewSchedule() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#121212] text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#282828] text-white">
         Loading...
       </div>
     )
@@ -68,7 +68,7 @@ export default function ViewSchedule() {
 
   if (!roommate || !schedule) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#121212] text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#282828] text-white">
         No data found
       </div>
     )
@@ -97,8 +97,8 @@ export default function ViewSchedule() {
   const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6 to 24 (midnight)
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#121212] text-white">
-      <header className="sticky top-0 z-50 p-4 border-b border-[#333333] bg-[#121212]">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+      <header className="sticky top-0 z-50 p-4 border-b border-[#333333] bg-[#282828]">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
@@ -126,14 +126,14 @@ export default function ViewSchedule() {
       <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
         {days.map((day) => (
           <div key={day} className="mb-6">
-            <div className="sticky bg-[#121212] pt-2 pb-1 flex items-center justify-between px-2">
+            <div className="sticky bg-[#282828] pt-2 pb-1 flex items-center justify-between px-2">
               <div className="text-sm font-medium">{day}</div>
             </div>
             
             <div className="overflow-x-auto scrollbar-hide">
               <div className="min-w-[800px] pl-2">
                 {/* Time header */}
-                <div className="sticky bg-[#121212] pt-1 pb-2">
+                <div className="sticky bg-[#282828] pt-1 pb-2">
                   <div className="relative h-6">
                     <div className="absolute inset-0 flex">
                       {hours.map((hour) => (
@@ -151,7 +151,7 @@ export default function ViewSchedule() {
                 </div>
 
                 {/* Schedule timeline */}
-                <div className="relative h-10 bg-[#1E1E1E] rounded-md overflow-hidden mt-2">
+                <div className="relative h-10 bg-[#333333] rounded-md overflow-hidden mt-2">
                   {/* Vertical grid lines */}
                   <div className="absolute inset-0 flex pointer-events-none">
                     {hours.map((hour) => (

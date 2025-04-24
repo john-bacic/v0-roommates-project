@@ -213,7 +213,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
         {hours.map((hour) => (
           <div key={hour} className="flex">
             {/* Time label - positioned to align with the horizontal grid line */}
-            <div className="w-12 min-w-12 sm:w-16 sm:min-w-16 relative bg-[#121212]">
+            <div className="w-12 min-w-12 sm:w-16 sm:min-w-16 relative bg-[#282828]">
               <span className="text-xs text-[#666666] absolute right-2 -top-3 z-10">
                 {formatHour(hour)}
               </span>

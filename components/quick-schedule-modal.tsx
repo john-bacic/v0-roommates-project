@@ -185,7 +185,7 @@ export function QuickScheduleModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-[#1E1E1E] text-white border-[#333333] sm:max-w-[425px]">
+      <DialogContent className="bg-[#333333] text-white border-[#333333] sm:max-w-[425px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div

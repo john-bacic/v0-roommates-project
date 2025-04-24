@@ -623,7 +623,7 @@ export { useSidebar, SidebarProvider }
 // This is a custom component for the sidebar
 export function SidebarComponent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-[#1E1E1E] text-white", className)} {...props}>
+    <div className={cn("fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-[#333333] text-white", className)} {...props}>
       {children}
     </div>
   )

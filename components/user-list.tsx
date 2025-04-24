@@ -11,7 +11,7 @@ interface UserListProps {
 
 export function UserList({ users }: UserListProps) {
   return (
-    <div className="bg-[#1E1E1E] rounded-lg p-4">
+    <div className="bg-[#333333] rounded-lg p-4">
       <h3 className="text-sm font-medium mb-4">Roommates</h3>
 
       <div className="space-y-3">

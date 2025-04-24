@@ -838,7 +838,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   return (
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky with no bottom padding */}
-      <div className="sticky top-[57px] z-40 bg-[#121212] border-b border-[#333333] w-full overflow-hidden">
+      <div className="sticky top-[57px] z-40 bg-[#282828] border-b border-[#333333] w-full overflow-hidden">
         <div className="flex justify-between items-center h-[36px] w-full">
           <div>
             <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
@@ -913,7 +913,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-8">
           {/* Day header - stays sticky */}
-          <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#121212]'}`}>
+          <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'}`}>
             <div className="flex justify-between items-center pr-2">
               <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
               
@@ -925,7 +925,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
               {/* Time header - now scrolls with content */}
-              <div className="bg-[#121212] mb-6">
+              <div className="bg-[#282828] mb-6">
                 <div className="relative h-6">
                   <div className="absolute inset-0 flex">
                     {/* Current time indicator - only show in expanded mode or if this is the current day */}
@@ -996,7 +996,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       <div
                         className={`relative ${
                           isCollapsed ? "h-2" : "h-10"
-                        } bg-[#1E1E1E] rounded-md overflow-hidden transition-all duration-200 flex-grow`}
+                        } bg-[#373737] rounded-md overflow-hidden transition-all duration-200 flex-grow`}
                       data-component-name="WeeklySchedule"
                     >
                       {/* Vertical grid lines */}

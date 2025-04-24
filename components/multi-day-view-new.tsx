@@ -381,7 +381,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
       {/* Vertical calendar layout */}
       <div className="relative">
         {/* Day headers across the top */}
-        <div className="sticky top-[57px] z-40 bg-[#1E1E1E] flex border-b border-[#333333]">
+        <div className="sticky top-[57px] z-40 bg-[#333333] flex border-b border-[#333333]">
           {/* Empty cell for time column */}
           <div className="w-16 min-w-16 border-r border-[#333333] py-2"></div>
           

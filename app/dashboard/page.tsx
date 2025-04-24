@@ -335,9 +335,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#121212] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Main header - always fixed at the top with exact height */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#121212] shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#282828] shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4">
           {/* Update the header title */}
           <h1 className="text-xl font-bold">Roomies Schedules</h1>

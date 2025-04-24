@@ -82,9 +82,9 @@ export default function Roommates() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#121212] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - now sticky */}
-      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#121212] p-4 shadow-sm">
+      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#282828] p-4 shadow-sm">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
             <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
@@ -100,7 +100,7 @@ export default function Roommates() {
       <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {roommates.map((roommate) => (
-            <Card key={roommate.id} className="bg-[#1E1E1E] border-[#333333]">
+            <Card key={roommate.id} className="bg-[#333333] border-[#333333]">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-3">
                   <div

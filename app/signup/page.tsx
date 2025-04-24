@@ -21,7 +21,7 @@ export default function Signup() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-[#121212] text-white p-4">
+    <main className="flex min-h-screen flex-col bg-[#282828] text-white p-4">
       <Link href="/" className="flex items-center text-[#A0A0A0] hover:text-white mb-8">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back

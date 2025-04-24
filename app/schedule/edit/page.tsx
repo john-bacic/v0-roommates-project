@@ -261,7 +261,7 @@ export default function EditSchedule() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#121212] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header */}
       <header className="border-b border-[#333333] p-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -284,7 +284,7 @@ export default function EditSchedule() {
           <p className="text-sm text-[#A0A0A0]">Add your working hours or times when you'll be out</p>
         </div>
 
-        <div className="bg-[#1E1E1E] rounded-lg p-4">
+        <div className="bg-[#333333] rounded-lg p-4">
           <ScheduleEditor schedule={schedule} onChange={handleScheduleChange} userColor={userColor} onSave={handleSave} />
         </div>
       </main>
