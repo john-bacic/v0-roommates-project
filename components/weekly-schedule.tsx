@@ -852,7 +852,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                 setUse24HourFormat(newFormat)
                 localStorage.setItem('use24HourFormat', newFormat.toString())
               }}
-              className="h-8 w-8 text-white hover:bg-[#333333]"
+              className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
               id="toggle-time-format"
               title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
             >
@@ -866,7 +866,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                 setIsCollapsed(newState)
                 localStorage.setItem('weeklyScheduleCollapsed', String(newState))
               }}
-              className="h-8 w-8 text-white hover:bg-[#333333]"
+              className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
               id="toggle-view"
               title={isCollapsed ? "expand-all" : "collapse-all"}
             >
@@ -1002,7 +1002,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       {/* Vertical grid lines */}
                       <div className="absolute inset-0 flex pointer-events-none">
                         {hours.map((hour) => (
-                          <div key={hour} className="flex-1 border-l border-[#333333] first:border-l-0 h-full" />
+                          <div key={hour} className="flex-1 border-l border-[#191919] first:border-l-0 h-full" />
                         ))}
                       </div>
 
