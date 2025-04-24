@@ -29,7 +29,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#282828] text-white p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Roommate Schedules</h1>
+          <h1 className="text-3xl font-bold">Roomies Schedule</h1>
           <p className="text-[#A0A0A0] mt-2">Share your weekly schedule with your roommates</p>
         </div>
 
@@ -64,10 +64,7 @@ export default function Home() {
           </Button>
         </form>
 
-        <div className="text-center text-sm text-[#A0A0A0] mt-8">
-          <p>No login required. Just enter your name to get started.</p>
-          <p className="mt-1">Simple weekly schedule sharing for Riko, Narumi, and John.</p>
-        </div>
+
       </div>
     </main>
   )
