@@ -84,7 +84,7 @@ export default function Roommates() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - now sticky */}
-      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#282828] p-4 shadow-sm">
+      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
             <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
