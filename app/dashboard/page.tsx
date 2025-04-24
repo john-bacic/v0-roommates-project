@@ -420,11 +420,9 @@ export default function Dashboard() {
       </header>
 
       {/* Add padding to account for both fixed headers */}
-      <main className="flex-1 pt-[93px] p-4 max-w-7xl mx-auto w-full">
-
-
+      <main className="flex-1 pt-[93px] px-4 pb-4 max-w-7xl mx-auto w-full">
         {/* Schedule content */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>

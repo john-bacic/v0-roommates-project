@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ClientOnlyScripts } from '@/components/client-only-scripts'
 
 export const metadata: Metadata = {
   title: 'Roommate Scheduler',
@@ -43,7 +44,6 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <link rel="icon" href="/icons/icon-192x192.png" />
-        <script src="/disable-swipe.js" defer></script>
         
         {/* iOS splash screens */}
         <link rel="apple-touch-startup-image" href="/splash.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />
@@ -56,22 +56,7 @@ export default function RootLayout({
       </head>
       <body className="overflow-y-auto">
         {children}
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').then(
-                  function(registration) {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                  },
-                  function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                  }
-                );
-              });
-            }
-          `
-        }} />
+        <ClientOnlyScripts />
       </body>
     </html>
   )

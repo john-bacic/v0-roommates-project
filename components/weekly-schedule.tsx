@@ -853,7 +853,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   return (
-    <div className="w-full pt-[36px] mt-[57px]">
+    <div className="w-full">
       {/* Make the Weekly Schedule header sticky right below the Dashboard header */}
       <div className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md" data-component-name="WeeklySchedule">
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
@@ -934,7 +934,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       </div>
 
       {days.map((day, dayIndex) => (
-        <div key={day} className="mb-8">
+        <div key={day} className="mb-4">
           {/* Day header - stays sticky below the WeeklySchedule header */}
           <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'}`}>
             <div className="flex justify-between items-center pr-2">
@@ -948,7 +948,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
               {/* Time header - now scrolls with content */}
-              <div className="bg-[#282828] mb-6">
+              <div className="bg-[#282828] mb-2">
                 <div className="relative h-6">
                   <div className="absolute inset-0 flex">
                     {/* Current time indicator - only show in expanded mode or if this is the current day */}
