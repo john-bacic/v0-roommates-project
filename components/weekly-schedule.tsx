@@ -853,10 +853,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full pt-[36px]">
       {/* Make the Weekly Schedule header sticky with no bottom padding */}
-      <div className="sticky top-[57px] z-40 bg-[#282828] border-b border-[#333333] w-full overflow-hidden">
-        <div className="flex justify-between items-center h-[36px] w-full">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md" data-component-name="WeeklySchedule">
+        <div className="flex justify-between items-center h-[36px] w-full max-w-screen-2xl mx-auto px-4">
           <div>
             <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
           </div>
@@ -936,7 +936,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-8">
           {/* Day header - stays sticky */}
-          <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'}`}>
+          <div className={`sticky top-[36px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'}`}>
             <div className="flex justify-between items-center pr-2">
               <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
               
@@ -959,7 +959,6 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           left: `${getCurrentTimePosition()}%`,
                           height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)' // Slightly taller in expanded state
                         }}
-                        data-component-name="WeeklySchedule"
                       >
                         <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
                       </div>
