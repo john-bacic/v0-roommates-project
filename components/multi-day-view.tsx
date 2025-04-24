@@ -190,23 +190,26 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
         </div>
       </div>
 
-      {/* Day headers */}
-      <div className="flex">
-        {/* Empty cell for time column - narrower on mobile */}
-        <div className="w-12 min-w-12 sm:w-16 sm:min-w-16"></div>
-        <div className="flex-grow flex">
-          {/* Day columns */}
-          {days.map((day, dayIndex) => (
-            <div 
-              key={day} 
-              className={`flex-1 py-2 text-center font-medium ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}
-            >
-              <span className="hidden sm:inline">{day}</span>
-              <span className="inline sm:hidden">{days.length === 1 ? day : day.substring(0, 3)}</span>
+      {/* Day headers - only show when viewing multiple days */}
+      {days.length > 1 && (
+        <div className="flex">
+          {/* Empty cell for time column - narrower on mobile */}
+          <div className="w-12 min-w-12 sm:w-16 sm:min-w-16"></div>
+          <div className="flex-grow flex">
+            <div className="flex border-b border-[#333333] w-full">
+              {days.map((day, dayIndex) => (
+                <div 
+                  key={day} 
+                  className={`flex-1 py-2 text-center font-medium ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}
+                >
+                  <span className="hidden sm:inline">{day}</span>
+                  <span className="inline sm:hidden">{day.substring(0, 3)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Time slots and events */}
       <div className="relative">
