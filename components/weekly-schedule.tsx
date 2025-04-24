@@ -934,8 +934,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
-                          height: isMobile ? 'calc(100% + 5rem)' : isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 15rem)' // Shorter on mobile, appropriate for desktop in both states
+                          height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)' // Slightly taller in expanded state
                         }}
+                        data-component-name="WeeklySchedule"
                       >
                         <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
                       </div>
@@ -963,7 +964,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                 const isCurrentUser = user.name === currentUserName
 
                 return (
-                  <div key={`${day}-${user.id}`} className={`mb-${isCollapsed ? "1" : "4"} relative z-10`}>
+                  <div key={`${day}-${user.id}`} className="mb-4 relative z-10">
                     <div className="flex items-center justify-between mb-1 pl-1">
                       <div
                         className={`flex items-center gap-2 ${isCurrentUser ? "cursor-pointer hover:opacity-80" : ""}`}
@@ -992,10 +993,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                     </div>
 
                     {/* Adjust the height based on collapsed state */}
-                    <div
-                      className={`relative ${
-                        isCollapsed ? "h-2" : "h-10"
-                      } bg-[#1E1E1E] rounded-md overflow-hidden transition-all duration-200`}
+                      <div
+                        className={`relative ${
+                          isCollapsed ? "h-2" : "h-10"
+                        } bg-[#1E1E1E] rounded-md overflow-hidden transition-all duration-200 flex-grow`}
+                      data-component-name="WeeklySchedule"
                     >
                       {/* Vertical grid lines */}
                       <div className="absolute inset-0 flex pointer-events-none">
@@ -1032,7 +1034,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           <div
                             key={block.id || index}
                             className={`absolute ${
-                              isCollapsed ? "h-2" : "top-0 h-full"
+                              isCollapsed ? "h-2" : "top-0 h-full bottom-0"
                             } rounded-md flex items-center justify-center transition-all duration-200 z-10 ${
                               isCurrentUser ? "cursor-pointer hover:opacity-90" : ""
                             }`}
