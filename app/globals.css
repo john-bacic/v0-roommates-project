@@ -11,6 +11,19 @@
 /* Time input format control */
 .use-24h-time input[type="time"] {
   color-scheme: dark;
+  /* Force 24-hour time format */
+  appearance: textfield;
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Hide AM/PM field when in 24-hour mode */
+.use-24h-time input[type="time"]::-webkit-datetime-edit-ampm-field {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* Force 24-hour display */
@@ -19,9 +32,17 @@
   color: white;
 }
 
-/* Hide AM/PM field when in 24-hour mode */
-.use-24h-time input[type="time"]::-webkit-datetime-edit-ampm-field {
-  display: none;
+/* Adjust spacing for 24-hour format */
+.use-24h-time input[type="time"]::-webkit-datetime-edit {
+  padding-right: 0;
+  width: calc(100% - 10px);
+}
+
+/* Make time inputs more visible */
+input[type="time"] {
+  font-family: monospace;
+  font-size: 14px;
+  padding: 4px 8px;
 }
 
 body {

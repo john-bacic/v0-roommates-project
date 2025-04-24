@@ -292,6 +292,8 @@ export function QuickScheduleModal({
                   onChange={(e) => setTimeBlock({ ...timeBlock, start: e.target.value })}
                   className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
                   style={{ backgroundColor: "#242424" }}
+                  step="60"
+                  data-time-format={use24HourFormat ? '24h' : '12h'}
                 />
                 <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
                   {formatTimeForDisplay(timeBlock.start, use24HourFormat)}
@@ -308,6 +310,8 @@ export function QuickScheduleModal({
                   onChange={(e) => setTimeBlock({ ...timeBlock, end: e.target.value })}
                   className="bg-[#242424] border-[#333333] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[var(--focus-ring-color)]"
                   style={{ backgroundColor: "#242424" }}
+                  step="60"
+                  data-time-format={use24HourFormat ? '24h' : '12h'}
                 />
                 <div className="absolute right-0 -top-5 text-xs text-[#A0A0A0]">
                   {formatTimeForDisplay(timeBlock.end, use24HourFormat)}

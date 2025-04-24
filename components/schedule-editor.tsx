@@ -172,6 +172,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                     className="bg-[#242424] border-[#333333] text-white"
                     onChange={(e) => updateTimeBlock(activeDay, index, "start", e.target.value)}
                     data-time-format={use24HourFormat ? '24h' : '12h'}
+                    step="60"
                   />
                 </div>
                 <div className="flex flex-col">
@@ -185,6 +186,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                     className="bg-[#242424] border-[#333333] text-white"
                     onChange={(e) => updateTimeBlock(activeDay, index, "end", e.target.value)}
                     data-time-format={use24HourFormat ? '24h' : '12h'}
+                    step="60"
                   />
                 </div>
               </div>
