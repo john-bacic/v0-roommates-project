@@ -69,10 +69,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const hours = Array.from({ length: 22 }, (_, i) => i + 5) // 5 to 26 (2am)
   const [currentTime, setCurrentTime] = useState(new Date())
   
-  // Helper function to determine text color based on background color
+  // Helper function to always return dark text for colored backgrounds
   const getTextColor = (bgColor: string) => {
-    const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
-    return lightColors.includes(bgColor) ? "#000" : "#fff"
+    return "#000" // Always use dark text against colored backgrounds
   }
 
   // For mobile view, we'll show a simplified version

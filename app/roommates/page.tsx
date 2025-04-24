@@ -11,7 +11,7 @@ const initialUsers = [
   {
     id: 1,
     name: "Riko",
-    color: "#BB86FC",
+    color: "#FF7DB1",
     initial: "R",
     description: "Classes: Mon-Fri, Works part-time on weekends",
     availableDays: [0, 1, 2, 3, 4] // Monday to Friday
@@ -19,7 +19,7 @@ const initialUsers = [
   { 
     id: 2, 
     name: "Narumi", 
-    color: "#03DAC6", 
+    color: "#63D7C6", 
     initial: "N", 
     description: "Works: Tue-Sat, Free on Sun-Mon",
     availableDays: [1, 2, 3, 4, 5] // Tuesday to Saturday
@@ -27,7 +27,7 @@ const initialUsers = [
   { 
     id: 3, 
     name: "John", 
-    color: "#FFD54F", 
+    color: "#F8D667", 
     initial: "J", 
     description: "Classes: Mon-Thu, Works evenings on Fri",
     availableDays: [0, 1, 2, 3] // Monday to Thursday
@@ -139,7 +139,7 @@ export default function Roommates() {
                   className="w-full mt-4"
                   style={{
                     backgroundColor: roommate.color,
-                    color: ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate.color) ? "#000" : "#fff",
+                    color: "#000", // Always use dark text against colored backgrounds
                     border: "none"
                   }}
                 >

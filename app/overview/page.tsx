@@ -9,15 +9,14 @@ import { Button } from "@/components/ui/button"
 
 // Initial users data as fallback
 const initialUsers = [
-  { id: 1, name: "Riko", color: "#BB86FC", initial: "R" },
-  { id: 2, name: "Narumi", color: "#03DAC6", initial: "N" },
-  { id: 3, name: "John", color: "#CF6679", initial: "J" },
+  { id: 1, name: "Riko", color: "#FF7DB1", initial: "R" },
+  { id: 2, name: "Narumi", color: "#63D7C6", initial: "N" },
+  { id: 3, name: "John", color: "#F8D667", initial: "J" },
 ]
 
-// Helper function to determine text color based on background color
+// Helper function to always return dark text for colored backgrounds
 const getTextColor = (bgColor: string): string => {
-  const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
-  return lightColors.includes(bgColor) ? "#000" : "#fff"
+  return "#000" // Always use dark text against colored backgrounds
 }
 
 export default function Overview() {
@@ -28,7 +27,7 @@ export default function Overview() {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
-  const [userColor, setUserColor] = useState("#BB86FC") // Default color
+  const [userColor, setUserColor] = useState("#FF7DB1") // Default color
   
   // Helper function to get current day of the week
   const getCurrentDay = (): string => {

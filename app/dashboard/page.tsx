@@ -9,9 +9,9 @@ import { getSupabase } from "@/lib/supabase"
 
 // Initial users array
 const initialUsers = [
-  { id: 1, name: "Riko", color: "#BB86FC", initial: "R" },
-  { id: 2, name: "Narumi", color: "#03DAC6", initial: "N" },
-  { id: 3, name: "John", color: "#CF6679", initial: "J" },
+  { id: 1, name: "Riko", color: "#FF7DB1", initial: "R" },
+  { id: 2, name: "Narumi", color: "#63D7C6", initial: "N" },
+  { id: 3, name: "John", color: "#F8D667", initial: "J" },
 ]
 
 // Type guard function to check if an object is a valid user
@@ -369,10 +369,9 @@ export default function Dashboard() {
     }
   }
 
-  // Determine text color based on background color
+  // Always return dark text for colored backgrounds
   const getTextColor = (bgColor: string) => {
-    const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
-    return lightColors.includes(bgColor) ? "#000" : "#fff"
+    return "#000" // Always use dark text against colored backgrounds
   }
 
   return (

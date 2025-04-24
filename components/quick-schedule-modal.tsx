@@ -44,15 +44,15 @@ interface QuickScheduleModalProps {
 
 // Predefined colors for the color picker in a 3x3 grid
 const COLORS = [
-  "#BB86FC", // Purple (default)
-  "#03DAC6", // Teal
-  "#CF6679", // Pink
-  "#FFB74D", // Orange
-  "#64B5F6", // Blue
-  "#81C784", // Green
-  "#FFD54F", // Yellow
-  "#E57373", // Red
-  "#CE93D8", // Light Purple
+  "#FF7DB1", // Hot Pink
+  "#FFC7C1", // Light Pink
+  "#FF9089", // Coral
+  "#FFC346", // Yellow
+  "#F8D667", // Middle Yellow
+  "#63D7C6", // Mint
+  "#89FA96", // Light Green
+  "#8EBDFF", // Sky Blue
+  "#B388F5", // Lavender
 ]
 
 // Helper function to format time for display (24h -> 12h with AM/PM)
@@ -194,10 +194,9 @@ export function QuickScheduleModal({
     }))
   }
 
-  // Helper function to determine text color based on background color
+  // Helper function to always return dark text for colored backgrounds
   const getTextColor = (bgColor: string) => {
-    const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
-    return lightColors.includes(bgColor) ? "#000" : "#fff"
+    return "#000" // Always use dark text against colored backgrounds
   }
 
   return (

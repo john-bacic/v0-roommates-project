@@ -10,8 +10,7 @@ import { supabase } from "@/lib/supabase"
 
 // Add the getTextColor helper function
 const getTextColor = (bgColor: string) => {
-  const lightColors = ["#BB86FC", "#03DAC6", "#FFB74D", "#64B5F6", "#81C784", "#FFD54F"]
-  return lightColors.includes(bgColor) ? "#000" : "#fff"
+  return "#000" // Always use dark text against colored backgrounds
 }
 
 interface TimeBlock {
@@ -25,7 +24,7 @@ interface TimeBlock {
 // Update the component to include userColor state
 export default function EditSchedule() {
   const [userName, setUserName] = useState("")
-  const [userColor, setUserColor] = useState("#BB86FC") // Default color
+  const [userColor, setUserColor] = useState("#FF7DB1") // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
     // Only run in client-side
     if (typeof window !== 'undefined') {
