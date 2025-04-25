@@ -97,19 +97,21 @@ export default function Roommates() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#282828] text-white overflow-auto">
-      {/* Header - now sticky */}
-      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+      {/* Header - fixed at top */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center">
             <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Schedule
+              Back
             </Link>
             <h1 className="text-xl font-bold">Roommates</h1>
           </div>
         </div>
       </header>
+      {/* Spacer to account for fixed header */}
+      <div className="h-[73px]"></div>
 
       {/* Main content */}
       <main className="flex-1 p-4 max-w-7xl mx-auto w-full">

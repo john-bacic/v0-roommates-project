@@ -376,9 +376,9 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
-      {/* Main header - sticky at the top */}
-      <header className="sticky top-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] w-full">
-        <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4">
+      {/* Main header - fixed at the top */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333]">
+        <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           {/* Update the header title */}
           <h1 className="text-xl font-bold">Roomies Schedules</h1>
 
@@ -420,6 +420,8 @@ export default function Dashboard() {
       </header>
 
       {/* Main content */}
+      {/* Spacer to account for fixed header */}
+      <div className="h-[57px]"></div>
       <main className="flex-1 px-4 pb-4 max-w-7xl mx-auto w-full">
         {/* Schedule content */}
         <div className="flex flex-col">
