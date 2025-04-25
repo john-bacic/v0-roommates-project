@@ -1049,15 +1049,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             </div>
           </div>
 
+          {/* Day header - only for Monday */}
+          {day === "Monday" && (
+            <div className="flex justify-between items-center pr-2 mb-2">
+              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+            </div>
+          )}
+
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
-              {/* User header */}
-              <div className="flex justify-between items-center pr-2 mb-2">
-                <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
-              </div>
-
-              {/* Time header - now below user header */}
+              {/* Time header */}
               <div className="bg-[#282828] mb-2">
                 <div className="relative h-6">
                   <div className="absolute inset-0 flex">
