@@ -66,7 +66,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false, onTimeFormatChange }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  const hours = Array.from({ length: 22 }, (_, i) => i + 5) // 5 to 26 (2am)
+  const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6am to midnight (24)
   const [currentTime, setCurrentTime] = useState(new Date())
   
   // Helper function to always return dark text for colored backgrounds
@@ -1052,7 +1052,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
-              {/* Time header - now scrolls with content */}
+              {/* User header */}
+              <div className="flex justify-between items-center pr-2 mb-2">
+                <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+              </div>
+
+              {/* Time header - now below user header */}
               <div className="bg-[#282828] mb-2">
                 <div className="relative h-6">
                   <div className="absolute inset-0 flex">
@@ -1207,6 +1212,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           </div>
         </div>
       ))}
+
+      {/* Add padding at the bottom */}
+      <div className="pb-8" />
 
       {/* Quick Schedule Modal */}
       {selectedUser && (
