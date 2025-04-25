@@ -175,19 +175,17 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
 
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center mb-4 px-4">
+      <div className="flex items-center gap-3 mb-4 px-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTimeFormat}
+          className="h-8 w-8 text-white hover:bg-[#333333]"
+          title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
+        >
+          <Clock className="h-4 w-4" />
+        </Button>
         <h3 className="text-sm font-medium">All Schedules</h3>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTimeFormat}
-            className="h-8 w-8 text-white hover:bg-[#333333]"
-            title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
-          >
-            <Clock className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
 
       {/* Day headers - only show when viewing multiple days */}

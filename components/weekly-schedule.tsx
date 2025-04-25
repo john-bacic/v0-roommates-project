@@ -1186,12 +1186,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                               <div className="flex flex-row items-center justify-start w-full h-full pl-4">
                                 <div className="flex flex-row items-center justify-start">
                                   {!block.allDay ? (
-                                    <span className="text-xs opacity-80 mr-1 font-bold">
+                                    <span className="text-xs opacity-80 mr-1 font-bold leading-tight">
                                       {formatTimeDisplay(block.start)} - {formatTimeDisplay(block.end)}
                                     </span>
                                   ) : null}
                                   {!block.allDay && <span className="text-xs opacity-60 mr-1">|</span>}
-                                  <span className="text-xs font-bold">
+                                  <span className="text-xs font-bold leading-tight">
                                     {block.label}
                                     {block.allDay ? " (All Day)" : ""}
                                     {isCurrentUser && width > 30 && (
