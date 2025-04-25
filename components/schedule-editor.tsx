@@ -230,12 +230,12 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
   return (
     <div className="w-full">
-      <div className="flex overflow-x-auto mb-4 pb-2">
+      <div className="grid grid-cols-7 gap-1 mb-4 pb-2 w-full">
         {days.map((day) => (
           <Button
             key={day}
             variant={activeDay === day ? "default" : "outline"}
-            className={`mr-2 ${
+            className={`px-1 sm:px-2 text-xs sm:text-sm ${
               activeDay === day ? "text-black" : "bg-[#333333] border-[#444444] text-white hover:bg-[#444444]"
             }`}
             style={activeDay === day ? { backgroundColor: userColor, color: getTextColor(userColor) } : {}}
@@ -308,6 +308,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                       value={block.start || ''}
                       onChange={(value) => updateTimeBlock(activeDay, index, "start", value)}
                       use24HourFormat={use24HourFormat}
+                      userColor={userColor}
                     />
                   </div>
                 </div>
@@ -326,6 +327,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                       value={block.end || ''}
                       onChange={(value) => updateTimeBlock(activeDay, index, "end", value)}
                       use24HourFormat={use24HourFormat}
+                      userColor={userColor}
                     />
                   </div>
                 </div>

@@ -318,8 +318,7 @@ export default function EditSchedule() {
       {/* Main content */}
       <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
         <div className="mb-6">
-          <h2 className="text-lg font-medium mb-2">Week of {formatWeekRange()}</h2>
-          <p className="text-sm text-[#A0A0A0]">Add your working hours or times when you'll be out</p>
+          <h2 className="text-lg font-medium">Week of {formatWeekRange()}</h2>
         </div>
 
         <div className="bg-[#333333] rounded-lg p-4">

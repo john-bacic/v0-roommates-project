@@ -12,6 +12,7 @@ interface TimeInputProps {
   label?: string
   use24HourFormat?: boolean
   className?: string
+  userColor?: string
 }
 
 export function TimeInput({
@@ -21,6 +22,7 @@ export function TimeInput({
   label,
   use24HourFormat = true,
   className = "",
+  userColor = "#FFFFFF",
 }: TimeInputProps) {
   const [hours, setHours] = useState<string>("")
   const [minutes, setMinutes] = useState<string>("")
@@ -144,37 +146,42 @@ export function TimeInput({
   return (
     <div className="flex flex-col space-y-1">
       {label && <Label htmlFor={id}>{label}</Label>}
-      <div className="flex items-center bg-[#242424] border border-[#333333] rounded-md">
-        <Input
-          id={`${id}-hours`}
-          type="text"
-          inputMode="numeric"
-          pattern={use24HourFormat ? "[0-9]{1,2}" : "[1-9]|1[0-2]"}
-          value={hours}
-          onChange={handleHoursChange}
-          className="w-12 border-none bg-transparent text-white text-center no-spinners"
-          placeholder={use24HourFormat ? "00" : "12"}
-        />
-        <span className="text-white mx-1">:</span>
-        <Input
-          id={`${id}-minutes`}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-5][0-9]"
-          value={minutes}
-          onChange={handleMinutesChange}
-          className="w-12 border-none bg-transparent text-white text-center no-spinners"
-          placeholder="00"
-        />
-        {!use24HourFormat && (
-          <button 
-            type="button"
-            onClick={handlePeriodChange}
-            className="ml-2 px-2 py-1 text-xs bg-[#333333] text-white rounded hover:bg-[#444444] focus:outline-none"
-          >
-            {period}
-          </button>
-        )}
+      <div className="flex items-center justify-center bg-[#242424] border border-[#333333] rounded-md w-full">
+        <div className="flex items-center">
+          <Input
+            id={`${id}-hours`}
+            type="text"
+            inputMode="numeric"
+            pattern={use24HourFormat ? "[0-9]{1,2}" : "[1-9]|1[0-2]"}
+            value={hours}
+            onChange={handleHoursChange}
+            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3"
+            style={{ color: userColor }}
+            placeholder={use24HourFormat ? "00" : "12"}
+          />
+          <span style={{ color: userColor }} className="mx-0.5 sm:mx-1">:</span>
+          <Input
+            id={`${id}-minutes`}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-5][0-9]"
+            value={minutes}
+            onChange={handleMinutesChange}
+            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3"
+            style={{ color: userColor }}
+            placeholder="00"
+          />
+          {!use24HourFormat && (
+            <button 
+              type="button"
+              onClick={handlePeriodChange}
+              className="ml-1 sm:ml-2 px-1 sm:px-2 py-1 text-xs bg-[#333333] rounded hover:bg-[#444444] focus:outline-none"
+              style={{ color: userColor }}
+            >
+              {period}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
