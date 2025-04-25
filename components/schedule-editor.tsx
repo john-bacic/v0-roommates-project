@@ -51,7 +51,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     if (initialActiveDay && days.includes(initialActiveDay)) {
       setActiveDay(initialActiveDay)
     }
-  }, [initialActiveDay, days])
+  }, [initialActiveDay])
   
   useEffect(() => {
     if (use24HourFormat) {
@@ -231,6 +231,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
   // Create a ref for the schedule content area for swipe detection
   const scheduleContentRef = useRef<HTMLDivElement>(null);
+  const originalTimesRef = useRef<{ [key: string]: { start: string; end: string } }>({});
   
   // Navigate to the previous day
   const goToPreviousDay = () => {
@@ -362,23 +363,46 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                 id={`all-day-toggle-${index}`}
                 checked={block.allDay || false}
                 onCheckedChange={(checked) => {
-                  const newSchedule = {...schedule};
+                  const key = `${activeDay}-${index}`;
+                  const newSchedule = { ...schedule };
                   if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
                   
-                  const currentBlock = newSchedule[activeDay][index] || {
-                    start: block.start || "09:00",
-                    end: block.end || "17:00",
-                    label: block.label || ""
-                  };
+                  if (checked) {
+                    // Store original times
+                    originalTimesRef.current[key] = { start: block.start || "09:00", end: block.end || "17:00" };
+                    // Update block with all day values
+                    newSchedule[activeDay][index] = {
+                      ...block,
+                      allDay: true,
+                      start: "00:00",
+                      end: "23:59"
+                    };
+                  } else {
+                    // Restore original times
+                    const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
+                    // Update block with original values
+                    newSchedule[activeDay][index] = {
+                      ...block,
+                      allDay: false,
+                      start: prev.start,
+                      end: prev.end
+                    };
+                    delete originalTimesRef.current[key];
+                  }
                   
-                  newSchedule[activeDay][index] = {
-                    ...currentBlock,
-                    allDay: checked,
-                    start: checked ? "00:00" : currentBlock.start,
-                    end: checked ? "23:59" : currentBlock.end
-                  };
-                  
+                  // Update UI immediately
                   onChange(newSchedule);
+                  
+                  // Then persist to Supabase
+                  updateTimeBlock(activeDay, index, "allDay", checked);
+                  if (checked) {
+                    updateTimeBlock(activeDay, index, "start", "00:00");
+                    updateTimeBlock(activeDay, index, "end", "23:59");
+                  } else {
+                    const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
+                    updateTimeBlock(activeDay, index, "start", prev.start);
+                    updateTimeBlock(activeDay, index, "end", prev.end);
+                  }
                 }}
                 className="data-[state=checked]:bg-[var(--focus-ring-color)]"
               />
