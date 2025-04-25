@@ -303,15 +303,12 @@ export default function EditSchedule() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-            <h1 className="text-xl font-bold">Edit Your Schedule</h1>
-          </div>
-
-          {/* Save button moved to schedule editor */}
+          <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Link>
+          <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Edit</h1>
+          <div className="w-16">{/* Spacer to balance layout */}</div>
         </div>
       </header>
 

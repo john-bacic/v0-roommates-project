@@ -146,16 +146,14 @@ export function TimeInput({
   return (
     <div className="flex flex-col space-y-1">
       {label && <Label htmlFor={id}>{label}</Label>}
-      <div className="flex items-center justify-center bg-[#242424] border border-[#333333] rounded-md w-full">
+      <div className="flex items-center justify-center bg-[#242424] border border-[#333333] rounded-md w-full cursor-pointer">
         <div className="flex items-center">
           <Input
             id={`${id}-hours`}
             type="text"
-            inputMode="numeric"
-            pattern={use24HourFormat ? "[0-9]{1,2}" : "[1-9]|1[0-2]"}
+            readOnly
             value={hours}
-            onChange={handleHoursChange}
-            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3"
+            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3 cursor-pointer"
             style={{ color: userColor }}
             placeholder={use24HourFormat ? "00" : "12"}
           />
@@ -163,18 +161,19 @@ export function TimeInput({
           <Input
             id={`${id}-minutes`}
             type="text"
-            inputMode="numeric"
-            pattern="[0-5][0-9]"
+            readOnly
             value={minutes}
-            onChange={handleMinutesChange}
-            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3"
+            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3 cursor-pointer"
             style={{ color: userColor }}
             placeholder="00"
           />
           {!use24HourFormat && (
             <button 
               type="button"
-              onClick={handlePeriodChange}
+              onClick={(e) => {
+                e.stopPropagation(); // Stop event from bubbling up to parent
+                handlePeriodChange();
+              }}
               className="ml-1 sm:ml-2 px-1 sm:px-2 py-1 text-xs bg-[#333333] rounded hover:bg-[#444444] focus:outline-none"
               style={{ color: userColor }}
             >

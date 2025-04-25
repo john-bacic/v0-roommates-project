@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { ArrowLeft, Edit2 } from "lucide-react"
+import { ArrowLeft, Edit2, ChevronLeft, ChevronRight } from "lucide-react"
 import { MultiDayView } from "@/components/multi-day-view"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -196,13 +196,49 @@ export default function Overview() {
     }
   }
   
-  // Select a specific day
+  // Navigate to the previous day
+  const goToPreviousDay = () => {
+    const currentIndex = days.indexOf(selectedDay);
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : days.length - 1;
+    selectDay(days[prevIndex]);
+  };
+  
+  // Navigate to the next day
+  const goToNextDay = () => {
+    const currentIndex = days.indexOf(selectedDay);
+    const nextIndex = currentIndex < days.length - 1 ? currentIndex + 1 : 0;
+    selectDay(days[nextIndex]);
+  };
+  
+  // Function to select a specific day
   const selectDay = (day: string) => {
     setSelectedDay(day)
     setShowFullWeek(false)
     localStorage.setItem('overviewShowFullWeek', 'false')
   }
   
+  // Add keyboard navigation for days
+  useEffect(() => {
+    if (showFullWeek) return; // Only apply in day view
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if no input elements are focused
+      if (document.activeElement?.tagName !== 'INPUT' && 
+          document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === 'ArrowLeft') {
+          goToPreviousDay();
+        } else if (e.key === 'ArrowRight') {
+          goToNextDay();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedDay, showFullWeek]);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at the top */}
@@ -236,23 +272,56 @@ export default function Overview() {
         {/* Day selector tabs - only visible in day view - now fixed below header */}
         {!showFullWeek && (
           <div className="fixed top-[41px] left-0 right-0 z-40 flex overflow-x-auto scrollbar-hide mb-4 pt-6 pb-2 px-2 bg-[#282828] border-b border-[#333333] shadow-sm opacity-90" data-component-name="Overview">
-            {days.map((day) => (
-              <Button
-                key={day}
-                onClick={() => selectDay(day)}
-                variant={selectedDay === day ? "default" : "outline"}
-                className={`mr-2 whitespace-nowrap ${selectedDay === day 
-                  ? '' 
-                  : 'bg-transparent border-[#444444] text-white hover:bg-[#444444]'}`}
-                style={selectedDay === day ? { 
-                  backgroundColor: userColor, 
-                  color: "#000 !important",
-                  borderColor: userColor 
-                } : {}}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-1 text-white hover:bg-[#444444] min-w-8"
+              onClick={goToPreviousDay}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {days.map((day) => {
+              const isActive = selectedDay === day;
+              const dayIndex = days.indexOf(day);
+              const prevDay = dayIndex > 0 ? days[dayIndex - 1] : days[days.length - 1];
+              const nextDay = dayIndex < days.length - 1 ? days[dayIndex + 1] : days[0];
+              
+              return (
+                <Button
+                  key={day}
+                  onClick={() => selectDay(day)}
+                  variant={isActive ? "default" : "outline"}
+                  className={`mr-2 whitespace-nowrap ${isActive 
+                    ? '' 
+                    : 'bg-transparent border-[#444444] text-white hover:bg-[#444444]'}`}
+                  style={isActive ? { 
+                    backgroundColor: userColor, 
+                    color: "#000 !important",
+                    borderColor: userColor 
+                  } : {}}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      selectDay(prevDay);
+                    } else if (e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      selectDay(nextDay);
+                    }
+                  }}
+                  tabIndex={0}
               >
                 {day.substring(0, 3)}
               </Button>
-            ))}
+              );
+            })}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-1 text-white hover:bg-[#444444] min-w-8"
+              onClick={goToNextDay}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         )}
 

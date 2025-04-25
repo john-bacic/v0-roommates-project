@@ -826,6 +826,44 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     // This allows users to try multiple colors before closing
   }
 
+  // Navigate to the previous day
+  const goToPreviousDay = (currentDay: string) => {
+    const currentIndex = days.indexOf(currentDay);
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : days.length - 1;
+    return days[prevIndex];
+  };
+  
+  // Navigate to the next day
+  const goToNextDay = (currentDay: string) => {
+    const currentIndex = days.indexOf(currentDay);
+    const nextIndex = currentIndex < days.length - 1 ? currentIndex + 1 : 0;
+    return days[nextIndex];
+  };
+
+  // Handle day header click to scroll to next day
+  const handleDayHeaderClick = (day: string) => {
+    // Find the next day's element
+    const nextDay = goToNextDay(day);
+    const nextDayElement = document.getElementById(`day-header-${nextDay}`);
+    
+    if (nextDayElement) {
+      // Scroll to the next day with smooth behavior
+      nextDayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Handle double-click to scroll to previous day
+  const handleDayHeaderDoubleClick = (day: string) => {
+    // Find the previous day's element
+    const prevDay = goToPreviousDay(day);
+    const prevDayElement = document.getElementById(`day-header-${prevDay}`);
+    
+    if (prevDayElement) {
+      // Scroll to the previous day with smooth behavior
+      prevDayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+  
   // Helper function to check if the current day is in the visible week
   // Returns the day to show the current time indicator on
   const getCurrentTimeDay = () => {
@@ -968,7 +1006,42 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-4">
           {/* Day header - stays sticky below the WeeklySchedule header */}
-          <div className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'}`}>
+          <div 
+            id={`day-header-${day}`}
+            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80`}
+            onClick={() => handleDayHeaderClick(day)}
+            onDoubleClick={() => handleDayHeaderDoubleClick(day)}
+            onTouchStart={(e) => {
+              // Track touch for potential double-tap
+              const touchTarget = e.currentTarget;
+              const lastTouch = touchTarget.getAttribute('data-last-touch') || '0';
+              const now = new Date().getTime();
+              const timeSince = now - parseInt(lastTouch);
+              
+              if (timeSince < 300 && timeSince > 0) {
+                // Double tap detected
+                e.preventDefault();
+                handleDayHeaderDoubleClick(day);
+              }
+              
+              touchTarget.setAttribute('data-last-touch', now.toString());
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`${day} - Click to go to next day, double-click to go to previous day`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleDayHeaderClick(day);
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                handleDayHeaderClick(day);
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                handleDayHeaderDoubleClick(day);
+              }
+            }}
+          >
             <div className="flex justify-between items-center pr-2">
               <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
               

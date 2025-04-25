@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,6 +9,7 @@ import { TimeInput } from "@/components/ui/time-input"
 import { TimePickerDialog } from "@/components/ui/time-picker-dialog"
 import { Trash2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { useSwipe } from "@/hooks/use-swipe"
 
 interface TimeBlock {
   id?: string
@@ -228,26 +229,119 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     }
   }
 
+  // Create a ref for the schedule content area for swipe detection
+  const scheduleContentRef = useRef<HTMLDivElement>(null);
+  
+  // Navigate to the previous day
+  const goToPreviousDay = () => {
+    const currentIndex = days.indexOf(activeDay);
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : days.length - 1;
+    setActiveDay(days[prevIndex]);
+  };
+  
+  // Navigate to the next day
+  const goToNextDay = () => {
+    const currentIndex = days.indexOf(activeDay);
+    const nextIndex = currentIndex < days.length - 1 ? currentIndex + 1 : 0;
+    setActiveDay(days[nextIndex]);
+  };
+  
+  // Initialize swipe handlers
+  useSwipe(scheduleContentRef, {
+    onSwipeLeft: goToNextDay,
+    onSwipeRight: goToPreviousDay
+  });
+  
+  // Add keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if no input elements are focused
+      if (document.activeElement?.tagName !== 'INPUT' && 
+          document.activeElement?.tagName !== 'TEXTAREA') {
+        if (e.key === 'ArrowLeft') {
+          goToPreviousDay();
+        } else if (e.key === 'ArrowRight') {
+          goToNextDay();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeDay]);
+  
   return (
     <div className="w-full">
-      <div className="grid grid-cols-7 gap-1 mb-4 pb-2 w-full">
-        {days.map((day) => (
-          <Button
-            key={day}
-            variant={activeDay === day ? "default" : "outline"}
-            className={`px-1 sm:px-2 text-xs sm:text-sm ${
-              activeDay === day ? "text-black" : "bg-[#333333] border-[#444444] text-white hover:bg-[#444444]"
-            }`}
-            style={activeDay === day ? { backgroundColor: userColor, color: getTextColor(userColor) } : {}}
-            onClick={() => setActiveDay(day)}
-          >
-            {day.substring(0, 3)}
-          </Button>
-        ))}
+      <div className="grid grid-cols-7 gap-1 mb-4 pb-2 w-full" role="tablist" aria-label="Day selector">
+        {days.map((day) => {
+          const isActive = activeDay === day;
+          const dayIndex = days.indexOf(day);
+          const prevDay = dayIndex > 0 ? days[dayIndex - 1] : days[days.length - 1];
+          const nextDay = dayIndex < days.length - 1 ? days[dayIndex + 1] : days[0];
+          
+          return (
+            <Button
+              key={day}
+              variant={isActive ? "default" : "outline"}
+              className={`px-1 sm:px-2 text-xs sm:text-sm ${
+                isActive ? "text-black" : "bg-[#333333] border-[#444444] text-white hover:bg-[#444444]"
+              }`}
+              style={isActive ? { backgroundColor: userColor, color: getTextColor(userColor) } : {}}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`${day.toLowerCase()}-panel`}
+              onClick={() => setActiveDay(day)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setActiveDay(prevDay);
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setActiveDay(nextDay);
+                }
+              }}
+              onDoubleClick={() => {
+                // On double click, go to next day
+                const nextIndex = days.indexOf(day) < days.length - 1 ? days.indexOf(day) + 1 : 0;
+                setActiveDay(days[nextIndex]);
+              }}
+              onTouchStart={(e) => {
+                // Track touch for potential double-tap
+                const touchTarget = e.currentTarget;
+                const lastTouch = touchTarget.getAttribute('data-last-touch') || '0';
+                const now = new Date().getTime();
+                const timeSince = now - parseInt(lastTouch);
+                
+                if (timeSince < 300 && timeSince > 0) {
+                  // Double tap detected
+                  e.preventDefault();
+                  const nextIndex = days.indexOf(day) < days.length - 1 ? days.indexOf(day) + 1 : 0;
+                  setActiveDay(days[nextIndex]);
+                }
+                
+                touchTarget.setAttribute('data-last-touch', now.toString());
+              }}
+              // Allow long-press to go to previous day
+              onContextMenu={(e) => {
+                e.preventDefault();
+                const prevIndex = days.indexOf(day) > 0 ? days.indexOf(day) - 1 : days.length - 1;
+                setActiveDay(days[prevIndex]);
+              }}
+              tabIndex={0}
+              aria-label={`${day} tab${isActive ? ', selected' : ''}`}
+            >
+              {day.substring(0, 3)}
+            </Button>
+          );
+        })}
       </div>
 
-      <div className="bg-[#333333] rounded-lg p-4">
-        <h3 className="text-sm font-medium mb-4">{activeDay}'s Schedule</h3>
+      <div className="bg-[#333333] rounded-lg p-4" ref={scheduleContentRef}>
+        <div className="flex items-center mb-4">
+          <h3 className="text-sm font-medium">{activeDay}'s Schedule</h3>
+        </div>
 
         {schedule[activeDay]?.length === 0 && (
           <p className="text-sm text-[#A0A0A0] mb-4">No scheduled times for this day.</p>
