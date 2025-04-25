@@ -252,7 +252,7 @@ export default function Overview() {
                 </Link>
               </div>
             <h1 className="text-xl font-bold">
-              {showFullWeek ? `Week of ${formatWeekRange(currentWeek)}` : (selectedDay || days[0])}
+              Overview
             </h1>
           </div>
           
@@ -271,57 +271,45 @@ export default function Overview() {
       <main className="flex-1 pt-[45px] md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
         {/* Day selector tabs - only visible in day view - now fixed below header */}
         {!showFullWeek && (
-          <div className="fixed top-[41px] left-0 right-0 z-40 flex overflow-x-auto scrollbar-hide mb-4 pt-6 pb-2 px-2 bg-[#282828] border-b border-[#333333] shadow-sm opacity-90" data-component-name="Overview">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-1 text-white hover:bg-[#444444] min-w-8"
-              onClick={goToPreviousDay}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {days.map((day) => {
-              const isActive = selectedDay === day;
-              const dayIndex = days.indexOf(day);
-              const prevDay = dayIndex > 0 ? days[dayIndex - 1] : days[days.length - 1];
-              const nextDay = dayIndex < days.length - 1 ? days[dayIndex + 1] : days[0];
-              
-              return (
-                <Button
-                  key={day}
-                  onClick={() => selectDay(day)}
-                  variant={isActive ? "default" : "outline"}
-                  className={`mr-2 whitespace-nowrap ${isActive 
-                    ? '' 
-                    : 'bg-transparent border-[#444444] text-white hover:bg-[#444444]'}`}
-                  style={isActive ? { 
-                    backgroundColor: userColor, 
-                    color: "#000 !important",
-                    borderColor: userColor 
-                  } : {}}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowLeft') {
-                      e.preventDefault();
-                      selectDay(prevDay);
-                    } else if (e.key === 'ArrowRight') {
-                      e.preventDefault();
-                      selectDay(nextDay);
-                    }
-                  }}
-                  tabIndex={0}
-              >
-                {day.substring(0, 3)}
-              </Button>
-              );
-            })}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-1 text-white hover:bg-[#444444] min-w-8"
-              onClick={goToNextDay}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <div className="fixed top-[41px] left-0 right-0 z-40 bg-[#282828] border-b border-[#333333] shadow-sm opacity-90" data-component-name="Overview">
+            <div className="grid grid-cols-7 gap-1 mb-2 pt-4 pb-1 px-2 w-full" role="tablist" aria-label="Day selector">
+              {days.map((day) => {
+                const isActive = selectedDay === day;
+                const dayIndex = days.indexOf(day);
+                const prevDay = dayIndex > 0 ? days[dayIndex - 1] : days[days.length - 1];
+                const nextDay = dayIndex < days.length - 1 ? days[dayIndex + 1] : days[0];
+                
+                return (
+                  <Button
+                    key={day}
+                    onClick={() => selectDay(day)}
+                    className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-10 py-2 px-1 sm:px-2 text-xs sm:text-sm ${isActive 
+                      ? 'bg-primary hover:bg-primary/90' 
+                      : 'border bg-[#333333] border-[#444444] text-white hover:bg-[#444444]'}`}
+                    style={isActive ? { 
+                      backgroundColor: userColor,
+                      color: "#000"
+                    } : {}}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        selectDay(prevDay);
+                      } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        selectDay(nextDay);
+                      }
+                    }}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`${day.toLowerCase()}-panel`}
+                    tabIndex={0}
+                    aria-label={`${day} tab${isActive ? ', selected' : ''}`}
+                  >
+                    {day.substring(0, 3)}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         )}
 
