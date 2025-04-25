@@ -76,6 +76,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // For mobile view, we'll show a simplified version
   const [isMobile, setIsMobile] = useState(false)
+  
+  // State for header visibility based on scroll
+  const [headerVisible, setHeaderVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
 
   // Add a toggle state for the collapsed view, initialized from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -221,17 +225,20 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       setIsMobile(window.innerWidth < 768)
     }
     
-    // Check mobile on initial load
+    // Initial check
     checkMobile()
     
-    // Listen for resize events
-    window.addEventListener("resize", checkMobile)
+    // Add resize listener
+    window.addEventListener('resize', checkMobile)
     
     // Get current user name
-    const storedName = localStorage.getItem("userName")
+    const storedName = localStorage.getItem('userName')
     if (storedName) {
       setCurrentUserName(storedName)
     }
+    
+    // Get used colors
+    setUsedColors(users.map(user => user.color))
     
     // Add event listener for the custom color picker modal event
     const handleOpenColorPickerModal = (event: CustomEvent<{userName: string}>) => {
@@ -247,8 +254,29 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     window.addEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
     
+    // Add scroll event listener for header animation
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      if (currentScrollY < 10) {
+        // Always show header at the top of the page
+        setHeaderVisible(true)
+      } else if (currentScrollY > lastScrollY) {
+        // Scrolling down - hide header
+        setHeaderVisible(false)
+      } else {
+        // Scrolling up - show header
+        setHeaderVisible(true)
+      }
+      
+      setLastScrollY(currentScrollY)
+    }
+    
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
     return () => {
-      window.removeEventListener("resize", checkMobile)
+      window.removeEventListener('resize', checkMobile)
+      window.removeEventListener('scroll', handleScroll)
       window.removeEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
       // Clean up dashboard controls if they exist
       const dashboardControls = document.getElementById('weekly-schedule-controls')
@@ -256,7 +284,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         dashboardControls.innerHTML = ''
       }
     }
-  }, [])
+  }, [users, lastScrollY])
 
   // Update users when initialUsers changes
   useEffect(() => {
@@ -517,9 +545,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     }, 50);
   }
 
-  // Handle opening the modal when clicking on a time block
+  // Handle clicking on a time block - navigate to edit page
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
-    openScheduleModal(user, day, true, timeBlock);
+    // Navigate to the edit page with the user's name and day as query parameters
+    window.location.href = `/schedule/edit?from=%2Fdashboard&user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}`;
   }
 
   // Close the modal and reset state
@@ -854,8 +883,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   return (
     <div className="w-full">
-      {/* Make the Weekly Schedule header sticky right below the Dashboard header */}
-      <div className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90" data-component-name="WeeklySchedule">
+      {/* Make the Weekly Schedule header sticky */}
+      <div 
+        className={`fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
+        data-component-name="WeeklySchedule"
+      >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
             <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>

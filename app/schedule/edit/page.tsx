@@ -34,6 +34,7 @@ export default function EditSchedule() {
     return false
   })
   const router = useRouter()
+  const [activeDay, setActiveDay] = useState("Monday") // Default active day
   const [schedule, setSchedule] = useState<Record<string, TimeBlock[]>>({
     Monday: [],
     Tuesday: [],
@@ -141,22 +142,33 @@ export default function EditSchedule() {
 
   // Effect for initialization and routing
   useEffect(() => {
-    // Get the user's name from localStorage
-    const storedName = localStorage.getItem("userName")
-    // Get the return path from URL if available
+    // Get the user's name from localStorage or URL parameter
     const urlParams = new URLSearchParams(window.location.search)
+    const userParam = urlParams.get('user')
+    const storedName = localStorage.getItem("userName")
+    
+    // Get the day parameter from URL if available
+    const dayParam = urlParams.get('day')
+    if (dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam)) {
+      setActiveDay(dayParam)
+    }
+    
+    // Get the return path from URL if available
     const from = urlParams.get('from')
     if (from) {
       setReturnPath(decodeURIComponent(from))
     }
     
-    if (storedName) {
+    // Prioritize the user parameter from URL if available
+    const userToLoad = userParam || storedName
+    
+    if (userToLoad) {
       // Check if the name is one of the roommates
-      if (["Riko", "Narumi", "John"].includes(storedName)) {
-        setUserName(storedName)
+      if (["Riko", "Narumi", "John"].includes(userToLoad)) {
+        setUserName(userToLoad)
         
         // Load user data and schedules from Supabase
-        loadUserData(storedName);
+        loadUserData(userToLoad);
       } else {
         // If not a roommate, redirect to home page
         router.push("/")
@@ -311,7 +323,15 @@ export default function EditSchedule() {
         </div>
 
         <div className="bg-[#333333] rounded-lg p-4">
-          <ScheduleEditor schedule={schedule} onChange={handleScheduleChange} userColor={userColor} onSave={handleSave} use24HourFormat={use24HourFormat} />
+          <ScheduleEditor 
+            schedule={schedule} 
+            onChange={handleScheduleChange} 
+            userColor={userColor} 
+            onSave={handleSave} 
+            use24HourFormat={use24HourFormat}
+            userName={userName}
+            initialActiveDay={activeDay}
+          />
         </div>
       </main>
     </div>

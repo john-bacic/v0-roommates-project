@@ -6,9 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { TimeInput } from "@/components/ui/time-input"
+import { TimePickerDialog } from "@/components/ui/time-picker-dialog"
 import { Trash2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 
 interface TimeBlock {
+  id?: string
   start: string
   end: string
   label: string
@@ -21,11 +24,18 @@ interface ScheduleEditorProps {
   userColor?: string
   onSave?: () => void
   use24HourFormat?: boolean
+  userName?: string
+  initialActiveDay?: string
 }
 
-export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave, use24HourFormat = true }: ScheduleEditorProps) {
+export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave, use24HourFormat = true, userName, initialActiveDay }: ScheduleEditorProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  const [activeDay, setActiveDay] = useState(days[0])
+  const [activeDay, setActiveDay] = useState(initialActiveDay || days[0])
+
+  // Time picker dialog state
+  const [timePickerOpen, setTimePickerOpen] = useState(false)
+  const [currentTimeField, setCurrentTimeField] = useState<{dayName: string, index: number, field: 'start' | 'end'} | null>(null)
+  const [currentTimeValue, setCurrentTimeValue] = useState('')
 
   const [focusRingColor, setFocusRingColor] = useState(userColor)
 
@@ -34,6 +44,13 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
     document.documentElement.style.setProperty("--focus-ring-color", userColor)
   }, [userColor])
+  
+  // Update activeDay when initialActiveDay changes
+  useEffect(() => {
+    if (initialActiveDay && days.includes(initialActiveDay)) {
+      setActiveDay(initialActiveDay)
+    }
+  }, [initialActiveDay, days])
   
   useEffect(() => {
     if (use24HourFormat) {
@@ -58,13 +75,60 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     return lightColors.includes(bgColor) ? "#000" : "#fff"
   }
 
-  const addTimeBlock = () => {
+  const addTimeBlock = async () => {
+    const newBlock = { start: "09:00", end: "12:00", label: "Work", allDay: false };
     const newSchedule = { ...schedule }
-    newSchedule[activeDay] = [...(newSchedule[activeDay] || []), { start: "09:00", end: "12:00", label: "Work", allDay: false }]
+    newSchedule[activeDay] = [...(newSchedule[activeDay] || []), newBlock]
     onChange(newSchedule)
+    
+    // Save to Supabase immediately if we have a userName
+    if (userName) {
+      try {
+        // Get user ID from Supabase
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('name', userName)
+          .single();
+        
+        if (userError) {
+          console.error('Error fetching user ID:', userError);
+          return;
+        }
+        
+        const userId = userData.id;
+        
+        // Insert the new block
+        const { data: insertData, error: insertError } = await supabase
+          .from('schedules')
+          .insert({
+            user_id: userId,
+            day: activeDay,
+            start_time: newBlock.start,
+            end_time: newBlock.end,
+            label: newBlock.label,
+            all_day: newBlock.allDay || false
+          })
+          .select();
+        
+        if (insertError) {
+          console.error('Error inserting schedule:', insertError);
+        } else if (insertData && insertData.length > 0) {
+          // Update the new block with the ID
+          const index = newSchedule[activeDay].length - 1;
+          newSchedule[activeDay][index].id = insertData[0].id;
+          onChange(newSchedule);
+        }
+        
+        // Save to localStorage as a fallback
+        localStorage.setItem(`schedule_${userName}`, JSON.stringify(newSchedule));
+      } catch (error) {
+        console.error('Error saving schedule to Supabase:', error);
+      }
+    }
   }
 
-  const updateTimeBlock = (dayName: string, index: number, field: keyof TimeBlock, value: any) => {
+  const updateTimeBlock = async (dayName: string, index: number, field: keyof TimeBlock, value: any) => {
     const newSchedule = { ...schedule }
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
     newSchedule[dayName][index] = {
@@ -72,13 +136,96 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
       [field]: value,
     }
     onChange(newSchedule)
+    
+    // Save to Supabase immediately if we have a userName
+    if (userName) {
+      try {
+        // Get user ID from Supabase
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('name', userName)
+          .single();
+        
+        if (userError) {
+          console.error('Error fetching user ID:', userError);
+          return;
+        }
+        
+        const userId = userData.id;
+        const block = newSchedule[dayName][index];
+        
+        // If the block has an ID, update it
+        if (block.id) {
+          const { error: updateError } = await supabase
+            .from('schedules')
+            .update({
+              start_time: block.start,
+              end_time: block.end,
+              label: block.label,
+              all_day: block.allDay || false
+            })
+            .eq('id', block.id);
+          
+          if (updateError) {
+            console.error('Error updating schedule:', updateError);
+          }
+        } else {
+          // Otherwise, insert a new record
+          const { data: insertData, error: insertError } = await supabase
+            .from('schedules')
+            .insert({
+              user_id: userId,
+              day: dayName,
+              start_time: block.start,
+              end_time: block.end,
+              label: block.label,
+              all_day: block.allDay || false
+            })
+            .select();
+          
+          if (insertError) {
+            console.error('Error inserting schedule:', insertError);
+          } else if (insertData && insertData.length > 0) {
+            // Update the block with the new ID
+            newSchedule[dayName][index].id = insertData[0].id;
+            onChange(newSchedule);
+          }
+        }
+        
+        // Save to localStorage as a fallback
+        localStorage.setItem(`schedule_${userName}`, JSON.stringify(newSchedule));
+      } catch (error) {
+        console.error('Error saving schedule to Supabase:', error);
+      }
+    }
   }
 
-  const removeTimeBlock = (dayName: string, index: number) => {
+  const removeTimeBlock = async (dayName: string, index: number) => {
+    const block = schedule[dayName][index];
     const newSchedule = { ...schedule }
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
     newSchedule[dayName].splice(index, 1)
     onChange(newSchedule)
+    
+    // Delete from Supabase if we have an ID and userName
+    if (block.id && userName) {
+      try {
+        const { error: deleteError } = await supabase
+          .from('schedules')
+          .delete()
+          .eq('id', block.id);
+        
+        if (deleteError) {
+          console.error('Error deleting schedule:', deleteError);
+        }
+        
+        // Save to localStorage as a fallback
+        localStorage.setItem(`schedule_${userName}`, JSON.stringify(newSchedule));
+      } catch (error) {
+        console.error('Error deleting schedule from Supabase:', error);
+      }
+    }
   }
 
   return (
@@ -147,22 +294,40 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
             {!block.allDay && (
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="flex flex-col">
-                  <TimeInput
-                    id={`start-${index}`}
-                    label="Start"
-                    value={block.start || ''}
-                    onChange={(value) => updateTimeBlock(activeDay, index, "start", value)}
-                    use24HourFormat={use24HourFormat}
-                  />
+                  <Label htmlFor={`start-${index}`} className="text-xs mb-1 block">Start</Label>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setCurrentTimeField({dayName: activeDay, index, field: 'start'})
+                      setCurrentTimeValue(block.start || '09:00')
+                      setTimePickerOpen(true)
+                    }}
+                  >
+                    <TimeInput
+                      id={`start-${index}`}
+                      value={block.start || ''}
+                      onChange={(value) => updateTimeBlock(activeDay, index, "start", value)}
+                      use24HourFormat={use24HourFormat}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col">
-                  <TimeInput
-                    id={`end-${index}`}
-                    label="End"
-                    value={block.end || ''}
-                    onChange={(value) => updateTimeBlock(activeDay, index, "end", value)}
-                    use24HourFormat={use24HourFormat}
-                  />
+                  <Label htmlFor={`end-${index}`} className="text-xs mb-1 block">End</Label>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setCurrentTimeField({dayName: activeDay, index, field: 'end'})
+                      setCurrentTimeValue(block.end || '17:00')
+                      setTimePickerOpen(true)
+                    }}
+                  >
+                    <TimeInput
+                      id={`end-${index}`}
+                      value={block.end || ''}
+                      onChange={(value) => updateTimeBlock(activeDay, index, "end", value)}
+                      use24HourFormat={use24HourFormat}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -197,23 +362,11 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           </div>
         ))}
 
-        <div className="flex flex-col sm:flex-row gap-2 mt-2">
-          <Button
-            onClick={onSave || (() => window.location.href = "/dashboard")}
-            style={{ backgroundColor: userColor, color: "#000" }}
-            className="hover:opacity-90 w-full"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
-              <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
-              <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path>
-              <path d="M7 3v4a1 1 0 0 0 1 1h7"></path>
-            </svg>
-            Save
-          </Button>
+        <div className="flex justify-center mt-2 w-full">
           <Button
             onClick={addTimeBlock}
-            className="w-full sm:w-auto px-4 py-2 h-10 text-sm border-2"
-            style={{ backgroundColor: "#000", color: userColor, borderColor: userColor }}
+            className="w-full px-6 py-2 h-10 text-sm border-2"
+            style={{ backgroundColor: "#333333", color: userColor, borderColor: userColor }}
             data-dark-bg="true"
           >
             +ADD
@@ -221,6 +374,20 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
         </div>
       </div>
 
+      {/* Time Picker Dialog */}
+      <TimePickerDialog
+        isOpen={timePickerOpen}
+        onClose={() => setTimePickerOpen(false)}
+        initialTime={currentTimeValue}
+        onTimeSelect={(newTime) => {
+          if (currentTimeField) {
+            updateTimeBlock(currentTimeField.dayName, currentTimeField.index, currentTimeField.field, newTime)
+          }
+        }}
+        use24HourFormat={use24HourFormat}
+        userColor={userColor}
+        title={currentTimeField?.field === 'start' ? 'Start Time' : 'End Time'}
+      />
     </div>
   )
 }
