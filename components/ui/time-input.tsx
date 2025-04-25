@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect, useRef } from "react"
+import { ChevronUp, ChevronDown } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import "./time-input.css"
 
@@ -141,39 +141,127 @@ export function TimeInput({
     updateTime(hours, minutes, newPeriod)
   }
   
+  // Function to increment hours
+  const incrementHours = () => {
+    if (use24HourFormat) {
+      const newHours = (parseInt(hours || "0") + 1) % 24;
+      setHours(newHours.toString().padStart(2, "0"));
+      updateTime(newHours.toString(), minutes);
+    } else {
+      const newHours = hours === "12" ? 1 : (parseInt(hours || "0") + 1);
+      setHours(newHours > 12 ? "1" : newHours.toString());
+      updateTime(newHours > 12 ? "1" : newHours.toString(), minutes, period);
+    }
+  };
+
+  // Function to decrement hours
+  const decrementHours = () => {
+    if (use24HourFormat) {
+      const newHours = (parseInt(hours || "0") - 1 + 24) % 24;
+      setHours(newHours.toString().padStart(2, "0"));
+      updateTime(newHours.toString(), minutes);
+    } else {
+      const newHours = hours === "1" ? 12 : (parseInt(hours || "0") - 1);
+      setHours(newHours < 1 ? "12" : newHours.toString());
+      updateTime(newHours < 1 ? "12" : newHours.toString(), minutes, period);
+    }
+  };
+
+  // Function to increment minutes
+  const incrementMinutes = () => {
+    const newMinutes = (parseInt(minutes || "0") + 1) % 60;
+    setMinutes(newMinutes.toString().padStart(2, "0"));
+    updateTime(hours, newMinutes.toString().padStart(2, "0"), period);
+  };
+
+  // Function to decrement minutes
+  const decrementMinutes = () => {
+    const newMinutes = (parseInt(minutes || "0") - 1 + 60) % 60;
+    setMinutes(newMinutes.toString().padStart(2, "0"));
+    updateTime(hours, newMinutes.toString().padStart(2, "0"), period);
+  };
+
   return (
-    <div className="flex flex-col space-y-1">
+    <div className="flex flex-col space-y-1" data-component-name="TimeInput">
       {label && <Label htmlFor={id}>{label}</Label>}
-      <div className="flex items-center bg-[#242424] border border-[#333333] rounded-md">
-        <Input
-          id={`${id}-hours`}
-          type="text"
-          inputMode="numeric"
-          pattern={use24HourFormat ? "[0-9]{1,2}" : "[1-9]|1[0-2]"}
-          value={hours}
-          onChange={handleHoursChange}
-          className="w-12 border-none bg-transparent text-white text-center no-spinners"
-          placeholder={use24HourFormat ? "00" : "12"}
-        />
-        <span className="text-white mx-1">:</span>
-        <Input
-          id={`${id}-minutes`}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-5][0-9]"
-          value={minutes}
-          onChange={handleMinutesChange}
-          className="w-12 border-none bg-transparent text-white text-center no-spinners"
-          placeholder="00"
-        />
-        {!use24HourFormat && (
+      <div className="time-picker-container" data-component-name="TimeInput">
+        {/* Hours Picker */}
+        <div className="time-picker-unit">
           <button 
-            type="button"
-            onClick={handlePeriodChange}
-            className="ml-2 px-2 py-1 text-xs bg-[#333333] text-white rounded hover:bg-[#444444] focus:outline-none"
+            type="button" 
+            onClick={incrementHours}
+            className="time-picker-button"
+            aria-label="Increment hours"
           >
-            {period}
+            <ChevronUp className="h-4 w-4" />
           </button>
+          <div 
+            id={`${id}-hours`}
+            className="time-picker-value"
+          >
+            {hours.padStart(2, "0")}
+          </div>
+          <button 
+            type="button" 
+            onClick={decrementHours}
+            className="time-picker-button"
+            aria-label="Decrement hours"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
+        
+        <span className="time-picker-separator">:</span>
+        
+        {/* Minutes Picker */}
+        <div className="time-picker-unit">
+          <button 
+            type="button" 
+            onClick={incrementMinutes}
+            className="time-picker-button"
+            aria-label="Increment minutes"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </button>
+          <div 
+            id={`${id}-minutes`}
+            className="time-picker-value"
+          >
+            {minutes.padStart(2, "0")}
+          </div>
+          <button 
+            type="button" 
+            onClick={decrementMinutes}
+            className="time-picker-button"
+            aria-label="Decrement minutes"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
+        
+        {/* AM/PM Toggle */}
+        {!use24HourFormat && (
+          <div className="time-picker-unit ml-2">
+            <button 
+              type="button"
+              onClick={handlePeriodChange}
+              className="time-picker-button"
+              aria-label="Toggle AM/PM"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+            <div className="time-picker-value">
+              {period}
+            </div>
+            <button 
+              type="button"
+              onClick={handlePeriodChange}
+              className="time-picker-button"
+              aria-label="Toggle AM/PM"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
