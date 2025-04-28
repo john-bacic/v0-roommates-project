@@ -1078,7 +1078,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         <div 
                           className="absolute w-[10px] h-[10px] rounded-full bg-red-500"
                           style={{
-                            top: '-5px',
+                            top: '-4px',
                             left: '-4px',
                             position: 'absolute',
                             zIndex: 25, // Ensure it's above the line but below headers
