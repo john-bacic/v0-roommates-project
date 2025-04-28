@@ -76,8 +76,9 @@ export function TimePickerDialog({
             <button
               onClick={onClose}
               className="px-6 py-3 rounded bg-[#333333] hover:bg-[#444444] text-white font-medium w-full max-w-md"
+              data-component-name="TimePickerDialog"
             >
-              Close
+              Save
             </button>
           </div>
         </div>

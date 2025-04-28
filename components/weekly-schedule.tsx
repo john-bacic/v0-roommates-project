@@ -300,12 +300,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // Convert time string to position percentage
   const timeToPosition = (time: string): number => {
     const [hours, minutes] = time.split(":").map(Number)
-    const totalMinutes = hours * 60 + minutes
-    const startMinutes = 6 * 60 // 6:00 AM
-    const endMinutes = 26 * 60 // 2:00 AM
-    const totalDuration = endMinutes - startMinutes
-
-    return ((totalMinutes - startMinutes) / totalDuration) * 100
+    const decimalHours = hours + (minutes / 60)
+    // Use the same calculation as the hour markers and current time indicator
+    // Our visible range is 6am to midnight (18 hours)
+    return ((decimalHours - 6) / 18) * 100
   }
 
   // Add a toggle function after the timeToPosition function
@@ -903,8 +901,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     // Convert to decimal hours (e.g., 14:30 = 14.5)
     const decimalHours = hours + (minutes / 60)
     
-    // Match the calculation used for hour markers: ((hour - 6) / 18) * 100
     // Our visible range is 6am to midnight (18 hours)
+    // This must exactly match the calculation used for the hour markers
+    const hourWidth = 100 / 18 // Each hour is 5.55% of the width
     let position
     
     // Handle times after midnight (0-5am)
@@ -1072,16 +1071,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)' // Slightly taller in expanded state
                         }}
                       >
-                        <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500" />
+                        <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500"></div>
                       </div>
                     )}
                     
                     {hours.map((hour) => (
-                      <div key={hour} className="flex-1 relative">
+                      <div key={hour} className="flex-1 relative" data-component-name="WeeklySchedule">
                         {getVisibleHours().includes(hour) && (
                           <div
                             className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
                             style={{ left: `${((hour - 6) / 18) * 100}%` }}
+                            data-component-name="WeeklySchedule"
                           >
                             {formatHour(hour)}
                           </div>
@@ -1157,10 +1157,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           const endMinute = parseInt(block.end.split(":")[1])
                           
                           // Calculate the start and end positions as percentages
-                          // Adjust calculation to match the time row markers exactly
-                          const hourWidth = 100 / hours.length
-                          startPos = (startHour - hours[0]) * hourWidth + (startMinute / 60) * hourWidth
-                          endPos = (endHour - hours[0]) * hourWidth + (endMinute / 60) * hourWidth
+                          // Use the same calculation as the time markers and current time indicator
+                          // Our visible range is 6am to midnight (18 hours)
+                          const startDecimalHours = startHour + (startMinute / 60)
+                          const endDecimalHours = endHour + (endMinute / 60)
+                          
+                          startPos = ((startDecimalHours - 6) / 18) * 100
+                          endPos = ((endDecimalHours - 6) / 18) * 100
                           width = endPos - startPos
                         }
 
