@@ -920,7 +920,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   return (
     <div className="w-full">
-      {/* Make the Weekly Schedule header sticky */}
+      {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
         className={`fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
         data-component-name="WeeklySchedule"
@@ -1004,7 +1004,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-4">
-          {/* Day header - stays sticky below the WeeklySchedule header */}
+          {/* Day header - stays sticky below the WeeklySchedule header - use same position for mobile and desktop */}
           <div 
             id={`day-header-${day}`}
             className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80`}
@@ -1058,20 +1058,34 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
-              {/* Time header */}
-              <div className="bg-[#282828] mb-2">
-                <div className="relative h-6">
-                  <div className="absolute inset-0 flex">
+              {/* Time header - add padding-top to prevent overlapping */}
+              <div className="bg-[#282828] mb-2 pt-1">
+                <div className="relative h-6 overflow-visible">
+                  <div className="absolute inset-0 flex overflow-visible">
                     {/* Current time indicator - only show in expanded mode or if this is the current day */}
                     {getCurrentTimeDay() === day && (!isCollapsed || day === getCurrentTimeDay()) && (
                       <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20" 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 overflow-visible" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
-                          height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)' // Slightly taller in expanded state
+                          height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)', // Slightly taller in expanded state
+                          transformOrigin: 'top', // Ensure line grows from top
+                          position: 'absolute',
+                          top: 0
                         }}
                       >
-                        <div className="absolute -top-1 -left-[4px] w-[10px] h-[10px] rounded-full bg-red-500"></div>
+                        {/* Red dot always at the top of the line, regardless of mobile or desktop */}
+                        <div 
+                          className="absolute w-[10px] h-[10px] rounded-full bg-red-500"
+                          style={{
+                            top: '-5px',
+                            left: '-4px',
+                            position: 'absolute',
+                            zIndex: 25, // Ensure it's above the line but below headers
+                            pointerEvents: 'none' // Prevent it from blocking interactions
+                          }}
+                          data-component-name="WeeklySchedule"
+                        ></div>
                       </div>
                     )}
                     
