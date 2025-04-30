@@ -259,9 +259,10 @@ export default function ViewSchedule() {
               href="/roommates" 
               className="flex items-center text-white hover:opacity-80"
               data-component-name="LinkComponent"
+              title="Back to Roommates"
             >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              <span className="text-base">Back</span>
+              <ArrowLeft className="h-6 w-6" />
+              <span className="sr-only">Back</span>
             </Link>
             <h1 className="text-xl font-bold text-center flex-1">
               {roommate?.name}'s Schedule {isCurrentUser ? "(You)" : ""}

@@ -307,9 +307,10 @@ export default function EditSchedule() {
             href={returnPath} 
             className="flex items-center text-white hover:opacity-80"
             data-component-name="LinkComponent"
+            title="Back"
           >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            <span className="text-base">Back</span>
+            <ArrowLeft className="h-6 w-6" />
+            <span className="sr-only">Back</span>
           </Link>
           <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Edit</h1>
           <div className="w-16">{/* Spacer to balance layout */}</div>
