@@ -333,17 +333,19 @@ export default function ViewSchedule() {
             <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
               <div className="min-w-[800px] md:min-w-0 pl-2">
                 {/* Time header - add padding-top to prevent overlapping */}
-                <div className="bg-[#282828] mb-2 pt-1">
+                <div className="bg-[#282828] mb-2 pt-1 relative">
                   <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
                     <div className="absolute inset-0 flex overflow-visible">
                       {/* Current time indicator - vertical line with hardware acceleration */}
                       {getCurrentTimeDay() === day && (
                         <div 
-                          className="absolute w-[2px] bg-red-500 h-full z-20 transform-gpu"
+                          className="absolute w-[2px] bg-red-500 z-20 transform-gpu"
                           style={{ 
                             left: `${getCurrentTimePosition()}%`,
                             transform: 'translateZ(0)',
-                            backfaceVisibility: 'hidden'
+                            backfaceVisibility: 'hidden',
+                            height: '200%',
+                            pointerEvents: 'none'
                           }}
                           data-component-name="ViewSchedule"
                         >
@@ -358,6 +360,8 @@ export default function ViewSchedule() {
                           ></div>
                         </div>
                       )}
+                      
+                      {/* Time labels */}
                       
                       {hours.map((hour) => (
                         <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
@@ -386,7 +390,9 @@ export default function ViewSchedule() {
                     ))}
                   </div>
 
-                  {/* Schedule blocks */}
+
+                  
+                  {/* Schedule blocks for this day */}
                   {schedule && schedule[day]?.map((block, index) => {
                     let startPos, endPos, width;
                     
