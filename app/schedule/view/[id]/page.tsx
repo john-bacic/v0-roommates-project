@@ -71,17 +71,17 @@ export default function ViewSchedule() {
     
     loadData()
     
-    // Add scroll event listener for header animation
+    // Add scroll event listener for header animation with debounce
     const handleScroll = () => {
       const currentScrollY = window.scrollY
       
       if (currentScrollY < 10) {
         // Always show header at the top of the page
         setHeaderVisible(true)
-      } else if (currentScrollY > lastScrollY) {
+      } else if (currentScrollY > lastScrollY + 5) { // Add threshold to prevent flickering
         // Scrolling down - hide header
         setHeaderVisible(false)
-      } else {
+      } else if (lastScrollY > currentScrollY + 5) { // Add threshold to prevent flickering
         // Scrolling up - show header
         setHeaderVisible(true)
       }
@@ -89,10 +89,22 @@ export default function ViewSchedule() {
       setLastScrollY(currentScrollY)
     }
     
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    // Use requestAnimationFrame for smoother scrolling
+    let ticking = false;
+    const scrollListener = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', scrollListener, { passive: true })
     
     return () => {
-      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('scroll', scrollListener)
     }
   }, [params.id, router, lastScrollY])
 
@@ -235,7 +247,7 @@ export default function ViewSchedule() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Main header - fixed at the top */}
-      <header className={`fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transition-transform duration-300 will-change-transform ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           <div className="flex items-center justify-between w-full">
             <Link 
@@ -262,11 +274,11 @@ export default function ViewSchedule() {
       </header>
       
       {/* Spacer to account for fixed header */}
-      <div className="h-[57px]"></div>
+      <div className="h-[57px] will-change-auto"></div>
       
       {/* Weekly Schedule header - sticky below main header */}
       <div 
-        className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}"
+        className={`fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 will-change-transform ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
         data-component-name="ViewSchedule"
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
@@ -326,7 +338,7 @@ export default function ViewSchedule() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 pb-4 pt-10 max-w-7xl mx-auto w-full relative">
+      <main className="flex-1 px-4 pb-4 pt-10 max-w-7xl mx-auto w-full relative will-change-auto">
         {days.map((day, dayIndex) => (
           <div key={day} className="mb-4">
             {/* Day header - stays sticky below the WeeklySchedule header */}
