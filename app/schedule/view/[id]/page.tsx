@@ -336,15 +336,16 @@ export default function ViewSchedule() {
                 <div className="bg-[#282828] mb-2 pt-1">
                   <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
                     <div className="absolute inset-0 flex overflow-visible">
-                      {/* Current time indicator - with hardware acceleration */}
+                      {/* Current time indicator - vertical line with hardware acceleration */}
                       {getCurrentTimeDay() === day && (
                         <div 
-                          className="absolute h-[2px] bg-red-500 w-full z-20 transform-gpu"
+                          className="absolute w-[2px] bg-red-500 h-full z-20 transform-gpu"
                           style={{ 
-                            top: `${getCurrentTimePosition()}%`,
+                            left: `${getCurrentTimePosition()}%`,
                             transform: 'translateZ(0)',
                             backfaceVisibility: 'hidden'
                           }}
+                          data-component-name="ViewSchedule"
                         >
                           <div 
                             className="absolute w-[10px] h-[10px] rounded-full bg-red-500 transform-gpu"
@@ -353,6 +354,7 @@ export default function ViewSchedule() {
                               left: '-5px',
                               backfaceVisibility: 'hidden'
                             }}
+                            data-component-name="ViewSchedule"
                           ></div>
                         </div>
                       )}
@@ -471,8 +473,9 @@ export default function ViewSchedule() {
           <Link
             href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[0])}`}
             className="fixed bottom-6 right-6 rounded-full h-14 w-14 flex items-center justify-center border-2 border-black/75"
-            style={{ backgroundColor: roommate?.color || '#03DAC6', color: '#000' }}
+            style={{ backgroundColor: roommate?.color || '#03DAC6', color: '#000', zIndex: 100 }}
             title="Edit schedule"
+            data-component-name="LinkComponent"
           >
             <Edit2 className="h-6 w-6" />
             <span className="sr-only">Edit schedule</span>
