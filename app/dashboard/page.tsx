@@ -444,7 +444,14 @@ export default function Dashboard() {
 
       {/* Floating action button - only visible when logged in */}
       {userName && (
-        <div className="fixed bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out">
+        <div 
+          className="fixed bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
+          style={{
+            position: 'fixed',
+            bottom: '1.5rem',
+            right: '1.5rem'
+          }}
+        >
           <Button
             asChild
             className="rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 border-2"
