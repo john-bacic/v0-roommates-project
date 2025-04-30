@@ -72,13 +72,41 @@ export default function ViewSchedule() {
     loadData()
   }, [params.id, router])
 
-  // Disable header animation on scroll to prevent flickering
+  // Effect for header visibility on scroll
   useEffect(() => {
-    // Keep header always visible
-    setHeaderVisible(true);
+    let lastScrollY = 0;
+    let lastScrollTime = 0;
+    const scrollThreshold = 10;
+    const throttleTime = 100;
     
-    // No scroll event listener needed
-    return () => {};
+    const handleScroll = () => {
+      const now = Date.now();
+      if (now - lastScrollTime < throttleTime) return;
+      
+      lastScrollTime = now;
+      const currentScrollY = window.scrollY;
+      
+      // Always show header at the top of the page
+      if (currentScrollY < 10) {
+        setHeaderVisible(true);
+      } 
+      // Hide header when scrolling down significantly
+      else if (currentScrollY > lastScrollY + scrollThreshold) {
+        setHeaderVisible(false);
+      } 
+      // Show header when scrolling up significantly
+      else if (currentScrollY < lastScrollY - scrollThreshold) {
+        setHeaderVisible(true);
+      }
+      
+      lastScrollY = currentScrollY;
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, [])
 
   if (loading) {
@@ -222,7 +250,9 @@ export default function ViewSchedule() {
       {/* Main header - fixed at the top */}
       <header 
         className="fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transform-gpu"
-        style={{ backfaceVisibility: 'hidden' }}>
+        style={{ 
+          backfaceVisibility: 'hidden'
+        }}>
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           <div className="flex items-center justify-between w-full">
             <Link 
@@ -253,8 +283,11 @@ export default function ViewSchedule() {
       
       {/* Weekly Schedule header - sticky below main header */}
       <div 
-        className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transform-gpu"
-        style={{ backfaceVisibility: 'hidden' }}
+        className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transform-gpu transition-transform duration-300"
+        style={{ 
+          backfaceVisibility: 'hidden',
+          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)'
+        }}
         data-component-name="ViewSchedule"
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
@@ -314,13 +347,13 @@ export default function ViewSchedule() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 pb-4 pt-[93px] max-w-7xl mx-auto w-full relative transform-gpu">
+      <main className="flex-1 px-4 pb-4 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu">
         {days.map((day, dayIndex) => (
           <div key={day} className="mb-4">
             {/* Day header - stays sticky below the WeeklySchedule header */}
             <div 
               id={`day-header-${day}`}
-              className="sticky top-[93px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80 transform-gpu"
+              className="sticky top-[57px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80 transform-gpu"
               data-component-name="ViewSchedule"
               style={{ backfaceVisibility: 'hidden' }}
             >
@@ -336,27 +369,25 @@ export default function ViewSchedule() {
                 <div className="bg-[#282828] mb-2 pt-1 relative">
                   <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
                     <div className="absolute inset-0 flex overflow-visible">
-                      {/* Current time indicator - vertical line with hardware acceleration and animation */}
+                      {/* Current time indicator - vertical line with hardware acceleration */}
                       {getCurrentTimeDay() === day && (
                         <div 
-                          className="absolute w-[2px] bg-red-500 z-20 overflow-visible animate-pulse"
+                          className="absolute w-[2px] bg-red-500 z-20 transform-gpu"
                           style={{ 
                             left: `${getCurrentTimePosition()}%`,
-                            height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)',
-                            transformOrigin: 'top',
-                            position: 'absolute',
-                            top: 0
+                            transform: 'translateZ(0)',
+                            backfaceVisibility: 'hidden',
+                            height: '200%',
+                            pointerEvents: 'none'
                           }}
                           data-component-name="ViewSchedule"
                         >
                           <div 
-                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 animate-pulse"
+                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 transform-gpu"
                             style={{
-                              top: '-4px',
-                              left: '-4px',
-                              position: 'absolute',
-                              zIndex: 25,
-                              pointerEvents: 'none'
+                              top: '-5px',
+                              left: '-5px',
+                              backfaceVisibility: 'hidden'
                             }}
                             data-component-name="ViewSchedule"
                           ></div>
