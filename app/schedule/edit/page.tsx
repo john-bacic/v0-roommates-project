@@ -303,9 +303,13 @@ export default function EditSchedule() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <Link href={returnPath} className="flex items-center text-[#A0A0A0] hover:text-white">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+          <Link 
+            href={returnPath} 
+            className="flex items-center text-white hover:opacity-80"
+            data-component-name="LinkComponent"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            <span className="text-base">Back</span>
           </Link>
           <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Edit</h1>
           <div className="w-16">{/* Spacer to balance layout */}</div>
