@@ -491,7 +491,7 @@ export default function ViewSchedule() {
           <Link
             href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[0])}`}
             className="fixed bottom-6 right-6 rounded-full h-14 w-14 flex items-center justify-center border-2 border-black/75"
-            style={{ backgroundColor: roommate?.color || '#03DAC6', color: '#000', zIndex: 100 }}
+            style={{ backgroundColor: roommate?.color || '#03DAC6', color: '#000', zIndex: 9999 }}
             title="Edit schedule"
             data-component-name="LinkComponent"
           >
