@@ -291,10 +291,12 @@ export default function DayView() {
           <div className="flex items-center">
             <Link
               href={`/schedule/view/${roommate.id}`}
-              className="flex items-center text-[#A0A0A0] hover:text-white mr-4"
+              className="flex items-center text-white hover:opacity-80 mr-4"
+              data-component-name="LinkComponent"
+              title="Back to Weekly View"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Weekly View
+              <ArrowLeft className="h-6 w-6" />
+              <span className="sr-only">Back to Weekly View</span>
             </Link>
           </div>
         </div>

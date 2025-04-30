@@ -103,9 +103,14 @@ export default function Roommates() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center justify-between w-full">
-            <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+            <Link 
+              href="/dashboard" 
+              className="flex items-center text-white hover:opacity-80"
+              data-component-name="LinkComponent"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="h-6 w-6" />
+              <span className="sr-only">Back</span>
             </Link>
             <h1 className="text-xl font-bold text-center flex-1">Roommates</h1>
             <div className="w-[72px]"></div> {/* Spacer to balance the back button */}

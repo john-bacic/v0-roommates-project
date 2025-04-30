@@ -21,9 +21,14 @@ export default function Login() {
 
   return (
     <main className="flex min-h-screen flex-col bg-[#282828] text-white p-4">
-      <Link href="/" className="flex items-center text-[#A0A0A0] hover:text-white mb-8">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
+      <Link 
+        href="/" 
+        className="flex items-center text-white hover:opacity-80 mb-8"
+        data-component-name="LinkComponent"
+        title="Back to Home"
+      >
+        <ArrowLeft className="h-6 w-6" />
+        <span className="sr-only">Back</span>
       </Link>
 
       <div className="flex-1 flex flex-col items-center justify-center">

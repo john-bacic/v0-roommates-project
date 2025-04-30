@@ -246,9 +246,14 @@ export default function Overview() {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center justify-between w-full">
               <div className="flex items-center group">
-                <Link href="/dashboard" className="flex items-center text-[#A0A0A0] group-hover:text-white">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Back
+                <Link 
+                  href="/dashboard" 
+                  className="flex items-center text-white hover:opacity-80"
+                  data-component-name="LinkComponent"
+                  title="Back to Dashboard"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                  <span className="sr-only">Back</span>
                 </Link>
               </div>
             <h1 className="text-xl font-bold text-center flex-1">

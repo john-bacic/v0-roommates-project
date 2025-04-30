@@ -374,7 +374,7 @@ export default function ViewSchedule() {
                       {/* Current time indicator - vertical line with hardware acceleration */}
                       {getCurrentTimeDay() === day && (
                         <div 
-                          className="absolute w-[2px] bg-red-500 z-20 transform-gpu"
+                          className="absolute w-[2px] bg-red-500 z-50 transform-gpu"
                           style={{ 
                             left: `${getCurrentTimePosition()}%`,
                             transform: 'translateZ(0)',
@@ -385,7 +385,7 @@ export default function ViewSchedule() {
                           data-component-name="ViewSchedule"
                         >
                           <div 
-                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 transform-gpu"
+                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 z-50 transform-gpu"
                             style={{
                               top: '-5px',
                               left: '-5px',
