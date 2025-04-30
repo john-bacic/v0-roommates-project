@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Clock, ChevronUp, ChevronDown } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { supabase, fetchUserSchedule, User, TimeBlock as SupabaseTimeBlock } from "@/lib/supabase"
+import { Button } from "@/components/ui/button"
 
 export default function ViewSchedule() {
   const params = useParams()
@@ -13,6 +14,18 @@ export default function ViewSchedule() {
   const [schedule, setSchedule] = useState<Record<string, Array<SupabaseTimeBlock>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserName, setCurrentUserName] = useState("")
+  const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      const savedFormat = localStorage.getItem('use24HourFormat')
+      return savedFormat !== null ? savedFormat === 'true' : false
+    }
+    return false
+  })
+  const [headerVisible, setHeaderVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
 
   useEffect(() => {
     // Load data from Supabase
@@ -56,7 +69,31 @@ export default function ViewSchedule() {
     }
     
     loadData()
-  }, [params.id, router])
+    
+    // Add scroll event listener for header animation
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      if (currentScrollY < 10) {
+        // Always show header at the top of the page
+        setHeaderVisible(true)
+      } else if (currentScrollY > lastScrollY) {
+        // Scrolling down - hide header
+        setHeaderVisible(false)
+      } else {
+        // Scrolling up - show header
+        setHeaderVisible(true)
+      }
+      
+      setLastScrollY(currentScrollY)
+    }
+    
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [params.id, router, lastScrollY])
 
   if (loading) {
     return (
@@ -79,18 +116,115 @@ export default function ViewSchedule() {
   // Time conversion helper
   const timeToPosition = (time: string): number => {
     const [hours, minutes] = time.split(":").map(Number)
-    const totalMinutes = hours * 60 + minutes
-    const startMinutes = 6 * 60 // 6:00 AM
-    const endMinutes = 24 * 60 // 24:00 (midnight)
-    return ((totalMinutes - startMinutes) / (endMinutes - startMinutes)) * 100
+    const decimalHours = hours + (minutes / 60)
+    // Use the same calculation as the WeeklySchedule component
+    return ((decimalHours - 6) / 18) * 100
   }
 
   // Format time for display
   const formatTime = (time: string): string => {
     const [hours, minutes] = time.split(":").map(Number)
-    const period = hours >= 12 ? "PM" : "AM"
-    const displayHours = hours % 12 === 0 ? 12 : hours % 12
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+    
+    if (use24HourFormat) {
+      // 24-hour format
+      return time
+    } else {
+      // AM/PM format
+      const period = hours >= 12 ? "PM" : "AM"
+      const displayHours = hours % 12 === 0 ? 12 : hours % 12
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+    }
+  }
+  
+  // Format hour based on selected format
+  const formatHour = (hour: number): string => {
+    if (use24HourFormat) {
+      if (hour === 24) {
+        return "00"
+      }
+      if (hour > 24) {
+        return `${hour - 24}`
+      }
+      return `${hour}`
+    } else {
+      // AM/PM format
+      if (hour === 0 || hour === 24) {
+        return "12am"
+      }
+      if (hour === 12) {
+        return "12pm"
+      }
+      if (hour > 12 && hour < 24) {
+        return `${hour - 12}pm`
+      }
+      if (hour >= 24) {
+        return `${hour - 24}am`
+      }
+      return `${hour}am`
+    }
+  }
+  
+  // Toggle time format
+  const toggleTimeFormat = () => {
+    const newFormat = !use24HourFormat
+    setUse24HourFormat(newFormat)
+    localStorage.setItem('use24HourFormat', newFormat.toString())
+  }
+  
+  // Toggle collapsed view
+  const toggleView = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem('weeklyScheduleCollapsed', String(newState))
+  }
+  
+  // Format week range with month names
+  const formatWeekRange = (date: Date) => {
+    const start = new Date(date)
+    start.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1)) // Start of week (Monday)
+
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6) // End of week (Sunday)
+
+    // Format with month name
+    const formatDate = (d: Date) => {
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      return `${monthNames[d.getMonth()]} ${d.getDate()}`
+    }
+
+    return `${formatDate(start)} - ${formatDate(end)}`
+  }
+  
+  // Get current time position as a percentage
+  const getCurrentTimePosition = () => {
+    const now = new Date()
+    const hours = now.getHours()
+    const minutes = now.getMinutes()
+    
+    // Convert to decimal hours (e.g., 14:30 = 14.5)
+    const decimalHours = hours + (minutes / 60)
+    
+    // Our visible range is 6am to midnight (18 hours)
+    let position
+    
+    // Handle times after midnight (0-5am)
+    if (hours < 6) {
+      // For hours 0-5, show them at the end of the previous day (after hour 24)
+      position = ((hours + 24 - 6) / 18) * 100
+    } else {
+      // For normal hours (6am-11pm)
+      position = ((decimalHours - 6) / 18) * 100
+    }
+    
+    return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
+  }
+  
+  // Helper function to check if the current day is in the visible week
+  const getCurrentTimeDay = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ...
+    const dayName = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1] // Convert to our days array index
+    return dayName
   }
   
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -98,8 +232,9 @@ export default function ViewSchedule() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
-      <header className="sticky top-0 z-50 p-4 border-b border-[#333333] bg-[#282828]">
-        <div className="flex items-center justify-between">
+      {/* Main header - fixed at the top */}
+      <header className={`fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+        <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           <div className="flex items-center">
             <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -109,40 +244,142 @@ export default function ViewSchedule() {
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
                 style={{
-                  backgroundColor: roommate.color,
-                  color: ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate.color) ? "#000" : "#fff",
+                  backgroundColor: roommate?.color,
+                  color: ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate?.color || "") ? "#000" : "#fff",
                 }}
               >
-                {roommate.initial}
+                {roommate?.initial}
               </div>
               <h1 className="text-xl font-bold">
-                {roommate.name}'s Schedule {isCurrentUser ? "(You)" : ""}
+                {roommate?.name}'s Schedule {isCurrentUser ? "(You)" : ""}
               </h1>
             </div>
           </div>
         </div>
       </header>
+      
+      {/* Spacer to account for fixed header */}
+      <div className="h-[57px]"></div>
+      
+      {/* Weekly Schedule header - sticky below main header */}
+      <div 
+        className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}"
+        data-component-name="ViewSchedule"
+      >
+        <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
+          <div>
+            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTimeFormat}
+              className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
+              title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleView}
+              className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
+              title={isCollapsed ? "expand-all" : "collapse-all"}
+            >
+              {isCollapsed ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                  <line x1="4" y1="19" x2="20" y2="19" />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="4" y1="5" x2="20" y2="5" />
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
 
-      <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
-        {days.map((day) => (
-          <div key={day} className="mb-6">
-            <div className="sticky bg-[#282828] pt-2 pb-1 flex items-center justify-between px-2">
-              <div className="text-sm font-medium">{day}</div>
+      <main className="flex-1 px-4 pb-4 pt-10 max-w-7xl mx-auto w-full">
+        {days.map((day, dayIndex) => (
+          <div key={day} className="mb-4">
+            {/* Day header - stays sticky below the WeeklySchedule header */}
+            <div 
+              id={`day-header-${day}`}
+              className={`sticky top-[93px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80`}
+              data-component-name="ViewSchedule"
+            >
+              <div className="flex justify-between items-center pr-2">
+                <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+              </div>
             </div>
-            
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="min-w-[800px] pl-2">
-                {/* Time header */}
-                <div className="sticky bg-[#282828] pt-1 pb-2">
-                  <div className="relative h-6">
-                    <div className="absolute inset-0 flex">
+
+            {/* Scrollable container for both time header and content */}
+            <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
+              <div className="min-w-[800px] md:min-w-0 pl-2">
+                {/* Time header - add padding-top to prevent overlapping */}
+                <div className="bg-[#282828] mb-2 pt-1">
+                  <div className="relative h-6 overflow-visible">
+                    <div className="absolute inset-0 flex overflow-visible">
+                      {/* Current time indicator */}
+                      {getCurrentTimeDay() === day && (
+                        <div 
+                          className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 overflow-visible" 
+                          style={{ 
+                            left: `${getCurrentTimePosition()}%`,
+                            height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)', 
+                            transformOrigin: 'top',
+                            position: 'absolute',
+                            top: 0
+                          }}
+                          data-component-name="ViewSchedule"
+                        >
+                          {/* Red dot at the top of the line */}
+                          <div 
+                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500"
+                            style={{
+                              top: '-4px',
+                              left: '-4px',
+                              position: 'absolute',
+                              zIndex: 25,
+                              pointerEvents: 'none'
+                            }}
+                            data-component-name="ViewSchedule"
+                          ></div>
+                        </div>
+                      )}
+                      
                       {hours.map((hour) => (
-                        <div key={hour} className="flex-1 relative">
+                        <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
                           <div
                             className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
                             style={{ left: `${((hour - 6) / 18) * 100}%` }}
+                            data-component-name="ViewSchedule"
                           >
-                            {hour === 24 ? "12AM" : hour > 12 ? `${hour-12}PM` : `${hour}AM`}
+                            {formatHour(hour)}
                           </div>
                         </div>
                       ))}
@@ -151,41 +388,72 @@ export default function ViewSchedule() {
                 </div>
 
                 {/* Schedule timeline */}
-                <div className="relative h-10 bg-[#333333] rounded-md overflow-hidden mt-2">
+                <div 
+                  className={`relative ${isCollapsed ? "h-2" : "h-10"} bg-[#373737] rounded-md overflow-hidden transition-all duration-200`}
+                  data-component-name="ViewSchedule"
+                >
                   {/* Vertical grid lines */}
                   <div className="absolute inset-0 flex pointer-events-none">
                     {hours.map((hour) => (
-                      <div key={hour} className="flex-1 border-l border-[#333333] first:border-l-0 h-full" />
+                      <div key={hour} className="flex-1 border-l border-[#191919] first:border-l-0 h-full" />
                     ))}
                   </div>
 
                   {/* Schedule blocks */}
-                  {schedule[day]?.map((block, index) => {
-                    // For all-day events, span the entire width
-                    const startPos = block.allDay ? 0 : timeToPosition(block.start)
-                    const endPos = block.allDay ? 100 : timeToPosition(block.end)
-                    const width = block.allDay ? 100 : endPos - startPos
+                  {schedule && schedule[day]?.map((block, index) => {
+                    let startPos, endPos, width;
+                    
+                    if (block.allDay) {
+                      startPos = 0;
+                      endPos = 100;
+                      width = 100;
+                    } else {
+                      // Calculate the position and width of the time block
+                      const startHour = parseInt(block.start.split(":")[0])
+                      const startMinute = parseInt(block.start.split(":")[1])
+                      const endHour = parseInt(block.end.split(":")[0])
+                      const endMinute = parseInt(block.end.split(":")[1])
+                      
+                      // Use the same calculation as the WeeklySchedule component
+                      const startDecimalHours = startHour + (startMinute / 60)
+                      const endDecimalHours = endHour + (endMinute / 60)
+                      
+                      startPos = ((startDecimalHours - 6) / 18) * 100
+                      endPos = ((endDecimalHours - 6) / 18) * 100
+                      width = endPos - startPos
+                    }
 
                     return (
                       <div
                         key={block.id || index}
-                        className="absolute top-0 h-full rounded-md flex items-center justify-center"
+                        className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-center transition-all duration-200 z-10`}
                         style={{
                           left: `${startPos}%`,
                           width: `${width}%`,
-                          backgroundColor: roommate.color,
-                          color: ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate.color) ? "#000" : "#fff"
+                          backgroundColor: block.allDay ? 'transparent' : roommate?.color,
+                          color: block.allDay ? roommate?.color : ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate?.color || "") ? "#000" : "#fff",
+                          top: isCollapsed ? "0" : undefined,
+                          border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
+                          backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
                         }}
                         title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                       >
-                        {width > 15 && (
-                          <div className="flex items-center justify-center w-full">
-                            <span className="text-xs font-medium truncate px-2">
-                              {block.label}
-                              {block.allDay ? " (All Day)" : ""}
-                            </span>
+                        {!isCollapsed && width > 15 ? (
+                          <div className="flex flex-row items-center justify-start w-full h-full pl-4">
+                            <div className="flex flex-row items-center justify-start">
+                              {!block.allDay ? (
+                                <span className="text-xs opacity-80 mr-1 font-bold leading-tight">
+                                  {formatTime(block.start)} - {formatTime(block.end)}
+                                </span>
+                              ) : null}
+                              {!block.allDay && <span className="text-xs opacity-60 mr-1">|</span>}
+                              <span className="text-xs font-bold leading-tight">
+                                {block.label}
+                                {block.allDay ? " (All Day)" : ""}
+                              </span>
+                            </div>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })}
