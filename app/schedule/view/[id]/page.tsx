@@ -70,43 +70,16 @@ export default function ViewSchedule() {
     }
     
     loadData()
+  }, [params.id, router])
+
+  // Disable header animation on scroll to prevent flickering
+  useEffect(() => {
+    // Keep header always visible
+    setHeaderVisible(true);
     
-    // Add scroll event listener for header animation with debounce
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      
-      if (currentScrollY < 10) {
-        // Always show header at the top of the page
-        setHeaderVisible(true)
-      } else if (currentScrollY > lastScrollY + 5) { // Add threshold to prevent flickering
-        // Scrolling down - hide header
-        setHeaderVisible(false)
-      } else if (lastScrollY > currentScrollY + 5) { // Add threshold to prevent flickering
-        // Scrolling up - show header
-        setHeaderVisible(true)
-      }
-      
-      setLastScrollY(currentScrollY)
-    }
-    
-    // Use requestAnimationFrame for smoother scrolling
-    let ticking = false;
-    const scrollListener = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          handleScroll();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    
-    window.addEventListener('scroll', scrollListener, { passive: true })
-    
-    return () => {
-      window.removeEventListener('scroll', scrollListener)
-    }
-  }, [params.id, router, lastScrollY])
+    // No scroll event listener needed
+    return () => {};
+  }, [])
 
   if (loading) {
     return (
@@ -247,7 +220,9 @@ export default function ViewSchedule() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Main header - fixed at the top */}
-      <header className={`fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transition-transform duration-300 will-change-transform ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+      <header 
+        className="fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transform-gpu"
+        style={{ backfaceVisibility: 'hidden' }}>
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           <div className="flex items-center justify-between w-full">
             <Link 
@@ -278,7 +253,8 @@ export default function ViewSchedule() {
       
       {/* Weekly Schedule header - sticky below main header */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 will-change-transform ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}
+        className="fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transform-gpu"
+        style={{ backfaceVisibility: 'hidden' }}
         data-component-name="ViewSchedule"
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
@@ -338,14 +314,15 @@ export default function ViewSchedule() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 pb-4 pt-10 max-w-7xl mx-auto w-full relative will-change-auto">
+      <main className="flex-1 px-4 pb-4 pt-[93px] max-w-7xl mx-auto w-full relative transform-gpu">
         {days.map((day, dayIndex) => (
           <div key={day} className="mb-4">
             {/* Day header - stays sticky below the WeeklySchedule header */}
             <div 
               id={`day-header-${day}`}
-              className={`sticky top-[93px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80`}
+              className="sticky top-[93px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80 transform-gpu"
               data-component-name="ViewSchedule"
+              style={{ backfaceVisibility: 'hidden' }}
             >
               <div className="flex justify-between items-center pr-2">
                 <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
@@ -357,32 +334,25 @@ export default function ViewSchedule() {
               <div className="min-w-[800px] md:min-w-0 pl-2">
                 {/* Time header - add padding-top to prevent overlapping */}
                 <div className="bg-[#282828] mb-2 pt-1">
-                  <div className="relative h-6 overflow-visible">
+                  <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
                     <div className="absolute inset-0 flex overflow-visible">
-                      {/* Current time indicator */}
+                      {/* Current time indicator - with hardware acceleration */}
                       {getCurrentTimeDay() === day && (
                         <div 
-                          className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 overflow-visible" 
+                          className="absolute h-[2px] bg-red-500 w-full z-20 transform-gpu"
                           style={{ 
-                            left: `${getCurrentTimePosition()}%`,
-                            height: isCollapsed ? '100%' : 'calc(100% + 4rem)', 
-                            transformOrigin: 'top',
-                            position: 'absolute',
-                            top: 0
+                            top: `${getCurrentTimePosition()}%`,
+                            transform: 'translateZ(0)',
+                            backfaceVisibility: 'hidden'
                           }}
-                          data-component-name="ViewSchedule"
                         >
-                          {/* Red dot at the top of the line */}
                           <div 
-                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500"
+                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 transform-gpu"
                             style={{
-                              top: '-4px',
-                              left: '-4px',
-                              position: 'absolute',
-                              zIndex: 25,
-                              pointerEvents: 'none'
+                              top: '-5px',
+                              left: '-5px',
+                              backfaceVisibility: 'hidden'
                             }}
-                            data-component-name="ViewSchedule"
                           ></div>
                         </div>
                       )}
