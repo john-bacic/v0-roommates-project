@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { ArrowLeft, Share2, Copy, Check } from "lucide-react"
+import { ArrowLeft, Share2, Copy, Check, Edit2, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
@@ -15,7 +15,7 @@ const initialUsers = [
     name: "Riko",
     color: "#FF7DB1",
     initial: "R",
-    description: "Classes: Mon-Fri, Works part-time on weekends",
+    description: "Available: Mon-Fri, Busy on weekends",
     availableDays: [0, 1, 2, 3, 4] // Monday to Friday
   },
   { 
@@ -23,7 +23,7 @@ const initialUsers = [
     name: "Narumi", 
     color: "#63D7C6", 
     initial: "N", 
-    description: "Works: Tue-Sat, Free on Sun-Mon",
+    description: "Available: Tue-Sat, Free on Sun-Mon",
     availableDays: [1, 2, 3, 4, 5] // Tuesday to Saturday
   },
   { 
@@ -31,7 +31,7 @@ const initialUsers = [
     name: "John", 
     color: "#F8D667", 
     initial: "J", 
-    description: "Classes: Mon-Thu, Works evenings on Fri",
+    description: "Available: Mon-Thu, Limited on Fri",
     availableDays: [0, 1, 2, 3] // Monday to Thursday
   },
 ]
@@ -41,6 +41,7 @@ export default function Roommates() {
   const [loading, setLoading] = useState(true)
   const [currentUrl, setCurrentUrl] = useState("")
   const [copied, setCopied] = useState(false)
+  const [currentUser, setCurrentUser] = useState<number | null>(3) // Default to John (id: 3) as the signed-in user
   const pathname = usePathname()
 
   // Effect to get the current URL
@@ -101,12 +102,13 @@ export default function Roommates() {
       {/* Header - fixed at top */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
+          <div className="flex items-center justify-between w-full">
+            <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Link>
-            <h1 className="text-xl font-bold">Roommates</h1>
+            <h1 className="text-xl font-bold text-center flex-1">Roommates</h1>
+            <div className="w-[72px]"></div> {/* Spacer to balance the back button */}
           </div>
         </div>
       </header>
@@ -114,7 +116,7 @@ export default function Roommates() {
       <div className="h-[73px]"></div>
 
       {/* Main content */}
-      <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-4 max-w-7xl mx-auto w-full relative">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {roommates.map((roommate) => (
             <Card key={roommate.id} className="bg-[#333333] border-[#333333]">
@@ -133,7 +135,7 @@ export default function Roommates() {
                 <p className="text-sm text-[#A0A0A0]">{roommate.description}</p>
 
                 <div className="mt-4">
-                  <h4 className="text-xs font-medium text-[#A0A0A0] mb-2">TYPICAL AVAILABILITY</h4>
+                  <h4 className="text-xs font-medium text-[#A0A0A0] mb-2">DAYS OFF</h4>
                   <div className="grid grid-cols-7 gap-1">
                     {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
                       <div key={index} className="text-center">
@@ -141,15 +143,18 @@ export default function Roommates() {
                         <div 
                           className="h-2 rounded-full" 
                           style={{ 
-                            backgroundColor: roommate.availableDays.includes(index) 
-                              ? roommate.color 
+                            backgroundColor: !roommate.availableDays.includes(index) 
+                              ? '#FF5252' 
                               : '#333333' 
                           }}
+                          title={`${!roommate.availableDays.includes(index) ? 'Day off' : 'Available'} on ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index]}`}
                         ></div>
                       </div>
                     ))}
                   </div>
                 </div>
+                
+
 
                 <Button
                   asChild
@@ -215,6 +220,7 @@ export default function Roommates() {
             </p>
           </div>
         </div>
+
       </main>
     </div>
   )

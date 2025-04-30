@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, ChevronUp, ChevronDown } from "lucide-react"
+import { ArrowLeft, Clock, ChevronUp, ChevronDown, Edit2, Plus } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { supabase, fetchUserSchedule, User, TimeBlock as SupabaseTimeBlock } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ export default function ViewSchedule() {
   const [loading, setLoading] = useState(true)
   const [currentUserName, setCurrentUserName] = useState("")
   const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [currentUserId, setCurrentUserId] = useState<number>(3) // Default to John (id: 3) as the signed-in user
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
     // Only run in client-side
@@ -111,6 +112,7 @@ export default function ViewSchedule() {
     )
   }
 
+  // Check if the current user is viewing their own schedule
   const isCurrentUser = roommate.name === currentUserName
 
   // Time conversion helper
@@ -235,24 +237,25 @@ export default function ViewSchedule() {
       {/* Main header - fixed at the top */}
       <header className={`fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
-          <div className="flex items-center">
-            <Link href="/dashboard" className="flex items-center text-[#A0A0A0] hover:text-white mr-4">
+          <div className="flex items-center justify-between w-full">
+            <Link 
+              href="/roommates" 
+              className="flex items-center text-white hover:opacity-80"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Link>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-                style={{
-                  backgroundColor: roommate?.color,
-                  color: ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate?.color || "") ? "#000" : "#fff",
-                }}
-              >
-                {roommate?.initial}
-              </div>
-              <h1 className="text-xl font-bold">
-                {roommate?.name}'s Schedule {isCurrentUser ? "(You)" : ""}
-              </h1>
+            <h1 className="text-xl font-bold text-center flex-1">
+              {roommate?.name}'s Schedule {isCurrentUser ? "(You)" : ""}
+            </h1>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+              style={{
+                backgroundColor: roommate?.color,
+                color: "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
+              }}
+            >
+              {roommate?.initial}
             </div>
           </div>
         </div>
@@ -323,7 +326,7 @@ export default function ViewSchedule() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 pb-4 pt-10 max-w-7xl mx-auto w-full">
+      <main className="flex-1 px-4 pb-4 pt-10 max-w-7xl mx-auto w-full relative">
         {days.map((day, dayIndex) => (
           <div key={day} className="mb-4">
             {/* Day header - stays sticky below the WeeklySchedule header */}
@@ -350,7 +353,7 @@ export default function ViewSchedule() {
                           className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 overflow-visible" 
                           style={{ 
                             left: `${getCurrentTimePosition()}%`,
-                            height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)', 
+                            height: isCollapsed ? '100%' : 'calc(100% + 4rem)', 
                             transformOrigin: 'top',
                             position: 'absolute',
                             top: 0
@@ -426,17 +429,18 @@ export default function ViewSchedule() {
                     return (
                       <div
                         key={block.id || index}
-                        className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-center transition-all duration-200 z-10`}
+                        className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-center transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
+                        onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
                         style={{
                           left: `${startPos}%`,
                           width: `${width}%`,
                           backgroundColor: block.allDay ? 'transparent' : roommate?.color,
-                          color: block.allDay ? roommate?.color : ["#BB86FC", "#03DAC6", "#FFB74D", "#FFD54F", "#64B5F6", "#81C784"].includes(roommate?.color || "") ? "#000" : "#fff",
+                          color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
                           top: isCollapsed ? "0" : undefined,
                           border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
                           backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
                         }}
-                        title={`${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
+                        title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                       >
                         {!isCollapsed && width > 15 ? (
                           <div className="flex flex-row items-center justify-start w-full h-full pl-4">
@@ -450,6 +454,22 @@ export default function ViewSchedule() {
                               <span className="text-xs font-bold leading-tight">
                                 {block.label}
                                 {block.allDay ? " (All Day)" : ""}
+                                {isCurrentUser && (
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="h-3 w-3 opacity-70 ml-1 inline"
+                                  >
+                                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
+                                  </svg>
+                                )}
                               </span>
                             </div>
                           </div>
@@ -462,6 +482,20 @@ export default function ViewSchedule() {
             </div>
           </div>
         ))}
+        
+
+        {/* Floating edit button - only visible for the signed-in user */}
+        {isCurrentUser && (
+          <Link
+            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[0])}`}
+            className="fixed bottom-6 right-6 rounded-full h-14 w-14 flex items-center justify-center border-2 border-black/75"
+            style={{ backgroundColor: roommate?.color || '#03DAC6', color: '#000' }}
+            title="Edit schedule"
+          >
+            <Edit2 className="h-6 w-6" />
+            <span className="sr-only">Edit schedule</span>
+          </Link>
+        )}
       </main>
 
       {/* Add CSS to hide scrollbars */}
