@@ -336,25 +336,27 @@ export default function ViewSchedule() {
                 <div className="bg-[#282828] mb-2 pt-1 relative">
                   <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
                     <div className="absolute inset-0 flex overflow-visible">
-                      {/* Current time indicator - vertical line with hardware acceleration */}
+                      {/* Current time indicator - vertical line with hardware acceleration and animation */}
                       {getCurrentTimeDay() === day && (
                         <div 
-                          className="absolute w-[2px] bg-red-500 z-20 transform-gpu"
+                          className="absolute w-[2px] bg-red-500 z-20 overflow-visible animate-pulse"
                           style={{ 
                             left: `${getCurrentTimePosition()}%`,
-                            transform: 'translateZ(0)',
-                            backfaceVisibility: 'hidden',
-                            height: '200%',
-                            pointerEvents: 'none'
+                            height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)',
+                            transformOrigin: 'top',
+                            position: 'absolute',
+                            top: 0
                           }}
                           data-component-name="ViewSchedule"
                         >
                           <div 
-                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 transform-gpu"
+                            className="absolute w-[10px] h-[10px] rounded-full bg-red-500 animate-pulse"
                             style={{
-                              top: '-5px',
-                              left: '-5px',
-                              backfaceVisibility: 'hidden'
+                              top: '-4px',
+                              left: '-4px',
+                              position: 'absolute',
+                              zIndex: 25,
+                              pointerEvents: 'none'
                             }}
                             data-component-name="ViewSchedule"
                           ></div>
