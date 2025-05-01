@@ -445,7 +445,8 @@ export default function Dashboard() {
       {/* Floating action button - only visible when logged in */}
       {userName && (
         <div 
-          className="absolute bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
+          className="fixed bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
+          data-component-name="LinkComponent"
         >
           <Button
             asChild
@@ -456,7 +457,7 @@ export default function Dashboard() {
               borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
-            <Link href="/schedule/edit?from=%2Fdashboard">
+            <Link href="/schedule/edit?from=%2Fdashboard" data-component-name="LinkComponent">
               <Edit2 className="h-6 w-6" />
               <span className="sr-only">Edit schedule</span>
             </Link>
