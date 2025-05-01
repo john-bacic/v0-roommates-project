@@ -245,7 +245,7 @@ export default function Overview() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] px-4 py-2 shadow-md" data-component-name="Overview">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center justify-between w-full">
-              <div className="flex items-center group">
+              <div className="flex items-center group w-[72px]">
                 <Link 
                   href="/dashboard" 
                   className="flex items-center text-white hover:opacity-80"
@@ -256,7 +256,7 @@ export default function Overview() {
                   <span className="sr-only">Back</span>
                 </Link>
               </div>
-            <h1 className="text-xl font-bold text-center flex-1">
+            <h1 className="text-xl font-bold text-center flex-1" data-component-name="Overview">
               Overview
             </h1>
             <div className="w-[72px]"></div> {/* Spacer to balance the back button */}

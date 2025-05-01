@@ -66,7 +66,7 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
 
 export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false, onTimeFormatChange }: WeeklyScheduleProps) {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6am to midnight (24)
+  const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
   const [currentTime, setCurrentTime] = useState(new Date())
   
   // Helper function to always return dark text for colored backgrounds
@@ -301,9 +301,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const timeToPosition = (time: string): number => {
     const [hours, minutes] = time.split(":").map(Number)
     const decimalHours = hours + (minutes / 60)
-    // Use the same calculation as the hour markers and current time indicator
-    // Our visible range is 6am to midnight (18 hours)
-    return ((decimalHours - 6) / 18) * 100
+    
+    // Handle times after midnight (0-6) by adding 24
+    const adjustedHours = (hours >= 0 && hours < 6) ? decimalHours + 24 : decimalHours
+    
+    // Our visible range is 6am to 6am next day (24 hours)
+    return ((adjustedHours - 6) / 24) * 100
   }
 
   // Add a toggle function after the timeToPosition function
@@ -340,29 +343,33 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Format hour based on selected format
   const formatHour = (hour: number): string => {
+    // Handle hours 0-6 as "next day"
+    const isNextDay = hour >= 30; // Hours 30-31 represent 6am-7am next day
+    const displayHour = isNextDay ? hour - 24 : hour;
+    
     if (use24HourFormat) {
-      if (hour === 24) {
-        return "00"
+      if (displayHour === 24 || displayHour === 0) {
+        return isNextDay ? "00*" : "00"
       }
-      if (hour > 24) {
-        return `${hour - 24}`
+      if (displayHour > 24) {
+        return `${displayHour - 24}${isNextDay ? "*" : ""}`
       }
-      return `${hour}`
+      return `${displayHour}${isNextDay ? "*" : ""}`
     } else {
       // AM/PM format
-      if (hour === 0 || hour === 24) {
-        return "12am"
+      if (displayHour === 0 || displayHour === 24) {
+        return `12am${isNextDay ? "*" : ""}`
       }
-      if (hour === 12) {
-        return "12pm"
+      if (displayHour === 12) {
+        return `12pm${isNextDay ? "*" : ""}`
       }
-      if (hour > 12 && hour < 24) {
-        return `${hour - 12}pm`
+      if (displayHour > 12 && displayHour < 24) {
+        return `${displayHour - 12}pm${isNextDay ? "*" : ""}`
       }
-      if (hour >= 24) {
-        return `${hour - 24}am`
+      if (displayHour >= 24) {
+        return `${displayHour - 24}am${isNextDay ? "*" : ""}`
       }
-      return `${hour}am`
+      return `${displayHour}am${isNextDay ? "*" : ""}`
     }
   }
 
@@ -371,21 +378,24 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const [hours, minutes] = timeString.split(":")
     const hour = parseInt(hours)
     
+    // Early morning hours (0-6) are considered part of the previous day's timeline
+    const isEarlyMorning = hour >= 0 && hour < 6
+    
     if (use24HourFormat) {
       // 24-hour format
-      return timeString
+      return `${timeString}${isEarlyMorning ? "*" : ""}`
     } else {
       // AM/PM format
       if (hour === 0) {
-        return `12:${minutes}am`
+        return `12:${minutes}am${isEarlyMorning ? "*" : ""}`
       }
       if (hour === 12) {
-        return `12:${minutes}pm`
+        return `12:${minutes}pm${isEarlyMorning ? "*" : ""}`
       }
       if (hour > 12) {
-        return `${hour - 12}:${minutes}pm`
+        return `${hour - 12}:${minutes}pm${isEarlyMorning ? "*" : ""}`
       }
-      return `${hour}:${minutes}am`
+      return `${hour}:${minutes}am${isEarlyMorning ? "*" : ""}`
     }
   }
 
@@ -868,9 +878,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const today = new Date()
     const hours = today.getHours()
     
-    // If time is between midnight and 5am, show on previous day
+    // If time is between midnight and 6am, show on previous day
     let adjustedDate = new Date(today)
-    if (hours < 5) {
+    if (hours < 6) {
       adjustedDate.setDate(today.getDate() - 1)
     }
     
@@ -901,18 +911,18 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     // Convert to decimal hours (e.g., 14:30 = 14.5)
     const decimalHours = hours + (minutes / 60)
     
-    // Our visible range is 6am to midnight (18 hours)
+    // Our visible range is 6am to 6am next day (24 hours)
     // This must exactly match the calculation used for the hour markers
-    const hourWidth = 100 / 18 // Each hour is 5.55% of the width
+    const hourWidth = 100 / 24 // Each hour is 4.17% of the width
     let position
     
     // Handle times after midnight (0-5am)
     if (hours < 6) {
       // For hours 0-5, show them at the end of the previous day (after hour 24)
-      position = ((hours + 24 - 6) / 18) * 100
+      position = ((hours + 24 - 6) / 24) * 100
     } else {
       // For normal hours (6am-11pm)
-      position = ((decimalHours - 6) / 18) * 100
+      position = ((decimalHours - 6) / 24) * 100
     }
     
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
@@ -1094,7 +1104,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         {getVisibleHours().includes(hour) && (
                           <div
                             className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
-                            style={{ left: `${((hour - 6) / 18) * 100}%` }}
+                            style={{ left: `${((hour - 6) / 24) * 100}%` }}
                             data-component-name="WeeklySchedule"
                           >
                             {formatHour(hour)}
@@ -1172,12 +1182,20 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           
                           // Calculate the start and end positions as percentages
                           // Use the same calculation as the time markers and current time indicator
-                          // Our visible range is 6am to midnight (18 hours)
-                          const startDecimalHours = startHour + (startMinute / 60)
-                          const endDecimalHours = endHour + (endMinute / 60)
+                          // Our visible range is 6am to 6am next day (24 hours)
+                          let startDecimalHours = startHour + (startMinute / 60)
+                          let endDecimalHours = endHour + (endMinute / 60)
                           
-                          startPos = ((startDecimalHours - 6) / 18) * 100
-                          endPos = ((endDecimalHours - 6) / 18) * 100
+                          // Handle times after midnight (0-6) by adding 24
+                          if (startHour >= 0 && startHour < 6) {
+                            startDecimalHours += 24
+                          }
+                          if (endHour >= 0 && endHour < 6) {
+                            endDecimalHours += 24
+                          }
+                          
+                          startPos = ((startDecimalHours - 6) / 24) * 100
+                          endPos = ((endDecimalHours - 6) / 24) * 100
                           width = endPos - startPos
                         }
 

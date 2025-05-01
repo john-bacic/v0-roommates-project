@@ -422,7 +422,7 @@ export default function Dashboard() {
       {/* Main content */}
       {/* Spacer to account for fixed header */}
       <div className="h-[57px]"></div>
-      <main className="flex-1 px-4 pb-4 max-w-7xl mx-auto w-full">
+      <main className="flex-1 px-4 pb-20 max-w-7xl mx-auto w-full relative">
         {/* Schedule content */}
         <div className="flex flex-col">
           {loading ? (
@@ -445,12 +445,7 @@ export default function Dashboard() {
       {/* Floating action button - only visible when logged in */}
       {userName && (
         <div 
-          className="fixed bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
-          style={{
-            position: 'fixed',
-            bottom: '1.5rem',
-            right: '1.5rem'
-          }}
+          className="absolute bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
         >
           <Button
             asChild

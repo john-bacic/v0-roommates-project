@@ -132,50 +132,61 @@ export default function ViewSchedule() {
   const timeToPosition = (time: string): number => {
     const [hours, minutes] = time.split(":").map(Number)
     const decimalHours = hours + (minutes / 60)
-    // Use the same calculation as the WeeklySchedule component
-    return ((decimalHours - 6) / 18) * 100
+    
+    // Handle times after midnight (0-6) by adding 24
+    const adjustedHours = (hours >= 0 && hours < 6) ? decimalHours + 24 : decimalHours
+    
+    // Our visible range is 6am to 6am next day (24 hours)
+    return ((adjustedHours - 6) / 24) * 100
   }
 
   // Format time for display
   const formatTime = (time: string): string => {
     const [hours, minutes] = time.split(":").map(Number)
     
+    // Early morning hours (0-6) are considered part of the previous day's timeline
+    const isEarlyMorning = hours >= 0 && hours < 6
+    
     if (use24HourFormat) {
       // 24-hour format
-      return time
+      return `${time}${isEarlyMorning ? "*" : ""}`
     } else {
       // AM/PM format
       const period = hours >= 12 ? "PM" : "AM"
       const displayHours = hours % 12 === 0 ? 12 : hours % 12
-      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}${isEarlyMorning ? "*" : ""}`
     }
   }
   
   // Format hour based on selected format
   const formatHour = (hour: number): string => {
+    // Handle hours 0-6 as "next day"
+    const isNextDay = hour >= 30; // Hours 30-31 represent 6am-7am next day
+    const displayHour = isNextDay ? hour - 24 : hour;
+    
     if (use24HourFormat) {
-      if (hour === 24) {
-        return "00"
+      if (displayHour === 24 || displayHour === 0) {
+        return isNextDay ? "00*" : "00"
       }
-      if (hour > 24) {
-        return `${hour - 24}`
+      if (displayHour > 24) {
+        return `${displayHour - 24}${isNextDay ? "*" : ""}`
       }
-      return `${hour}`
+      return `${displayHour}${isNextDay ? "*" : ""}`
     } else {
       // AM/PM format
-      if (hour === 0 || hour === 24) {
-        return "12am"
+      if (displayHour === 0 || displayHour === 24) {
+        return `12am${isNextDay ? "*" : ""}`
       }
-      if (hour === 12) {
-        return "12pm"
+      if (displayHour === 12) {
+        return `12pm${isNextDay ? "*" : ""}`
       }
-      if (hour > 12 && hour < 24) {
-        return `${hour - 12}pm`
+      if (displayHour > 12 && displayHour < 24) {
+        return `${displayHour - 12}pm${isNextDay ? "*" : ""}`
       }
-      if (hour >= 24) {
-        return `${hour - 24}am`
+      if (displayHour >= 24) {
+        return `${displayHour - 24}am${isNextDay ? "*" : ""}`
       }
-      return `${hour}am`
+      return `${displayHour}am${isNextDay ? "*" : ""}`
     }
   }
   
@@ -219,16 +230,16 @@ export default function ViewSchedule() {
     // Convert to decimal hours (e.g., 14:30 = 14.5)
     const decimalHours = hours + (minutes / 60)
     
-    // Our visible range is 6am to midnight (18 hours)
+    // Our visible range is 6am to 6am next day (24 hours)
     let position
     
     // Handle times after midnight (0-5am)
     if (hours < 6) {
       // For hours 0-5, show them at the end of the previous day (after hour 24)
-      position = ((hours + 24 - 6) / 18) * 100
+      position = ((hours + 24 - 6) / 24) * 100
     } else {
       // For normal hours (6am-11pm)
-      position = ((decimalHours - 6) / 18) * 100
+      position = ((decimalHours - 6) / 24) * 100
     }
     
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
@@ -237,13 +248,21 @@ export default function ViewSchedule() {
   // Helper function to check if the current day is in the visible week
   const getCurrentTimeDay = () => {
     const today = new Date()
-    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ...
+    const hours = today.getHours()
+    
+    // If time is between midnight and 6am, show on previous day
+    let adjustedDate = new Date(today)
+    if (hours < 6) {
+      adjustedDate.setDate(today.getDate() - 1)
+    }
+    
+    const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
     const dayName = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1] // Convert to our days array index
     return dayName
   }
   
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  const hours = Array.from({ length: 19 }, (_, i) => i + 6) // 6 to 24 (midnight)
+  const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
@@ -349,7 +368,7 @@ export default function ViewSchedule() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 pb-4 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu">
+      <main className="flex-1 px-4 pb-20 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu">
         {days.map((day, dayIndex) => (
           <div key={day} className="mb-4">
             {/* Day header - stays sticky below the WeeklySchedule header */}
@@ -379,7 +398,7 @@ export default function ViewSchedule() {
                         <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
                           <div
                             className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
-                            style={{ left: `${((hour - 6) / 18) * 100}%` }}
+                            style={{ left: `${((hour - 6) / 24) * 100}%` }}
                             data-component-name="ViewSchedule"
                           >
                             {formatHour(hour)}
@@ -420,11 +439,19 @@ export default function ViewSchedule() {
                       const endMinute = parseInt(block.end.split(":")[1])
                       
                       // Use the same calculation as the WeeklySchedule component
-                      const startDecimalHours = startHour + (startMinute / 60)
-                      const endDecimalHours = endHour + (endMinute / 60)
+                      let startDecimalHours = startHour + (startMinute / 60)
+                      let endDecimalHours = endHour + (endMinute / 60)
                       
-                      startPos = ((startDecimalHours - 6) / 18) * 100
-                      endPos = ((endDecimalHours - 6) / 18) * 100
+                      // Handle times after midnight (0-6) by adding 24
+                      if (startHour >= 0 && startHour < 6) {
+                        startDecimalHours += 24
+                      }
+                      if (endHour >= 0 && endHour < 6) {
+                        endDecimalHours += 24
+                      }
+                      
+                      startPos = ((startDecimalHours - 6) / 24) * 100
+                      endPos = ((endDecimalHours - 6) / 24) * 100
                       width = endPos - startPos
                     }
 
@@ -490,14 +517,11 @@ export default function ViewSchedule() {
         {isCurrentUser && (
           <Link
             href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[0])}`}
-            className="fixed bottom-6 right-6 rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 flex items-center justify-center border-2 border-black/75 transition-all duration-200 ease-in-out overflow-visible"
+            className="absolute bottom-6 right-6 rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 flex items-center justify-center border-2 border-black/75 transition-all duration-200 ease-in-out overflow-visible"
             style={{ 
               backgroundColor: roommate?.color || '#03DAC6', 
               color: '#000', 
-              zIndex: 9999,
-              position: 'fixed',
-              bottom: '1.5rem',
-              right: '1.5rem'
+              zIndex: 9999
             }}
             title="Edit schedule"
             data-component-name="LinkComponent"
