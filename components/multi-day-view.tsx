@@ -73,19 +73,85 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   const [currentUserName, setCurrentUserName] = useState<string>("")
   const [screenWidth, setScreenWidth] = useState(0)
 
-  // Calculate hours to display from 5am to 2am (next day) to match other views
-  const hours = Array.from({ length: 21 }, (_, i) => (i + 5) % 24)
+  // Calculate hours to display from 6am to 6am (next day) to match WeeklySchedule view
+  const hours = Array.from({ length: 25 }, (_, i) => (i + 6) % 24)
 
   // Format hour display based on user preference
   const formatHour = (hour: number): string => {
+    // Add asterisk to indicate early morning hours (0-5) belong to the next day
+    const nextDayIndicator = (hour >= 0 && hour < 6) ? '*' : ''
+    
     if (use24HourFormat) {
-      return `${hour.toString().padStart(2, '0')}:00`
+      return `${hour.toString().padStart(2, '0')}:00${nextDayIndicator}`
     } else {
       const period = hour >= 12 ? 'pm' : 'am'
       const displayHour = hour % 12 || 12
-      return `${displayHour}${period}`
+      return `${displayHour}${period}${nextDayIndicator}`
     }
   }
+
+  // Function to merge connecting blocks with the same label
+  const mergeConnectingBlocks = (userBlocks: TimeBlock[]): TimeBlock[] => {
+    if (!userBlocks || userBlocks.length <= 1) return userBlocks || [];
+    
+    // Sort blocks by start time
+    const sortedBlocks = [...userBlocks].sort((a, b) => {
+      // All-day events first
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      if (a.allDay && b.allDay) return 0;
+      
+      // Convert start times to minutes for comparison
+      const aStartParts = a.start.split(':').map(Number);
+      const bStartParts = b.start.split(':').map(Number);
+      const aStartMinutes = aStartParts[0] * 60 + aStartParts[1];
+      const bStartMinutes = bStartParts[0] * 60 + bStartParts[1];
+      
+      return aStartMinutes - bStartMinutes;
+    });
+    
+    // Merge connecting blocks with the same label
+    const mergedBlocks: TimeBlock[] = [];
+    let currentBlock: TimeBlock | null = null;
+    
+    for (const block of sortedBlocks) {
+      // Skip all-day events
+      if (block.allDay) {
+        mergedBlocks.push({...block});
+        continue;
+      }
+      
+      if (!currentBlock) {
+        currentBlock = {...block};
+        continue;
+      }
+      
+      // Check if this block connects to the current block and has the same label
+      const currentEndParts = currentBlock.end.split(':').map(Number);
+      const nextStartParts = block.start.split(':').map(Number);
+      
+      // Convert to minutes for comparison
+      const currentEndMinutes = currentEndParts[0] * 60 + currentEndParts[1];
+      const nextStartMinutes = nextStartParts[0] * 60 + nextStartParts[1];
+      
+      // Check if blocks connect (end time equals start time) and have the same label
+      if (currentEndMinutes === nextStartMinutes && currentBlock.label === block.label) {
+        // Extend the current block
+        currentBlock.end = block.end;
+      } else {
+        // Add the current block to merged blocks and start a new one
+        mergedBlocks.push(currentBlock);
+        currentBlock = {...block};
+      }
+    }
+    
+    // Add the last block if it exists
+    if (currentBlock) {
+      mergedBlocks.push(currentBlock);
+    }
+    
+    return mergedBlocks;
+  };
 
   useEffect(() => {
     // Get current user name
@@ -96,7 +162,23 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
 
     // Update schedules when props change
     setUsers(initialUsers)
-    setSchedules(initialSchedules)
+    
+    // Process the schedules to merge connecting blocks
+    const processedSchedules: typeof initialSchedules = {};
+    
+    // Process each user's schedule
+    Object.entries(initialSchedules).forEach(([userId, userSchedule]) => {
+      processedSchedules[Number(userId)] = {};
+      
+      // Process each day's blocks
+      Object.entries(userSchedule).forEach(([day, blocks]) => {
+        // Merge connecting blocks for this day
+        processedSchedules[Number(userId)][day] = mergeConnectingBlocks(blocks);
+      });
+    });
+    
+    // Update with processed schedules
+    setSchedules(processedSchedules)
 
     // Update screen width
     const handleResize = () => {
@@ -166,10 +248,17 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
   // Calculate the percentage position for a time value
   const calculateTimePosition = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number)
-    const totalMinutes = hours * 60 + minutes
-    const startMinutes = 5 * 60 // 5am
-    const totalDuration = 24 * 60 // 24 hours
+    let totalMinutes = hours * 60 + minutes
     
+    // For hours 0-5 (12am-5:59am), add 24 hours to place them after the 6pm-11:59pm time slots
+    if (hours >= 0 && hours < 6) {
+      totalMinutes += 24 * 60 // Add 24 hours in minutes
+    }
+    
+    const startMinutes = 6 * 60 // 6am
+    const totalDuration = 24 * 60 // 24 hours (6am to 6am next day)
+    
+    // Calculate position as percentage of the timeline
     return ((totalMinutes - startMinutes) / totalDuration) * 100
   }
 
@@ -222,7 +311,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
             <div className="flex-grow flex">
               {/* Day columns */}
               {days.map((day, dayIndex) => (
-                <div key={`${day}-${hour}`} className={`flex-1 relative h-12 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
+                <div key={`${day}-${hour}`} className={`flex-1 relative h-20 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`} data-component-name="MultiDayView">
                   {/* Line segments for this day/hour */}
                   {users.map((user) => {
                     const userBlocks = schedules[user.id]?.[day] || [];
@@ -334,35 +423,46 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                       
                       return (
                         <div key={`line-${block.id || `${day}-${user.id}-${hour}-${block.start}`}`}>
-                          {/* Vertical line segment */}
+                          {/* Calendar-style block */}
                           <div 
-                            className="absolute cursor-pointer"
+                            className="absolute cursor-pointer rounded-md shadow-md border border-gray-700 hover:brightness-110 transition-all duration-200"
                             style={{
                               top: `${topPosition}%`,
                               height: `${heightPercent}%`,
-                              left: `${leftPosition}%`,
-                              width: "10px",
-                              transform: "translateX(-50%)",
+                              left: `${leftPosition - 10}%`,
+                              width: "20%",
                               backgroundColor: user.color,
-                              opacity: block.allDay ? 0.5 : 1,
+                              opacity: block.allDay ? 0.7 : 1,
                               zIndex: 10,
                             }}
                             onClick={() => handleBlockClick(user, day, block)}
                             title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
-                          />
+                            data-component-name="MultiDayView"
+                          >
+                            {/* Content inside the block */}
+                            <div className="p-1 h-full flex flex-col overflow-hidden">
+                              <div className="text-[10px] font-bold truncate" style={{ color: getTextColor(user.color) }}>
+                                {block.label}
+                              </div>
+                              <div className="text-[8px] opacity-80" style={{ color: getTextColor(user.color) }}>
+                                {block.start} - {block.end}
+                              </div>
+                            </div>
+                          </div>
                           
                           {/* User initial and time information - only on the first hour */}
                           {isFirstHour && (
                             <>
                               <div 
-                                className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20"
+                                className="absolute rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold z-20 shadow-md border border-gray-700"
                                 style={{
-                                  top: "0", // Always at the top of the timeline
+                                  top: "-10px", // Slightly above the timeline
                                   left: `${leftPosition}%`,
-                                  transform: "translate(-50%, 0)", // Changed from -50% to 0 for Y-axis
+                                  transform: "translateX(-50%)",
                                   backgroundColor: user.color,
                                   color: getTextColor(user.color),
                                 }}
+                                data-component-name="MultiDayView"
                               >
                                 {user.initial}
                               </div>
