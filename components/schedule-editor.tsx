@@ -352,7 +352,24 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           <p className="text-sm text-[#A0A0A0] mb-4">Add multiple time blocks to create breaks between activities</p>
         )}
 
-        {schedule[activeDay]?.map((block, index) => (
+        {[...(schedule[activeDay] || [])]
+          .sort((a, b) => {
+            // Sort by start time (all-day events first, then by start time)
+            if (a.allDay && !b.allDay) return -1;
+            if (!a.allDay && b.allDay) return 1;
+            if (a.allDay && b.allDay) return 0;
+            
+            // Convert time strings to comparable values
+            const aTime = a.start.split(':').map(Number);
+            const bTime = b.start.split(':').map(Number);
+            
+            // Compare hours first
+            if (aTime[0] !== bTime[0]) return aTime[0] - bTime[0];
+            
+            // If hours are the same, compare minutes
+            return aTime[1] - bTime[1];
+          })
+          .map((block, index) => (
           <div key={index} className="mb-4">
             {/* Toggle Switch */}
             <div className="flex items-center justify-between mb-3">

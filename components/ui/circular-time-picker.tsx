@@ -149,10 +149,10 @@ export function CircularTimePicker({
       </div>
       
       {/* AM/PM toggle */}
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-2" data-component-name="CircularTimePicker">
         <button 
           type="button"
-          className={`px-8 py-3 rounded ${period === 'AM' ? 'bg-[#333333] text-white' : 'bg-[#222222] text-gray-400'}`}
+          className={`px-8 py-3 rounded font-bold transition-all duration-200 ${period === 'AM' ? 'bg-[#333333] text-white border-2 border-white shadow-md scale-105' : 'bg-[#222222] text-gray-400'}`}
           onClick={() => {
             setPeriod("AM")
             updateTime(hours, minutes, "AM")
@@ -162,7 +162,7 @@ export function CircularTimePicker({
         </button>
         <button 
           type="button"
-          className={`px-8 py-3 rounded ${period === 'PM' ? 'bg-[#333333] text-white' : 'bg-[#222222] text-gray-400'}`}
+          className={`px-8 py-3 rounded font-bold transition-all duration-200 ${period === 'PM' ? 'bg-[#333333] text-white border-2 border-white shadow-md scale-105' : 'bg-[#222222] text-gray-400'}`}
           onClick={() => {
             setPeriod("PM")
             updateTime(hours, minutes, "PM")
@@ -173,20 +173,48 @@ export function CircularTimePicker({
       </div>
       
       {/* Mode toggle (hours/minutes) */}
-      <div className="flex justify-center gap-2 mt-2">
+      <div className="flex justify-center gap-2 mt-2" data-component-name="CircularTimePicker">
         <button 
           type="button"
-          className={`px-8 py-3 rounded ${isHoursMode ? 'bg-[#333333] text-white' : 'bg-[#222222] text-gray-400'}`}
+          className={`px-8 py-3 rounded font-bold transition-all duration-200 ${isHoursMode ? 'bg-[#333333] text-white border-2 border-white shadow-md scale-105' : 'bg-[#222222] text-gray-400'}`}
           onClick={() => setIsHoursMode(true)}
         >
           Hours
         </button>
         <button 
           type="button"
-          className={`px-8 py-3 rounded ${!isHoursMode ? 'bg-[#333333] text-white' : 'bg-[#222222] text-gray-400'}`}
+          className={`px-8 py-3 rounded font-bold transition-all duration-200 ${!isHoursMode ? 'bg-[#333333] text-white border-2 border-white shadow-md scale-105' : 'bg-[#222222] text-gray-400'}`}
           onClick={() => setIsHoursMode(false)}
         >
           Minutes
+        </button>
+      </div>
+      
+      {/* Preset time buttons */}
+      <div className="flex justify-center gap-2 mt-4" data-component-name="CircularTimePicker">
+        <button 
+          type="button"
+          className="px-6 py-2 rounded bg-[#222222] text-gray-200 hover:bg-[#333333] font-medium border border-gray-600 transition-all duration-200 hover:scale-105 hover:shadow-md"
+          onClick={() => {
+            setHours(12);
+            setMinutes(0);
+            setPeriod("PM");
+            updateTime(12, 0, "PM");
+          }}
+        >
+          Noon
+        </button>
+        <button 
+          type="button"
+          className="px-6 py-2 rounded bg-[#222222] text-gray-200 hover:bg-[#333333] font-medium border border-gray-600 transition-all duration-200 hover:scale-105 hover:shadow-md"
+          onClick={() => {
+            setHours(12);
+            setMinutes(0);
+            setPeriod("AM");
+            updateTime(12, 0, "AM");
+          }}
+        >
+          Midnight
         </button>
       </div>
     </div>
