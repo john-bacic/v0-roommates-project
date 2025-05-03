@@ -132,7 +132,7 @@ export function SingleDayView({
             </div>
             
             {/* Time grid with blocks - further reduced height for mobile */}
-            <div className="relative" style={{ height: `${hours.length * 4}rem` }}>
+            <div className="relative" style={{ height: `${hours.length * 2.7}rem` }}>
               {/* Hour lines */}
               {hours.map((hour, index) => (
                 <div 
@@ -140,7 +140,7 @@ export function SingleDayView({
                   className="absolute w-full border-b border-[#343434]"
                   style={{ top: `${(index / hours.length) * 100}%` }}
                 >
-                  <div className="absolute -left-10 sm:-left-14 -top-3 text-[10px] text-[#666666]" key={`hour-label-${hour}-${index}`} data-component-name="SingleDayView">
+                  <div className="absolute -left-10 sm:-left-14 -top-3 text-[11px] text-[#666666]" key={`hour-label-${hour}-${index}`} data-component-name="SingleDayView">
                     {formatHour(hour)}
                   </div>
                 </div>
@@ -198,7 +198,7 @@ export function SingleDayView({
                       
                       <div className="p-1 pt-4 pl-4 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
                         <div className="flex flex-wrap items-start max-w-full" data-component-name="SingleDayView">
-                          <span className="text-[10px] font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
+                          <span className="text-[16px] font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
                             {block.label}{" (All Day)"}
                           </span>
                           {user.name === currentUserName && (
@@ -254,13 +254,13 @@ export function SingleDayView({
                           </div>
                         )}
                         
-                        <div className="p-1 pt-4 pl-4 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
+                        <div className={`p-1 ${isFirstBlock ? 'pt-4' : 'pt-2'} pl-4 h-full flex flex-col overflow-hidden`} style={{ zIndex: 10 }} data-component-name="SingleDayView">
                           <div className="flex flex-col items-start justify-start w-full overflow-hidden" data-component-name="SingleDayView">
-                            <span className="text-[9px] opacity-80 mb-0 mt-1 font-bold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
+                            <span className="text-[14px] opacity-80 mb-0 mt-1 font-bold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                               {formatTime(block.start)} - {formatTime(block.end)}
                             </span>
                             <div className="flex flex-wrap items-start max-w-full">
-                              <span className="text-[10px] font-bold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
+                              <span className="text-[14px] font-bold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                                 {block.label}
                               </span>
                               {user.name === currentUserName && (
