@@ -35,9 +35,20 @@ export default function Overview() {
     return false // Default to 12-hour format
   })
   
-  // Helper function to get current day of the week
+  // Helper function to get logical day of the week
+  // Hours between midnight and 6am are considered part of the previous day
   const getCurrentDay = (): string => {
-    const dayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, ...
+    const now = new Date();
+    const hours = now.getHours();
+    
+    // If it's before 6am, consider it the previous day
+    let adjustedDate = new Date(now);
+    if (hours < 6) {
+      adjustedDate.setDate(now.getDate() - 1);
+    }
+    
+    const dayIndex = adjustedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+    
     // Convert to our day format (we use Monday as first day)
     const dayMap = {
       0: "Sunday",
@@ -48,6 +59,7 @@ export default function Overview() {
       5: "Friday",
       6: "Saturday"
     };
+    
     return dayMap[dayIndex as keyof typeof dayMap];
   }
   
