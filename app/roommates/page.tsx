@@ -8,8 +8,27 @@ import { supabase } from "@/lib/supabase"
 import { QRCodeSVG } from "qrcode.react"
 import { usePathname } from "next/navigation"
 
+// Define interfaces for our data types
+interface Schedule {
+  id: string;
+  start: string;
+  end: string;
+  label: string;
+  allDay: boolean;
+}
+
+interface Roommate {
+  id: number;
+  name: string;
+  color: string;
+  initial: string;
+  description: string;
+  availableDays: number[];
+  allDayOffDays?: number[];
+}
+
 // Initial users data as fallback
-const initialUsers = [
+const initialUsers: Roommate[] = [
   {
     id: 1,
     name: "Riko",
@@ -37,7 +56,7 @@ const initialUsers = [
 ]
 
 export default function Roommates() {
-  const [roommates, setRoommates] = useState(initialUsers)
+  const [roommates, setRoommates] = useState<Roommate[]>(initialUsers)
   const [loading, setLoading] = useState(true)
   const [currentUrl, setCurrentUrl] = useState("")
   const [copied, setCopied] = useState(false)
@@ -54,41 +73,208 @@ export default function Roommates() {
     }
   }, [])
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data: usersData, error } = await supabase
-          .from('users')
-          .select('*')
+  // Function to determine if a user has any schedules on a specific day
+  // and check if they have an all-day off schedule
+  const checkDayScheduleStatus = (userId: number, schedules: any, dayIndex: number) => {
+    // Convert day index (0-6, Monday-Sunday) to day name
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayName = dayNames[dayIndex];
+    
+    // Check if user has any schedules for this day
+    const hasSchedules = schedules[userId] && 
+                        schedules[userId][dayName] && 
+                        schedules[userId][dayName].length > 0;
+    
+    // Check if any of the schedules are all-day off
+    let isAllDayOff = false;
+    if (hasSchedules) {
+      isAllDayOff = schedules[userId][dayName].some((schedule: Schedule) => 
+        schedule.allDay === true && schedule.label.toLowerCase().includes('off')
+      );
+    }
+    
+    return { hasSchedules, isAllDayOff };
+  };
+  
+  // Function to generate availability description based on schedules
+  const generateAvailabilityDescription = (userId: number, schedules: Record<number, Record<string, Array<Schedule>>>) => {
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const availableDays: string[] = [];
+    const unavailableDays: string[] = [];
+    const allDayOffDays: string[] = [];
+    
+    dayNames.forEach((day, index) => {
+      const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(userId, schedules, index);
+      
+      if (isAllDayOff) {
+        allDayOffDays.push(day);
+        unavailableDays.push(day);
+      } else if (hasSchedules) {
+        availableDays.push(day);
+      } else {
+        unavailableDays.push(day);
+      }
+    });
+    
+    if (availableDays.length === 7) {
+      return "Available all week";
+    } else if (availableDays.length === 0) {
+      return "No schedule set";
+    } else if (availableDays.length > unavailableDays.length) {
+      return `Available: ${formatDaysList(availableDays)}, Off: ${formatDaysList(unavailableDays)}`;
+    } else {
+      return `Off: ${formatDaysList(unavailableDays)}, Available: ${formatDaysList(availableDays)}`;
+    }
+  };
+  
+  // Helper function to format a list of days nicely
+  const formatDaysList = (days: string[]) => {
+    if (days.length === 0) return "None";
+    if (days.length === 1) return days[0].substring(0, 3);
+    if (days.length === 2) return `${days[0].substring(0, 3)}, ${days[1].substring(0, 3)}`;
+    
+    // Check for consecutive days to use ranges
+    const dayIndices = days.map(day => [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ].indexOf(day));
+    dayIndices.sort((a, b) => a - b);
+    
+    // Check if days are consecutive
+    let isConsecutive = true;
+    for (let i = 1; i < dayIndices.length; i++) {
+      if (dayIndices[i] !== dayIndices[i-1] + 1) {
+        isConsecutive = false;
+        break;
+      }
+    }
+    
+    if (isConsecutive) {
+      return `${days[0].substring(0, 3)}-${days[days.length-1].substring(0, 3)}`;
+    } else {
+      return days.map(day => day.substring(0, 3)).join(', ');
+    }
+  };
 
-        if (error) {
-          console.error('Error fetching users:', error)
-        } else if (usersData && usersData.length > 0) {
-          // Map the users to include the description and availableDays properties
+  useEffect(() => {
+    const fetchUsersAndSchedules = async () => {
+      try {
+        console.log('Starting to fetch users and schedules');
+        setLoading(true);
+        
+        // Check if supabase client is initialized
+        if (!supabase) {
+          console.error('Supabase client is not initialized');
+          setRoommates(initialUsers);
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch users
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('*');
+          
+        if (usersError) {
+          console.error('Error fetching users:', usersError);
+          // Fall back to initial users if there's an error
+          setRoommates(initialUsers);
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch all schedules
+        const { data: schedulesData, error: schedulesError } = await supabase
+          .from('schedules')
+          .select('*');
+          
+        if (schedulesError) {
+          console.error('Error fetching schedules:', schedulesError);
+          // If we can't get schedules, at least show the users
+          if (usersData && usersData.length > 0) {
+            setRoommates(usersData.map(user => ({
+              ...user,
+              description: "Unable to load schedule data",
+              availableDays: []
+            })));
+          } else {
+            setRoommates(initialUsers);
+          }
+          setLoading(false);
+          return;
+        }
+        
+        // Make sure we have valid data
+        const validSchedulesData = schedulesData || [];
+        
+        // Process schedules into the format we need
+        const processedSchedules: Record<number, Record<string, Array<any>>> = {};
+        
+        validSchedulesData.forEach(schedule => {
+          if (!processedSchedules[schedule.user_id]) {
+            processedSchedules[schedule.user_id] = {};
+          }
+          
+          if (!processedSchedules[schedule.user_id][schedule.day]) {
+            processedSchedules[schedule.user_id][schedule.day] = [];
+          }
+          
+          processedSchedules[schedule.user_id][schedule.day].push({
+            id: schedule.id,
+            start: schedule.start_time,
+            end: schedule.end_time,
+            label: schedule.label,
+            allDay: schedule.all_day
+          });
+        });
+        
+        // Map users with their availability based on actual schedules
+        if (usersData && usersData.length > 0) {
           const mappedUsers = usersData.map(user => {
-            const initialUser = initialUsers.find(u => u.id === user.id);
+            // Calculate available days based on schedules
+            const availableDays: number[] = [];
+            const allDayOffDays: number[] = [];
+            
+            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach((day, index) => {
+              const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(user.id, processedSchedules, index);
+              
+              // If it's an all-day off schedule, don't mark as available
+              if (hasSchedules && !isAllDayOff) {
+                availableDays.push(index);
+              }
+              
+              if (isAllDayOff) {
+                allDayOffDays.push(index);
+              }
+            });
+            
             return {
               ...user,
-              description: initialUser?.description || "Available times vary",
-              availableDays: initialUser?.availableDays || []
+              description: generateAvailabilityDescription(user.id, processedSchedules),
+              availableDays: availableDays,
+              allDayOffDays: allDayOffDays
             };
           });
+          
           setRoommates(mappedUsers);
         }
       } catch (error) {
-        console.error('Error in fetchUsers:', error);
+        console.error('Error in fetchUsersAndSchedules:', error);
+        console.log('Error details:', JSON.stringify(error, null, 2));
+        // Fall back to initial users if there's an error
+        setRoommates(initialUsers);
       } finally {
         setLoading(false);
+        console.log('Finished fetching users and schedules');
       }
     };
 
-    fetchUsers();
+    fetchUsersAndSchedules();
 
     // Set up real-time subscription
     const usersSubscription = supabase
       .channel('users-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        fetchUsers();
+        fetchUsersAndSchedules();
       })
       .subscribe();
 
@@ -142,20 +328,40 @@ export default function Roommates() {
                 <div className="mt-4">
                   <h4 className="text-xs font-medium text-[#A0A0A0] mb-2">DAYS OFF</h4>
                   <div className="grid grid-cols-7 gap-1">
-                    {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => (
-                      <div key={index} className="text-center">
-                        <div className="text-xs mb-1 text-white">{day}</div>
-                        <div 
-                          className="h-2 rounded-full" 
-                          style={{ 
-                            backgroundColor: !roommate.availableDays.includes(index) 
-                              ? '#FF5252' 
-                              : '#333333' 
-                          }}
-                          title={`${!roommate.availableDays.includes(index) ? 'Day off' : 'Available'} on ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index]}`}
-                        ></div>
-                      </div>
-                    ))}
+                    {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => {
+                      // Check if this day is marked as all-day off
+                      const isAllDayOff = roommate.allDayOffDays && roommate.allDayOffDays.includes(index);
+                      // Check if this day has any schedules
+                      const hasSchedules = roommate.availableDays && roommate.availableDays.includes(index);
+                      
+                      // Determine background color and status text
+                      let bgColor = '#333333'; // Default gray background
+                      let statusText = 'No schedule';
+                      
+                      if (isAllDayOff) {
+                        bgColor = '#FF5252'; // Red for all-day off
+                        statusText = 'All day off';
+                      } else if (hasSchedules) {
+                        // Convert the hex color to rgba with 50% opacity
+                        const hexColor = roommate.color.replace('#', '');
+                        const r = parseInt(hexColor.substring(0, 2), 16);
+                        const g = parseInt(hexColor.substring(2, 4), 16);
+                        const b = parseInt(hexColor.substring(4, 6), 16);
+                        bgColor = `rgba(${r}, ${g}, ${b}, 0.5)`; // Use roommate's color at 50% opacity
+                        statusText = 'Scheduled';
+                      }
+                      
+                      return (
+                        <div key={index} className="text-center">
+                          <div className="text-xs mb-1 text-white">{day}</div>
+                          <div 
+                            className="h-2 rounded-full" 
+                            style={{ backgroundColor: bgColor }}
+                            title={`${statusText} on ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index]}`}
+                          ></div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 
