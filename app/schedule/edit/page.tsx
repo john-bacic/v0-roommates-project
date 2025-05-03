@@ -313,18 +313,32 @@ export default function EditSchedule() {
           <button 
             onClick={(e) => {
               e.preventDefault();
-              // Dispatch a custom event to notify components that we're returning to the view
-              const returnEvent = new CustomEvent('returnToScheduleView', {
-                detail: { updatedAt: new Date().toISOString() }
-              });
-              document.dispatchEvent(returnEvent);
               
-              // First try to use browser history
-              if (window.history.length > 1) {
-                window.history.back();
+              // Use a more direct approach to ensure dashboard refreshes
+              // Set a flag that will be checked by the dashboard
+              sessionStorage.setItem('dashboardNeedsRefresh', 'true');
+              
+              // Store timestamp to ensure we can detect this is a new refresh request
+              sessionStorage.setItem('refreshTimestamp', Date.now().toString());
+              
+              // Dispatch events for any components that might be listening
+              document.dispatchEvent(new CustomEvent('returnToScheduleView', {
+                detail: { updatedAt: new Date().toISOString() }
+              }));
+              
+              document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
+              
+              // Navigate to dashboard with a forced reload to ensure fresh data
+              if (returnPath.includes('dashboard')) {
+                // If returning to dashboard, force a complete page reload
+                window.location.href = '/dashboard?refresh=' + Date.now();
               } else {
-                // Fall back to the stored return path
-                window.location.href = returnPath;
+                // For other pages, try history navigation first
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.href = returnPath;
+                }
               }
             }} 
             className="flex items-center text-white hover:opacity-80 cursor-pointer"

@@ -148,10 +148,44 @@ export default function Overview() {
     }
   }
   
+  // Function to refresh all time displays
+  const refreshTimeDisplays = () => {
+    console.log('Refreshing time displays');
+    // Force a complete data reload
+    loadData();
+  }
+  
   // Load data on component mount
   useEffect(() => {
     // Load initial data
     loadData()
+    
+    // Check if we should refresh the page (coming back from edit page)
+    const shouldRefresh = sessionStorage.getItem('refreshAfterNavigation') === 'true';
+    if (shouldRefresh) {
+      // Clear the flag
+      sessionStorage.removeItem('refreshAfterNavigation');
+      // Force a refresh of the page
+      window.location.reload();
+      return;
+    }
+    
+    // Add listener for the refresh event
+    const handleRefreshEvent = () => refreshTimeDisplays();
+    document.addEventListener('refreshTimeDisplays', handleRefreshEvent);
+    
+    // Check URL parameters for refresh request
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('refresh') === 'true') {
+      // Remove the parameter from URL without refreshing
+      const newUrl = window.location.pathname + 
+                    (window.location.search ? 
+                      window.location.search.replace(/[?&]refresh=true/, '') : '');
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Refresh the time displays
+      refreshTimeDisplays();
+    }
     
     // Set up subscription for schedule changes
     const scheduleSubscription = supabase
@@ -218,6 +252,7 @@ export default function Overview() {
       supabase.removeChannel(usersSubscription)
       document.removeEventListener('scheduleDataUpdated', handleScheduleUpdate)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('refreshTimeDisplays', handleRefreshEvent)
       window.removeEventListener('popstate', handleNavigation)
       window.removeEventListener('focus', handleNavigation)
       document.removeEventListener('returnToScheduleView', handleReturnToView)

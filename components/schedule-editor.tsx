@@ -77,7 +77,49 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
   }
 
   const addTimeBlock = async () => {
-    const newBlock = { start: "09:00", end: "12:00", label: "Work", allDay: false };
+    // Find the last time block for the active day to use its end time as the start time for the new block
+    let startTime = "09:00";
+    let endTime = "13:00"; // Default end time (4 hours after default start)
+    
+    const existingBlocks = schedule[activeDay] || [];
+    
+    if (existingBlocks.length > 0) {
+      // Find the latest end time from existing blocks
+      let latestEndTime = "00:00";
+      
+      for (const block of existingBlocks) {
+        // Skip all-day events when determining latest end time
+        if (block.allDay) continue;
+        
+        if (block.end > latestEndTime) {
+          latestEndTime = block.end;
+        }
+      }
+      
+      if (latestEndTime !== "00:00") {
+        // Use the latest end time as the start time for the new block
+        startTime = latestEndTime;
+        
+        // Calculate end time (4 hours later)
+        const [endHourStr, endMinuteStr] = latestEndTime.split(':');
+        let endHour = parseInt(endHourStr);
+        let endMinute = parseInt(endMinuteStr);
+        
+        // Add 4 hours
+        endHour = endHour + 4;
+        
+        // Handle overflow to next day
+        if (endHour >= 24) {
+          endHour = 23;
+          endMinute = 59;
+        }
+        
+        // Format the end time
+        endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+      }
+    }
+    
+    const newBlock = { start: startTime, end: endTime, label: "Work", allDay: false };
     const newSchedule = { ...schedule }
     newSchedule[activeDay] = [...(newSchedule[activeDay] || []), newBlock]
     onChange(newSchedule)

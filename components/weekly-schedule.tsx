@@ -428,24 +428,68 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return hours
   }
 
-  // Get smart default start and end times based on current view
-  const getDefaultTimes = (): { start: string, end: string } => {
-    // Current hour rounded down
+  // Get smart default start and end times based on current view and existing time blocks
+  const getDefaultTimes = (day?: string, userId?: number): { start: string, end: string } => {
+    // Format hours as strings with leading zeros
+    const formatHour = (hour: number) => hour.toString().padStart(2, '0')
+    const formatMinutes = (minutes: number) => minutes.toString().padStart(2, '0')
+    
+    // Check if we have existing time blocks for this day and user
+    if (day && userId && schedules[userId] && schedules[userId][day] && schedules[userId][day].length > 0) {
+      // Find the latest end time from existing blocks
+      let latestEndTime = '00:00'
+      let latestEndBlock = null
+      
+      for (const block of schedules[userId][day]) {
+        // Skip all-day events when determining latest end time
+        if (block.allDay) continue
+        
+        if (block.end > latestEndTime) {
+          latestEndTime = block.end
+          latestEndBlock = block
+        }
+      }
+      
+      if (latestEndBlock) {
+        // Parse the end time
+        const [endHourStr, endMinuteStr] = latestEndTime.split(':')
+        let endHour = parseInt(endHourStr)
+        let endMinute = parseInt(endMinuteStr)
+        
+        // Use the end time as the start time for the new block
+        const startHour = endHour
+        const startMinute = endMinute
+        
+        // End time is 4 hours after start time
+        endHour = startHour + 4
+        
+        // Handle overflow to next day
+        if (endHour >= 24) {
+          endHour = 23
+          endMinute = 59
+        }
+        
+        return {
+          start: `${formatHour(startHour)}:${formatMinutes(startMinute)}`,
+          end: `${formatHour(endHour)}:${formatMinutes(endMinute)}`
+        }
+      }
+    }
+    
+    // Fallback to default behavior if no existing blocks or if day/userId not provided
     const now = new Date()
     const currentHour = now.getHours()
     
     // Default to current hour or 9am if before 6am or after 8pm
     let startHour = (currentHour < 6 || currentHour > 20) ? 9 : currentHour
     
-    // End time is 2 hours after start time, but not past 11pm
-    let endHour = Math.min(startHour + 2, 23)
-    
-    // Format hours as strings with leading zeros
-    const formatHour = (hour: number) => hour.toString().padStart(2, '0')
+    // End time is 4 hours after start time, but not past 11:59pm
+    let endHour = Math.min(startHour + 4, 23)
+    let endMinute = endHour === 23 ? 59 : 0
     
     return {
       start: `${formatHour(startHour)}:00`,
-      end: `${formatHour(endHour)}:00`
+      end: `${formatHour(endHour)}:${formatMinutes(endMinute)}`
     }
   }
   
@@ -453,7 +497,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const handleUserClick = (user: User, day: string) => {
     // Only allow editing your own schedule
     if (user.name === currentUserName) {
-      const { start, end } = getDefaultTimes()
+      const { start, end } = getDefaultTimes(day, user.id)
       setSelectedUser(user)
       setSelectedDay(day)
       setEditMode(false)
@@ -506,7 +550,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         console.log('Opening edit modal for:', modalTimeBlock);
       } else {
         // For add mode: create new time block with defaults
-        const { start, end } = getDefaultTimes()
+        const { start, end } = getDefaultTimes(day, user.id)
         modalTimeBlock = {
           id: crypto.randomUUID(),
           start,
@@ -540,18 +584,55 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     // Small delay to ensure modal is fully closed before reopening
     setTimeout(() => {
-      // Get default times for a new time block
-      const { start, end } = getDefaultTimes();
+      // Find the latest end time from existing blocks for this user and day
+      let startTime = "09:00"; // Default start time if no previous blocks
+      let endTime = "13:00";   // Default end time (4 hours later)
       
-      // Direct state setup matching the QuickScheduleModal from the image
+      // Check if we have existing time blocks for this day and user
+      if (schedules[user.id] && schedules[user.id][day] && schedules[user.id][day].length > 0) {
+        // Find the latest end time from existing blocks
+        let latestEndTime = "00:00";
+        
+        for (const block of schedules[user.id][day]) {
+          // Skip all-day events when determining latest end time
+          if (block.allDay) continue;
+          
+          if (block.end > latestEndTime) {
+            latestEndTime = block.end;
+          }
+        }
+        
+        if (latestEndTime !== "00:00") {
+          // Use the latest end time as the start time for the new block
+          startTime = latestEndTime;
+          
+          // Calculate end time (4 hours later)
+          const [endHourStr, endMinuteStr] = latestEndTime.split(':');
+          let endHour = parseInt(endHourStr);
+          let endMinute = parseInt(endMinuteStr);
+          
+          // Add 4 hours
+          endHour = endHour + 4;
+          
+          // Handle overflow to next day
+          if (endHour >= 24) {
+            endHour = 23;
+            endMinute = 59;
+          }
+          
+          // Format the end time
+          endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+        }
+      }
+      
       // Set editMode to true to ensure all 3 buttons (Delete, Cancel, Update) are shown
       setEditMode(true);
       setSelectedUser(user);
       setSelectedDay(day);
       setSelectedTimeBlock({
         id: crypto.randomUUID(),
-        start,
-        end,
+        start: startTime,
+        end: endTime,
         label: "Work",
         allDay: false
       });

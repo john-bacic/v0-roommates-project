@@ -38,6 +38,75 @@ export default function Dashboard() {
     return false
   })
   
+  // Check for refresh flags and refresh the dashboard when needed
+  useEffect(() => {
+    console.log('Dashboard mounted, checking for refresh flags');
+    
+    // Check for all possible refresh flags
+    const shouldRefreshFromRoommates = sessionStorage.getItem('refreshDashboard') === 'true';
+    const shouldRefreshFromEdit = sessionStorage.getItem('refreshAfterNavigation') === 'true';
+    const dashboardNeedsRefresh = sessionStorage.getItem('dashboardNeedsRefresh') === 'true';
+    
+    // Check URL parameters for refresh request
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasRefreshParam = urlParams.has('refresh');
+    
+    if (shouldRefreshFromRoommates || shouldRefreshFromEdit || dashboardNeedsRefresh || hasRefreshParam) {
+      // Clear all refresh flags
+      sessionStorage.removeItem('refreshDashboard');
+      sessionStorage.removeItem('refreshAfterNavigation');
+      sessionStorage.removeItem('dashboardNeedsRefresh');
+      
+      // Remove refresh parameter from URL without refreshing
+      if (hasRefreshParam && window.history.replaceState) {
+        const newUrl = window.location.pathname + 
+                      (window.location.search ? 
+                        window.location.search.replace(/[?&]refresh=[^&]*/, '') : '');
+        window.history.replaceState({}, document.title, newUrl);
+      }
+      
+      // Force a refresh of the page data
+      console.log('Dashboard refreshing data after navigation');
+      loadData();
+    }
+    
+    // Also listen for the refreshTimeDisplays event from the edit page
+    const handleRefreshEvent = () => {
+      console.log('Received refreshTimeDisplays event');
+      loadData();
+    };
+    
+    document.addEventListener('refreshTimeDisplays', handleRefreshEvent);
+    
+    return () => {
+      document.removeEventListener('refreshTimeDisplays', handleRefreshEvent);
+    };
+  }, []);
+  
+  // Add another effect to handle focus/visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const refreshTimestamp = sessionStorage.getItem('refreshTimestamp');
+        if (refreshTimestamp) {
+          // Only refresh if we haven't refreshed for this timestamp yet
+          const lastProcessedTimestamp = sessionStorage.getItem('lastProcessedTimestamp');
+          if (refreshTimestamp !== lastProcessedTimestamp) {
+            console.log('Refreshing dashboard on visibility change');
+            sessionStorage.setItem('lastProcessedTimestamp', refreshTimestamp);
+            loadData();
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
   // Apply the time format class to the document
   useEffect(() => {
     // Update document class
