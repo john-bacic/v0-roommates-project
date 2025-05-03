@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Plus, Edit2 } from 'lucide-react'
+import { Plus, Edit2, Clock } from 'lucide-react'
 
 interface User {
   id: number
@@ -27,6 +27,7 @@ interface SingleDayViewProps {
   onBlockClick: (user: User, day: string, block: TimeBlock) => void
   onAddClick: (user: User, day: string) => void
   currentUserName: string
+  onTimeFormatChange?: (use24Hour: boolean) => void
 }
 
 // Helper function to get text color based on background color
@@ -41,8 +42,28 @@ export function SingleDayView({
   use24HourFormat = false,
   onBlockClick,
   onAddClick,
-  currentUserName
+  currentUserName,
+  onTimeFormatChange
 }: SingleDayViewProps) {
+  // State for 24-hour time format toggle
+  const [localUse24HourFormat, setLocalUse24HourFormat] = useState(use24HourFormat)
+  
+  // Effect to sync with parent component's format
+  useEffect(() => {
+    setLocalUse24HourFormat(use24HourFormat)
+  }, [use24HourFormat])
+  
+  // Toggle between 12-hour and 24-hour time format
+  const toggleTimeFormat = () => {
+    const newFormat = !localUse24HourFormat
+    setLocalUse24HourFormat(newFormat)
+    
+    // Notify parent component if callback provided
+    if (onTimeFormatChange) {
+      onTimeFormatChange(newFormat)
+    }
+  }
+  
   // Calculate hours to display from 6am to 6am (next day)
   const hours = Array.from({ length: 25 }, (_, i) => (i + 6) % 24)
   
@@ -51,7 +72,7 @@ export function SingleDayView({
     // Add asterisk to indicate early morning hours (0-5) belong to the next day
     const nextDayIndicator = (hour >= 0 && hour < 6) ? '*' : ''
     
-    if (use24HourFormat) {
+    if (localUse24HourFormat) {
       return `${hour.toString().padStart(2, '0')}:00${nextDayIndicator}`
     } else {
       const period = hour >= 12 ? 'pm' : 'am'
@@ -67,7 +88,7 @@ export function SingleDayView({
     // Add asterisk to indicate early morning hours (0-5) belong to the next day
     const nextDayIndicator = (hours >= 0 && hours < 6) ? '*' : ''
     
-    if (use24HourFormat) {
+    if (localUse24HourFormat) {
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}${nextDayIndicator}`
     } else {
       const period = hours >= 12 ? 'pm' : 'am'
@@ -99,27 +120,27 @@ export function SingleDayView({
       <div className="relative">
         {/* Hour labels column */}
         <div className="flex">
-          <div className="w-12 min-w-12 sm:w-16 sm:min-w-16">
+          <div className="w-10 min-w-10 sm:w-16 sm:min-w-16">
             {/* Empty cell for top-left corner */}
           </div>
           
           {/* Main content area */}
           <div className="flex-grow relative">
             {/* Simple header bar - no user indicators needed */}
-            <div className="h-6 border-b border-gray-700">
+            <div className="h-6 border-b border-[#343434]">
               {/* Empty header - user indicators are now on each block */}
             </div>
             
-            {/* Time grid with blocks */}
-            <div className="relative" style={{ height: `${hours.length * 8}rem` }}>
+            {/* Time grid with blocks - further reduced height for mobile */}
+            <div className="relative" style={{ height: `${hours.length * 4}rem` }}>
               {/* Hour lines */}
               {hours.map((hour, index) => (
                 <div 
                   key={`hour-${index}`} 
-                  className="absolute w-full border-b border-gray-700"
+                  className="absolute w-full border-b border-[#343434]"
                   style={{ top: `${(index / hours.length) * 100}%` }}
                 >
-                  <div className="absolute -left-16 -top-3 text-xs text-[#666666]">
+                  <div className="absolute -left-10 sm:-left-14 -top-3 text-[10px] text-[#666666]" key={`hour-label-${hour}-${index}`} data-component-name="SingleDayView">
                     {formatHour(hour)}
                   </div>
                 </div>
@@ -136,7 +157,14 @@ export function SingleDayView({
                 // All-day events
                 const allDayBlocks = userBlocks
                   .filter(block => block.allDay)
-                  .map((block, blockIndex) => (
+                  .sort((a, b) => {
+                    // Sort alphabetically by label for consistent display
+                    return a.label.localeCompare(b.label);
+                  })
+                  .map((block, blockIndex) => {
+                    const isFirstAllDayBlock = blockIndex === 0; // Check if this is the first all-day block
+                    
+                    return (
                     <div 
                       key={`all-day-${block.id || `${day}-${user.id}-${blockIndex}`}`}
                       className={`absolute rounded-md shadow-md border-2 transition-all duration-200 ${user.name === currentUserName ? 'cursor-pointer hover:brightness-110 active:brightness-90' : 'cursor-default'}`}
@@ -154,20 +182,23 @@ export function SingleDayView({
                       title={`${user.name}: ${block.label} (All Day)`}
                       data-component-name="SingleDayView"
                     >
-                      <div 
-                        className="absolute -top-4 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-8 h-8 text-sm font-bold shadow-md border border-gray-700 z-50"
-                        style={{
-                          backgroundColor: user.color,
-                          color: getTextColor(user.color),
-                        }}
-                        data-component-name="SingleDayView"
-                      >
-                        {user.initial}
-                      </div>
+                      {/* User initial centered on top of the block - only shown for the first all-day block */}
+                      {isFirstAllDayBlock && (
+                        <div 
+                          className="absolute -top-3 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold shadow-md border border-gray-700 z-50"
+                          style={{
+                            backgroundColor: user.color,
+                            color: getTextColor(user.color),
+                          }}
+                          data-component-name="SingleDayView"
+                        >
+                          {user.initial}
+                        </div>
+                      )}
                       
-                      <div className="p-2 pt-4 pl-4 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
+                      <div className="p-1 pt-4 pl-4 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
                         <div className="flex flex-wrap items-start max-w-full" data-component-name="SingleDayView">
-                          <span className="text-xs font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
+                          <span className="text-[10px] font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
                             {block.label}{" (All Day)"}
                           </span>
                           {user.name === currentUserName && (
@@ -176,14 +207,22 @@ export function SingleDayView({
                         </div>
                       </div>
                     </div>
-                  ));
+                  );
+                  });
                 
                 // Regular time blocks
                 const regularBlocks = userBlocks
                   .filter(block => !block.allDay)
+                  .sort((a, b) => {
+                    // Sort blocks by start time to ensure the first block is at the top
+                    const aStart = calculateTimePosition(a.start);
+                    const bStart = calculateTimePosition(b.start);
+                    return aStart - bStart;
+                  })
                   .map((block, blockIndex) => {
                     const startPosition = calculateTimePosition(block.start);
                     const endPosition = calculateTimePosition(block.end);
+                    const isFirstBlock = blockIndex === 0; // Check if this is the first block for this user
                     
                     return (
                       <div 
@@ -201,25 +240,27 @@ export function SingleDayView({
                         title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
                         data-component-name="SingleDayView"
                       >
-                        {/* User initial centered on top of the block */}
-                        <div 
-                          className="absolute -top-4 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-8 h-8 text-sm font-bold shadow-md border border-gray-700 z-50"
-                          style={{
-                            backgroundColor: user.color,
-                            color: getTextColor(user.color),
-                          }}
-                          data-component-name="SingleDayView"
-                        >
-                          {user.initial}
-                        </div>
+                        {/* User initial centered on top of the block - only shown for the first block */}
+                        {isFirstBlock && (
+                          <div 
+                            className="absolute -top-3 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold shadow-md border border-gray-700 z-50"
+                            style={{
+                              backgroundColor: user.color,
+                              color: getTextColor(user.color),
+                            }}
+                            data-component-name="SingleDayView"
+                          >
+                            {user.initial}
+                          </div>
+                        )}
                         
-                        <div className="p-2 pt-4 pl-4 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
+                        <div className="p-1 pt-4 pl-4 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
                           <div className="flex flex-col items-start justify-start w-full overflow-hidden" data-component-name="SingleDayView">
-                            <span className="text-xs opacity-80 mb-1 mt-1 font-bold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
+                            <span className="text-[9px] opacity-80 mb-0 mt-1 font-bold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                               {formatTime(block.start)} - {formatTime(block.end)}
                             </span>
                             <div className="flex flex-wrap items-start max-w-full">
-                              <span className="text-xs font-bold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
+                              <span className="text-[10px] font-bold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                                 {block.label}
                               </span>
                               {user.name === currentUserName && (
