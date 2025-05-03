@@ -34,7 +34,7 @@ export default function Login() {
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">Login to ScheduleSync</h1>
+            <h1 className="text-2xl font-bold">Roomeez</h1>
             <p className="text-[#A0A0A0] mt-2">Welcome back</p>
           </div>
 

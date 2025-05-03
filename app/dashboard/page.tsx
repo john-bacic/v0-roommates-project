@@ -380,7 +380,7 @@ export default function Dashboard() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333]">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           {/* Update the header title */}
-          <h1 className="text-xl font-bold">Roomies Schedules</h1>
+          <h1 className="text-xl font-bold" data-component-name="Dashboard">Roomeez</h1>
 
           {/* Add a link to the overview page in the header section */}
           <div className="flex items-center gap-2">

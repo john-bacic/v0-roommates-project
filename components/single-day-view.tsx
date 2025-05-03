@@ -242,7 +242,7 @@ export function SingleDayView({
                       
                       <div className="p-1 pt-4 pl-2 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
                         <div className="flex flex-wrap items-start max-w-full" data-component-name="SingleDayView">
-                          <span className="text-[16px] font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
+                          <span className="text-[13px] font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
                             {block.label}{" (All Day)"}
                           </span>
                           {user.name === currentUserName && (
