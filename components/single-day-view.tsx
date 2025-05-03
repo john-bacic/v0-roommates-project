@@ -256,11 +256,11 @@ export function SingleDayView({
                         
                         <div className={`p-1 ${isFirstBlock ? 'pt-4' : 'pt-2'} pl-4 h-full flex flex-col overflow-hidden`} style={{ zIndex: 10 }} data-component-name="SingleDayView">
                           <div className="flex flex-col items-start justify-start w-full overflow-hidden" data-component-name="SingleDayView">
-                            <span className="text-[14px] opacity-80 mb-0 mt-1 font-bold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
+                            <span className="text-[13px] opacity-80 mb-0 mt-1 font-bold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                               {formatTime(block.start)} - {formatTime(block.end)}
                             </span>
                             <div className="flex flex-wrap items-start max-w-full">
-                              <span className="text-[14px] font-bold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
+                              <span className="text-[13px] font-bold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                                 {block.label}
                               </span>
                               {user.name === currentUserName && (
