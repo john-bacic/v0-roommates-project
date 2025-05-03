@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit2, Clock } from 'lucide-react'
 
@@ -48,10 +48,37 @@ export function SingleDayView({
   // State for 24-hour time format toggle
   const [localUse24HourFormat, setLocalUse24HourFormat] = useState(use24HourFormat)
   
+  // State for current time position
+  const [currentTimePosition, setCurrentTimePosition] = useState<number>(0)
+  const timeIndicatorRef = useRef<HTMLDivElement>(null)
+  
   // Effect to sync with parent component's format
   useEffect(() => {
     setLocalUse24HourFormat(use24HourFormat)
   }, [use24HourFormat])
+  
+  // Effect to update current time position
+  useEffect(() => {
+    // Calculate initial position
+    const updateTimePosition = () => {
+      const now = new Date()
+      const hours = now.getHours()
+      const minutes = now.getMinutes()
+      const totalMinutes = hours * 60 + minutes
+      
+      // Use the same calculation as for time blocks
+      const position = calculateTimePosition(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`)
+      setCurrentTimePosition(position)
+    }
+    
+    // Update immediately
+    updateTimePosition()
+    
+    // Then update every minute
+    const interval = setInterval(updateTimePosition, 60000)
+    
+    return () => clearInterval(interval)
+  }, [])
   
   // Toggle between 12-hour and 24-hour time format
   const toggleTimeFormat = () => {
@@ -145,6 +172,22 @@ export function SingleDayView({
                   </div>
                 </div>
               ))}
+              
+              {/* Current time indicator */}
+              <div 
+                ref={timeIndicatorRef}
+                className="absolute w-full border-t-2 border-red-500 z-30"
+                style={{ 
+                  top: `${currentTimePosition}%`,
+                  boxShadow: '0 0 4px rgba(255, 0, 0, 0.7)'
+                }}
+                data-component-name="SingleDayView"
+              >
+                <div className="absolute -left-8 sm:-left-12 -top-2 bg-red-500 text-white text-[10px] px-1 py-0.5 rounded-sm shadow-md z-40" data-component-name="SingleDayView">
+                  Now
+                </div>
+                <div className="absolute left-0 -top-1.5 w-3 h-3 rounded-full bg-red-500 shadow-md z-40" data-component-name="SingleDayView"></div>
+              </div>
               
               {/* Time blocks for each user */}
               {users.map((user) => {
