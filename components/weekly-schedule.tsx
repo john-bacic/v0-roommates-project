@@ -297,16 +297,24 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     setUsedColors(colors)
   }, [users])
 
-  // Convert time string to position percentage
-  const timeToPosition = (time: string): number => {
-    const [hours, minutes] = time.split(":").map(Number)
-    const decimalHours = hours + (minutes / 60)
+  // Helper function to convert a time string (HH:MM) to a position percentage
+  // This is the core time calculation function used throughout the component
+  const timeToPosition = (timeString: string, secondsOffset: number = 0): number => {
+    const [hours, minutes] = timeString.split(':').map(Number)
+    // Include seconds for more precise positioning if provided
+    let totalMinutes = hours * 60 + minutes + (secondsOffset / 60)
     
-    // Handle times after midnight (0-6) by adding 24
-    const adjustedHours = (hours >= 0 && hours < 6) ? decimalHours + 24 : decimalHours
+    // For hours 0-5 (12am-5:59am), add 24 hours to place them after the 6pm-11:59pm time slots
+    if (hours >= 0 && hours < 6) {
+      totalMinutes += 24 * 60 // Add 24 hours in minutes
+    }
     
     // Our visible range is 6am to 6am next day (24 hours)
-    return ((adjustedHours - 6) / 24) * 100
+    const startMinutes = 6 * 60 // 6am
+    const totalDuration = 24 * 60 // 24 hours
+    
+    // Calculate position as percentage of the timeline
+    return ((totalMinutes - startMinutes) / totalDuration) * 100
   }
 
   // Add a toggle function after the timeToPosition function
@@ -907,23 +915,14 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const now = new Date()
     const hours = now.getHours()
     const minutes = now.getMinutes()
+    const seconds = now.getSeconds()
     
-    // Convert to decimal hours (e.g., 14:30 = 14.5)
-    const decimalHours = hours + (minutes / 60)
+    // Format the current time as a string HH:MM
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     
-    // Our visible range is 6am to 6am next day (24 hours)
-    // This must exactly match the calculation used for the hour markers
-    const hourWidth = 100 / 24 // Each hour is 4.17% of the width
-    let position
-    
-    // Handle times after midnight (0-5am)
-    if (hours < 6) {
-      // For hours 0-5, show them at the end of the previous day (after hour 24)
-      position = ((hours + 24 - 6) / 24) * 100
-    } else {
-      // For normal hours (6am-11pm)
-      position = ((decimalHours - 6) / 24) * 100
-    }
+    // Use our common timeToPosition function with seconds precision
+    // This ensures perfect alignment with time blocks and hour markers
+    const position = timeToPosition(timeString, seconds)
     
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
   }
@@ -1099,19 +1098,27 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       </div>
                     )}
                     
-                    {hours.map((hour, hourIndex) => (
-                      <div key={`hour-timeline-${hour}-${hourIndex}`} className="flex-1 relative" data-component-name="WeeklySchedule">
-                        {getVisibleHours().includes(hour) && (
-                          <div
-                            className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
-                            style={{ left: `${((hour - 6) / 24) * 100}%` }}
-                            data-component-name="WeeklySchedule"
-                          >
-                            {formatHour(hour)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {/* Render hour markers using the same positioning function as grid lines and time indicator */}
+                    {hours.map((hour, hourIndex) => {
+                      // Only show hours that should be visible based on screen width
+                      if (!getVisibleHours().includes(hour)) return null;
+                      
+                      // Format hour as HH:00 for timeToPosition
+                      const hourString = `${hour.toString().padStart(2, '0')}:00`
+                      // Calculate exact position using the same function as time indicator and grid lines
+                      const position = timeToPosition(hourString)
+                      
+                      return (
+                        <div 
+                          key={`hour-timeline-${hour}-${hourIndex}`} 
+                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
+                          style={{ left: `${position}%` }}
+                          data-component-name="WeeklySchedule"
+                        >
+                          {formatHour(hour)}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1174,11 +1181,22 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         } bg-[#373737] rounded-md overflow-hidden transition-all duration-200 flex-grow`}
                       data-component-name="WeeklySchedule"
                     >
-                      {/* Vertical grid lines */}
-                      <div className="absolute inset-0 flex pointer-events-none">
-                        {hours.map((hour, gridIndex) => (
-                          <div key={`grid-line-${hour}-${gridIndex}`} className="flex-1 border-l border-[#191919] first:border-l-0 h-full" />
-                        ))}
+                      {/* Vertical grid lines - positioned exactly at hour marks */}
+                      <div className="absolute inset-0 h-full w-full pointer-events-none">
+                        {hours.map((hour, gridIndex) => {
+                          // Format hour as HH:00 for timeToPosition
+                          const hourString = `${hour.toString().padStart(2, '0')}:00`
+                          // Calculate exact position using the same function as time indicator
+                          const position = timeToPosition(hourString)
+                          
+                          return (
+                            <div 
+                              key={`grid-line-${hour}-${gridIndex}`} 
+                              className="absolute top-0 bottom-0 border-l border-[#191919] h-full" 
+                              style={{ left: `${position}%` }}
+                            />
+                          )
+                        })}
                       </div>
 
                       {/* Schedule blocks */}
@@ -1191,29 +1209,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           endPos = 100;
                           width = 100;
                         } else {
-                          // Calculate the position and width of the time block
-                          const startHour = parseInt(block.start.split(":")[0])
-                          const startMinute = parseInt(block.start.split(":")[1])
-                          const endHour = parseInt(block.end.split(":")[0])
-                          const endMinute = parseInt(block.end.split(":")[1])
+                          // Use our common timeToPosition function for consistent positioning
+                          // This ensures perfect alignment with the time grid and current time indicator
+                          startPos = timeToPosition(block.start)
+                          endPos = timeToPosition(block.end)
                           
-                          // Calculate the start and end positions as percentages
-                          // Use the same calculation as the time markers and current time indicator
-                          // Our visible range is 6am to 6am next day (24 hours)
-                          let startDecimalHours = startHour + (startMinute / 60)
-                          let endDecimalHours = endHour + (endMinute / 60)
-                          
-                          // Handle times after midnight (0-6) by adding 24
-                          if (startHour >= 0 && startHour < 6) {
-                            startDecimalHours += 24
-                          }
-                          if (endHour >= 0 && endHour < 6) {
-                            endDecimalHours += 24
-                          }
-                          
-                          startPos = ((startDecimalHours - 6) / 24) * 100
-                          endPos = ((endDecimalHours - 6) / 24) * 100
-                          width = endPos - startPos
+                          // Ensure minimum width for very short events and handle rounding
+                          width = Math.max(endPos - startPos, 0.5) // Minimum width of 0.5%
                         }
 
                         return (

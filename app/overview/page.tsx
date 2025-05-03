@@ -245,7 +245,7 @@ export default function Overview() {
                 </Link>
               </div>
             <h1 className="text-xl font-bold text-center w-full absolute left-0 right-0 pointer-events-none z-0" data-component-name="Overview">
-              Overview
+              Daily
             </h1>
             <div className="w-[72px] flex justify-end">
               {/* Time format toggle button */}

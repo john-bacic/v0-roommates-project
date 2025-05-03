@@ -57,28 +57,60 @@ export function SingleDayView({
     setLocalUse24HourFormat(use24HourFormat)
   }, [use24HourFormat])
   
-  // Effect to update current time position
+  // Function to get the logical day name based on our schedule logic
+  // Hours between midnight and 6am are considered part of the previous day
+  const getLogicalDayName = (): string => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const now = new Date()
+    let dayIndex = now.getDay()
+    
+    // If it's before 6am, consider it the previous day
+    if (now.getHours() < 6) {
+      // Subtract 1 and handle wrapping around from Sunday to Saturday
+      dayIndex = (dayIndex - 1 + 7) % 7
+    }
+    
+    return days[dayIndex]
+  }
+  
+  // Check if the day being viewed is the current logical day
+  const isCurrentDay = getLogicalDayName() === day
+  
+  // State to track the current hour for day transition checks
+  const [currentHour, setCurrentHour] = useState<number>(new Date().getHours())
+  
+  // Effect to update current time position and handle day transitions
   useEffect(() => {
-    // Calculate initial position
+    // Calculate initial position with improved accuracy
     const updateTimePosition = () => {
       const now = new Date()
       const hours = now.getHours()
       const minutes = now.getMinutes()
-      const totalMinutes = hours * 60 + minutes
+      const seconds = now.getSeconds()
       
-      // Use the same calculation as for time blocks
-      const position = calculateTimePosition(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`)
+      // Update current hour for transition checks
+      setCurrentHour(hours)
+      
+      // Only update position if we're viewing the current logical day
+      if (!isCurrentDay) return
+      
+      // Include seconds for more precise positioning
+      const totalMinutes = hours * 60 + minutes + (seconds / 60)
+      
+      // Use the same calculation as for time blocks but with seconds precision
+      const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      const position = calculateTimePosition(timeString, seconds)
       setCurrentTimePosition(position)
     }
     
     // Update immediately
     updateTimePosition()
     
-    // Then update every minute
-    const interval = setInterval(updateTimePosition, 60000)
+    // Then update every 10 seconds for smoother movement
+    const interval = setInterval(updateTimePosition, 10000)
     
     return () => clearInterval(interval)
-  }, [])
+  }, [isCurrentDay, day, currentHour])
   
   // Toggle between 12-hour and 24-hour time format
   const toggleTimeFormat = () => {
@@ -124,10 +156,10 @@ export function SingleDayView({
     }
   }
   
-  // Calculate time position in percentage for the grid
-  const calculateTimePosition = (time: string): number => {
-    const [hours, minutes] = time.split(':').map(Number)
-    let totalMinutes = hours * 60 + minutes
+  // Base calculation function for time positions
+  const calculateBasePosition = (hours: number, minutes: number = 0, seconds: number = 0): number => {
+    // Calculate total minutes from 6am (our start time)
+    let totalMinutes = hours * 60 + minutes + (seconds / 60)
     
     // For hours 0-5 (12am-5:59am), add 24 hours to place them after the 6pm-11:59pm time slots
     if (hours >= 0 && hours < 6) {
@@ -139,6 +171,23 @@ export function SingleDayView({
     
     // Calculate position as percentage of the timeline
     return ((totalMinutes - startMinutes) / totalDuration) * 100
+  }
+  
+  // Calculate time position for the current time indicator with seconds precision
+  const calculateTimePosition = (time: string, seconds: number = 0): number => {
+    const [hours, minutes] = time.split(':').map(Number)
+    return calculateBasePosition(hours, minutes, seconds)
+  }
+  
+  // Calculate time position for time blocks to ensure alignment
+  const calculateBlockPosition = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number)
+    return calculateBasePosition(hours, minutes)
+  }
+  
+  // Calculate hour position for the hour grid lines
+  const calculateHourPosition = (hour: number): number => {
+    return calculateBasePosition(hour)
   }
   
   return (
@@ -159,13 +208,13 @@ export function SingleDayView({
             </div>
             
             {/* Time grid with blocks - further reduced height for mobile */}
-            <div className="relative" style={{ height: `${hours.length * 2.7}rem` }}>
+            <div className="relative" style={{ height: `50rem` }} data-component-name="SingleDayView">
               {/* Hour lines */}
               {hours.map((hour, index) => (
                 <div 
                   key={`hour-${index}`} 
                   className="absolute w-full border-b border-[#343434]"
-                  style={{ top: `${(index / hours.length) * 100}%` }}
+                  style={{ top: `${calculateHourPosition(hour)}%` }}
                 >
                   <div className="absolute -left-10 sm:-left-14 -top-3 text-[11px] text-[#666666]" key={`hour-label-${hour}-${index}`} data-component-name="SingleDayView">
                     {formatHour(hour)}
@@ -173,22 +222,21 @@ export function SingleDayView({
                 </div>
               ))}
               
-              {/* Current time indicator */}
-              <div 
-                ref={timeIndicatorRef}
-                className="absolute w-full border-t-2 border-red-500 z-30"
-                style={{ 
-                  top: `${currentTimePosition}%`,
-                  boxShadow: '0 0 4px rgba(255, 0, 0, 0.7)',
-                  left: '-1px'
-                }}
-                data-component-name="SingleDayView"
-              >
-                {/* <div className="absolute -left-8 sm:-left-12 -top-2 bg-red-500 text-white text-[10px] px-1 py-0.5 rounded-sm shadow-md z-40" data-component-name="SingleDayView">
-                  Now
-                </div> */}
-                <div className="absolute -left-3 -top-1.5 w-3 h-3 rounded-full bg-red-500 shadow-md z-40" data-component-name="SingleDayView"></div>
-              </div>
+              {/* Current time indicator - only show on current day */}
+              {isCurrentDay && (
+                <div 
+                  ref={timeIndicatorRef}
+                  className="absolute w-full border-t-2 border-red-500 z-30"
+                  style={{ 
+                    top: `${currentTimePosition}%`,
+                    boxShadow: '0 0 4px rgba(255, 0, 0, 0.7)',
+                    left: '-1px'
+                  }}
+                  data-component-name="SingleDayView"
+                >
+                  <div className="absolute -left-3 -top-1.5 w-3 h-3 rounded-full bg-red-500 shadow-md z-40" data-component-name="SingleDayView"></div>
+                </div>
+              )}
               
               {/* Time blocks for each user */}
               {users.map((user) => {
@@ -215,8 +263,8 @@ export function SingleDayView({
                       style={{
                         top: 0,
                         height: '100%',
-                        left: `${leftPosition + columnWidth * 0.05}%`,
-                        width: `${columnWidth * 0.9}%`,
+                        left: `${leftPosition + columnWidth * 0.02}%`,
+                        width: `${columnWidth * 0.96}%`,
                         backgroundColor: `${user.color}20`,
                         borderColor: user.color,
                         zIndex: 15,
@@ -261,13 +309,13 @@ export function SingleDayView({
                   .filter(block => !block.allDay)
                   .sort((a, b) => {
                     // Sort blocks by start time to ensure the first block is at the top
-                    const aStart = calculateTimePosition(a.start);
-                    const bStart = calculateTimePosition(b.start);
+                    const aStart = calculateBlockPosition(a.start);
+                    const bStart = calculateBlockPosition(b.start);
                     return aStart - bStart;
                   })
                   .map((block, blockIndex) => {
-                    const startPosition = calculateTimePosition(block.start);
-                    const endPosition = calculateTimePosition(block.end);
+                    const startPosition = calculateBlockPosition(block.start);
+                    const endPosition = calculateBlockPosition(block.end);
                     const isFirstBlock = blockIndex === 0; // Check if this is the first block for this user
                     
                     return (
@@ -277,8 +325,8 @@ export function SingleDayView({
                         style={{
                           top: `${startPosition}%`,
                           height: `${endPosition - startPosition}%`,
-                          left: `${leftPosition + columnWidth * 0.05}%`,
-                          width: `${columnWidth * 0.9}%`,
+                          left: `${leftPosition + columnWidth * 0.005}%`,
+                          width: `${columnWidth * 0.99}%`,
                           backgroundColor: user.color,
                           zIndex: 20,
                         }}
