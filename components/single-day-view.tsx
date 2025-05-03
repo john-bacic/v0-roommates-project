@@ -187,6 +187,37 @@ export function SingleDayView({
       fetchLatestSchedules()
     }
   }, [needsRefresh, fetchLatestSchedules])
+  
+  // Always fetch latest data when component mounts or when day changes
+  useEffect(() => {
+    // Fetch latest data immediately when component mounts or when day changes
+    fetchLatestSchedules()
+    
+    // Create a custom event that can be dispatched when returning from edit screen
+    const handleReturnToView = () => {
+      console.log('Returned to view, refreshing SingleDayView data')
+      fetchLatestSchedules()
+    }
+    
+    // Listen for a custom event that will be dispatched when returning from edit
+    document.addEventListener('returnToScheduleView', handleReturnToView)
+    
+    // Also set up a listener for visibility changes (tab focus, etc.)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page became visible, refreshing SingleDayView data')
+        fetchLatestSchedules()
+      }
+    }
+    
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('returnToScheduleView', handleReturnToView)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [day, fetchLatestSchedules])
 
   // Effect to update current time position and handle day transitions
   useEffect(() => {

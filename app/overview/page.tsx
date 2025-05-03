@@ -150,27 +150,23 @@ export default function Overview() {
   
   // Load data on component mount
   useEffect(() => {
+    // Load initial data
     loadData()
     
-    // Set up real-time subscriptions
-    const usersSubscription = supabase
-      .channel('users-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'users' 
-      }, () => {
+    // Set up subscription for schedule changes
+    const scheduleSubscription = supabase
+      .channel('schedules-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
+        // Reload data when any schedule changes
         loadData()
       })
       .subscribe()
     
-    const scheduleSubscription = supabase
-      .channel('schedules-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'schedules' 
-      }, () => {
+    // Set up subscription for user changes
+    const usersSubscription = supabase
+      .channel('users-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        // Reload data when any user changes
         loadData()
       })
       .subscribe()
@@ -189,14 +185,42 @@ export default function Overview() {
       }
     }
     
-    // Add event listener for the custom event
+    // Handle page visibility changes (when user returns to the tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page became visible, refreshing Overview data')
+        loadData()
+      }
+    }
+    
+    // Handle navigation events (when user navigates back to this page)
+    const handleNavigation = () => {
+      console.log('Navigation detected, refreshing Overview data')
+      loadData()
+    }
+    
+    // Listen for custom event from edit page
+    const handleReturnToView = () => {
+      console.log('Returned from edit page, refreshing Overview data')
+      loadData()
+    }
+    
+    // Add event listeners
     document.addEventListener('scheduleDataUpdated', handleScheduleUpdate)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('popstate', handleNavigation)
+    window.addEventListener('focus', handleNavigation)
+    document.addEventListener('returnToScheduleView', handleReturnToView)
     
     // Clean up subscriptions and event listeners on unmount
     return () => {
       supabase.removeChannel(scheduleSubscription)
       supabase.removeChannel(usersSubscription)
       document.removeEventListener('scheduleDataUpdated', handleScheduleUpdate)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('popstate', handleNavigation)
+      window.removeEventListener('focus', handleNavigation)
+      document.removeEventListener('returnToScheduleView', handleReturnToView)
     }
   }, [])
 

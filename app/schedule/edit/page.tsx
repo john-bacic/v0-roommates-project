@@ -269,6 +269,13 @@ export default function EditSchedule() {
       // Save to localStorage as a fallback
       localStorage.setItem(`schedule_${userName}`, JSON.stringify(schedule));
       
+      // Dispatch a custom event to notify components that we're returning to the view
+      // This will trigger a data refresh in the Overview page
+      const returnEvent = new CustomEvent('returnToScheduleView', {
+        detail: { updatedAt: new Date().toISOString() }
+      });
+      document.dispatchEvent(returnEvent);
+      
       // Navigate back to the page that triggered the edit
       router.push(returnPath);
     } catch (error) {
@@ -306,6 +313,12 @@ export default function EditSchedule() {
           <button 
             onClick={(e) => {
               e.preventDefault();
+              // Dispatch a custom event to notify components that we're returning to the view
+              const returnEvent = new CustomEvent('returnToScheduleView', {
+                detail: { updatedAt: new Date().toISOString() }
+              });
+              document.dispatchEvent(returnEvent);
+              
               // First try to use browser history
               if (window.history.length > 1) {
                 window.history.back();
