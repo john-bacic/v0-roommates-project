@@ -175,20 +175,28 @@ export default function Overview() {
       })
       .subscribe()
     
-    // Listen for custom scheduleUpdate events from SingleDayView component
-    const handleScheduleUpdate = () => {
+    // Listen for custom scheduleDataUpdated events from SingleDayView component
+    const handleScheduleUpdate = (event: Event) => {
       console.log('Schedule update event received, reloading data')
-      loadData()
+      // Check if the event has updated schedule data
+      const customEvent = event as CustomEvent
+      if (customEvent.detail && customEvent.detail.updatedSchedules) {
+        // Use the updated schedules directly
+        setSchedules(customEvent.detail.updatedSchedules)
+      } else {
+        // Fall back to reloading all data
+        loadData()
+      }
     }
     
     // Add event listener for the custom event
-    document.addEventListener('scheduleUpdate', handleScheduleUpdate)
+    document.addEventListener('scheduleDataUpdated', handleScheduleUpdate)
     
     // Clean up subscriptions and event listeners on unmount
     return () => {
       supabase.removeChannel(scheduleSubscription)
       supabase.removeChannel(usersSubscription)
-      document.removeEventListener('scheduleUpdate', handleScheduleUpdate)
+      document.removeEventListener('scheduleDataUpdated', handleScheduleUpdate)
     }
   }, [])
 

@@ -80,26 +80,98 @@ export function SingleDayView({
   // State to track the current hour for day transition checks
   const [currentHour, setCurrentHour] = useState<number>(new Date().getHours())
   
-  // Function to handle schedule updates
-  const onScheduleUpdate = useCallback(() => {
-    // This will trigger a re-render with the latest schedules
-    // The parent component is responsible for fetching the updated schedules
-    // Dispatch a custom event that the parent component can listen for
-    const dummyEvent = new CustomEvent('scheduleUpdate')
-    document.dispatchEvent(dummyEvent)
-  }, [])
-
+  // State to track if we need to refresh data
+  const [needsRefresh, setNeedsRefresh] = useState(false)
+  
+  // Function to fetch latest schedules directly from Supabase
+  const fetchLatestSchedules = useCallback(async () => {
+    try {
+      // Get all schedules for the current users
+      const userIds = users.map(user => user.id)
+      
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('*')
+        .in('user_id', userIds)
+      
+      if (error) {
+        console.error('Error fetching schedules:', error)
+        return
+      }
+      
+      if (data && data.length > 0) {
+        // Process the data into the format expected by the component
+        const updatedSchedules = {...schedules}
+        
+        // Reset schedules for the affected users
+        for (const userId of userIds) {
+          if (!updatedSchedules[userId]) {
+            updatedSchedules[userId] = {}
+          }
+          
+          // Initialize empty arrays for each day
+          for (const dayName of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']) {
+            if (!updatedSchedules[userId][dayName]) {
+              updatedSchedules[userId][dayName] = []
+            }
+          }
+        }
+        
+        // Add the fetched schedules
+        for (const schedule of data) {
+          const userId = schedule.user_id
+          const dayName = schedule.day
+          
+          if (updatedSchedules[userId] && dayName) {
+            // Find if this schedule already exists in our array
+            const existingIndex = updatedSchedules[userId][dayName].findIndex(
+              (item: TimeBlock) => item.id === schedule.id
+            )
+            
+            const updatedBlock = {
+              id: schedule.id,
+              start: schedule.start_time,
+              end: schedule.end_time,
+              label: schedule.label,
+              allDay: schedule.all_day
+            }
+            
+            if (existingIndex >= 0) {
+              // Update existing schedule
+              updatedSchedules[userId][dayName][existingIndex] = updatedBlock
+            } else {
+              // Add new schedule
+              updatedSchedules[userId][dayName].push(updatedBlock)
+            }
+          }
+        }
+        
+        // Force a re-render by updating the parent component
+        // Use a custom event to notify the parent component
+        const updateEvent = new CustomEvent('scheduleDataUpdated', { 
+          detail: { updatedSchedules } 
+        })
+        document.dispatchEvent(updateEvent)
+        
+        setNeedsRefresh(false)
+      }
+    } catch (error) {
+      console.error('Error in fetchLatestSchedules:', error)
+    }
+  }, [users, schedules, onBlockClick])
+  
   // Set up Supabase real-time subscription
   useEffect(() => {
     // Subscribe to schedule changes
     const scheduleSubscription = supabase
-      .channel('single-day-schedules-changes')
+      .channel('single-day-view-schedules-changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'schedules' 
       }, () => {
-        onScheduleUpdate()
+        // Mark that we need to refresh data
+        setNeedsRefresh(true)
       })
       .subscribe()
     
@@ -107,7 +179,14 @@ export function SingleDayView({
     return () => {
       supabase.removeChannel(scheduleSubscription)
     }
-  }, [onScheduleUpdate])
+  }, [])
+  
+  // Fetch latest data when needed
+  useEffect(() => {
+    if (needsRefresh) {
+      fetchLatestSchedules()
+    }
+  }, [needsRefresh, fetchLatestSchedules])
 
   // Effect to update current time position and handle day transitions
   useEffect(() => {
