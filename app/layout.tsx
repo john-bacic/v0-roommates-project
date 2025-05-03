@@ -3,7 +3,7 @@ import './globals.css'
 import { ClientOnlyScripts } from '@/components/client-only-scripts'
 
 export const metadata: Metadata = {
-  title: 'Roommate Scheduler',
+  title: 'Roomeez',
   description: 'Schedule coordination app for roommates',
   generator: 'v0.dev',
   manifest: '/manifest.json',
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Roommate Scheduler',
+    title: 'Roomeez',
     startupImage: [
       '/splash.png',
     ],
@@ -35,7 +35,7 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Roommate Scheduler" />
+        <meta name="apple-mobile-web-app-title" content="Roomeez" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-touch-fullscreen" content="yes" />

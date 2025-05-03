@@ -1,6 +1,6 @@
-// Service Worker for Roommate Scheduler PWA
+// Service Worker for Roomeez PWA
 
-const CACHE_NAME = 'roommate-scheduler-v1';
+const CACHE_NAME = 'roomeez-v1';
 const urlsToCache = [
   '/',
   '/dashboard',
