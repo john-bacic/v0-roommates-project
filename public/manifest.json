@@ -1,6 +1,6 @@
 {
-  "name": "Roommate Scheduler",
-  "short_name": "Roommates",
+  "name": "Roomeez",
+  "short_name": "Roomeez",
   "description": "Schedule coordination app for roommates",
   "start_url": "/",
   "display": "standalone",
