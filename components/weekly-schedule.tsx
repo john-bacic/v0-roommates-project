@@ -1132,7 +1132,37 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             }}
           >
             <div className="flex justify-between items-center pr-1">
-              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
+                {day}
+                {/* Check if this is the current day and add the date */}
+                {(() => {
+                  // Get the day index (0-6, Monday-Sunday)
+                  const dayIndex = days.indexOf(day);
+                  
+                  // Get the date for this day based on the current week
+                  const date = new Date(currentWeek);
+                  date.setDate(date.getDate() - date.getDay() + (dayIndex === 6 ? 0 : dayIndex + 1));
+                  
+                  // Check if this date is today
+                  const today = new Date();
+                  const isToday = date.getDate() === today.getDate() && 
+                                  date.getMonth() === today.getMonth() && 
+                                  date.getFullYear() === today.getFullYear();
+                  
+                  if (isToday) {
+                    // Format the date as "Month Day"
+                    const month = date.toLocaleString('default', { month: 'long' });
+                    const dayOfMonth = date.getDate();
+                    
+                    return (
+                      <span className="ml-1 font-bold text-xs">
+                        {` • ${month} ${dayOfMonth}`}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </h4>
               
               {/* No toggle buttons in desktop view as requested */}
             </div>
@@ -1141,7 +1171,37 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - only for Monday */}
           {day === "Monday" && (
             <div className="flex justify-between items-center pr-1 mb-2">
-              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
+                {day}
+                {/* Check if this is the current day and add the date */}
+                {(() => {
+                  // Get the day index (0-6, Monday-Sunday)
+                  const dayIndex = days.indexOf(day);
+                  
+                  // Get the date for this day based on the current week
+                  const date = new Date(currentWeek);
+                  date.setDate(date.getDate() - date.getDay() + (dayIndex === 6 ? 0 : dayIndex + 1));
+                  
+                  // Check if this date is today
+                  const today = new Date();
+                  const isToday = date.getDate() === today.getDate() && 
+                                  date.getMonth() === today.getMonth() && 
+                                  date.getFullYear() === today.getFullYear();
+                  
+                  if (isToday) {
+                    // Format the date as "Month Day"
+                    const month = date.toLocaleString('default', { month: 'long' });
+                    const dayOfMonth = date.getDate();
+                    
+                    return (
+                      <span className="ml-1 font-bold text-xs">
+                        {` • ${month} ${dayOfMonth}`}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </h4>
             </div>
           )}
 
