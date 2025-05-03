@@ -138,7 +138,7 @@ export default function EditSchedule() {
   }, [userName]);
 
   // State to track the return path
-  const [returnPath, setReturnPath] = useState("/dashboard")
+  const [returnPath, setReturnPath] = useState("/dashboard") // Default to dashboard
 
   // Effect for initialization and routing
   useEffect(() => {
@@ -303,15 +303,24 @@ export default function EditSchedule() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <Link 
-            href={returnPath} 
-            className="flex items-center text-white hover:opacity-80"
-            data-component-name="LinkComponent"
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              // First try to use browser history
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                // Fall back to the stored return path
+                window.location.href = returnPath;
+              }
+            }} 
+            className="flex items-center text-white hover:opacity-80 cursor-pointer"
+            data-component-name="BackButton"
             title="Back"
           >
             <ArrowLeft className="h-6 w-6" />
             <span className="sr-only">Back</span>
-          </Link>
+          </button>
           <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Edit</h1>
           <div className="w-16">{/* Spacer to balance layout */}</div>
         </div>

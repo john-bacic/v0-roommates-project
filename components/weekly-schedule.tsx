@@ -1099,8 +1099,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       </div>
                     )}
                     
-                    {hours.map((hour) => (
-                      <div key={hour} className="flex-1 relative" data-component-name="WeeklySchedule">
+                    {hours.map((hour, hourIndex) => (
+                      <div key={`hour-timeline-${hour}-${hourIndex}`} className="flex-1 relative" data-component-name="WeeklySchedule">
                         {getVisibleHours().includes(hour) && (
                           <div
                             className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
@@ -1159,8 +1159,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                     >
                       {/* Vertical grid lines */}
                       <div className="absolute inset-0 flex pointer-events-none">
-                        {hours.map((hour) => (
-                          <div key={hour} className="flex-1 border-l border-[#191919] first:border-l-0 h-full" />
+                        {hours.map((hour, gridIndex) => (
+                          <div key={`grid-line-${hour}-${gridIndex}`} className="flex-1 border-l border-[#191919] first:border-l-0 h-full" />
                         ))}
                       </div>
 

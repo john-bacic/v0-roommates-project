@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { ArrowLeft, Edit2, ChevronLeft, ChevronRight } from "lucide-react"
 import { MultiDayView } from "@/components/multi-day-view"
+import { SingleDayView } from "@/components/single-day-view"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 
@@ -256,7 +257,7 @@ export default function Overview() {
                   <span className="sr-only">Back</span>
                 </Link>
               </div>
-            <h1 className="text-xl font-bold text-center flex-1" data-component-name="Overview">
+            <h1 className="text-xl font-bold text-center w-full absolute left-0 right-0 pointer-events-none z-0" data-component-name="Overview">
               Overview
             </h1>
             <div className="w-[72px]"></div> {/* Spacer to balance the back button */}
@@ -373,12 +374,28 @@ export default function Overview() {
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>
             </div>
-          ) : (
+          ) : showFullWeek ? (
             <MultiDayView 
               users={usersList} 
               schedules={schedules} 
-              days={showFullWeek ? days : [selectedDay || days[0]]} 
+              days={days} 
               useAlternatingBg={true} 
+            />
+          ) : (
+            <SingleDayView
+              users={usersList}
+              schedules={schedules}
+              day={selectedDay || days[0]}
+              use24HourFormat={false}
+              onBlockClick={(user, day, block) => {
+                // Navigate to edit schedule for this day
+                window.location.href = `/schedule/edit?day=${day}&from=%2Foverview`;
+              }}
+              onAddClick={(user, day) => {
+                // Navigate to edit schedule for this day
+                window.location.href = `/schedule/edit?day=${day}&from=%2Foverview`;
+              }}
+              currentUserName={userName}
             />
           )}
         </div>
