@@ -1051,7 +1051,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               }
             }}
           >
-            <div className="flex justify-between items-center pr-2">
+            <div className="flex justify-between items-center pr-1">
               <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
               
               {/* No toggle buttons in desktop view as requested */}
@@ -1060,14 +1060,14 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
           {/* Day header - only for Monday */}
           {day === "Monday" && (
-            <div className="flex justify-between items-center pr-2 mb-2">
+            <div className="flex justify-between items-center pr-1 mb-2">
               <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
             </div>
           )}
 
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
-            <div className={`min-w-[800px] md:min-w-0 pl-2 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
+            <div className={`min-w-[800px] md:min-w-0 pl-2 pr-1 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
               {/* Time header - add padding-top to prevent overlapping */}
               <div className="bg-[#282828] mb-2 pt-1">
                 <div className="relative h-6 overflow-visible">
@@ -1078,7 +1078,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 overflow-visible" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
-                          height: isCollapsed ? 'calc(100% + 10rem)' : 'calc(100% + 16rem)', // Slightly taller in expanded state
+                          height: isCollapsed ? 'calc(100% + 7.5rem)' : 'calc(100% + 16rem)', // Tall enough to reach the 3rd user's row in collapsed mode
                           transformOrigin: 'top', // Ensure line grows from top
                           position: 'absolute',
                           top: 0
@@ -1128,23 +1128,40 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                         className={`flex items-center gap-2 ${isCurrentUser ? "cursor-pointer hover:opacity-80" : ""}`}
                         onClick={() => isCurrentUser && handleUserClick(user, day)}
                       >
-                        <span
-                          className="flex items-center justify-center h-6 w-6 rounded-full text-sm font-semibold cursor-pointer"
-                          style={{ backgroundColor: user.color, color: getTextColor(user.color) }}
-                          onClick={(e) => {
-                            if (isCurrentUser) {
-                              e.stopPropagation(); // Stop event from bubbling up
-                              openColorPicker(user);
-                            }
-                          }}
-                          title={isCurrentUser ? "Click to change your color" : user.name}
-                        >
-                          {user.initial}
-                        </span>
-                        <span className="text-sm">
-                          {user.name}
-                          {isCurrentUser && " (You)"}
-                        </span>
+                        {isCollapsed ? (
+                          <span
+                            className="flex items-center justify-center h-3 w-3 rounded-full cursor-pointer"
+                            style={{ backgroundColor: user.color }}
+                            onClick={(e) => {
+                              if (isCurrentUser) {
+                                e.stopPropagation(); // Stop event from bubbling up
+                                openColorPicker(user);
+                              }
+                            }}
+                            title={user.name}
+                          />
+                        ) : (
+                          <span
+                            className="flex items-center justify-center h-6 w-6 rounded-full text-sm font-semibold cursor-pointer"
+                            style={{ backgroundColor: user.color, color: getTextColor(user.color) }}
+                            onClick={(e) => {
+                              if (isCurrentUser) {
+                                e.stopPropagation(); // Stop event from bubbling up
+                                openColorPicker(user);
+                              }
+                            }}
+                            title={isCurrentUser ? "Click to change your color" : user.name}
+                            data-component-name="WeeklySchedule"
+                          >
+                            {user.initial}
+                          </span>
+                        )}
+                        {!isCollapsed && (
+                          <span className="text-sm" data-component-name="WeeklySchedule">
+                            {user.name}
+                            {isCurrentUser && " (You)"}
+                          </span>
+                        )}
                       </div>
 
                        {/* User display only - button removed as requested */}
