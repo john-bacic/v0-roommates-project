@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Plus, Edit2, Clock } from 'lucide-react'
+import { supabase } from "@/lib/supabase"
 
 interface User {
   id: number
@@ -79,6 +80,35 @@ export function SingleDayView({
   // State to track the current hour for day transition checks
   const [currentHour, setCurrentHour] = useState<number>(new Date().getHours())
   
+  // Function to handle schedule updates
+  const onScheduleUpdate = useCallback(() => {
+    // This will trigger a re-render with the latest schedules
+    // The parent component is responsible for fetching the updated schedules
+    // Dispatch a custom event that the parent component can listen for
+    const dummyEvent = new CustomEvent('scheduleUpdate')
+    document.dispatchEvent(dummyEvent)
+  }, [])
+
+  // Set up Supabase real-time subscription
+  useEffect(() => {
+    // Subscribe to schedule changes
+    const scheduleSubscription = supabase
+      .channel('single-day-schedules-changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'schedules' 
+      }, () => {
+        onScheduleUpdate()
+      })
+      .subscribe()
+    
+    // Clean up subscription on unmount
+    return () => {
+      supabase.removeChannel(scheduleSubscription)
+    }
+  }, [onScheduleUpdate])
+
   // Effect to update current time position and handle day transitions
   useEffect(() => {
     // Calculate initial position with improved accuracy

@@ -175,10 +175,20 @@ export default function Overview() {
       })
       .subscribe()
     
-    // Clean up subscriptions on unmount
+    // Listen for custom scheduleUpdate events from SingleDayView component
+    const handleScheduleUpdate = () => {
+      console.log('Schedule update event received, reloading data')
+      loadData()
+    }
+    
+    // Add event listener for the custom event
+    document.addEventListener('scheduleUpdate', handleScheduleUpdate)
+    
+    // Clean up subscriptions and event listeners on unmount
     return () => {
       supabase.removeChannel(scheduleSubscription)
       supabase.removeChannel(usersSubscription)
+      document.removeEventListener('scheduleUpdate', handleScheduleUpdate)
     }
   }, [])
 
