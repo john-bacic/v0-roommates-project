@@ -364,8 +364,8 @@ export function SingleDayView({
                         title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
                         data-component-name="SingleDayView"
                       >
-                        {/* User initial centered on top of the block - only shown for the first block */}
-                        {isFirstBlock && (
+                        {/* User initial centered on top of the block - only shown for the first block if there's no All Day block */}
+                        {isFirstBlock && !(userSchedules[user.id]?.some(b => b.allDay)) && (
                           <div 
                             className="absolute -top-3 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold shadow-md border border-gray-700 z-50"
                             style={{
