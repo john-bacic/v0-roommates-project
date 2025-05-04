@@ -25,6 +25,18 @@ interface TimeBlock {
   allDay?: boolean;
 }
 
+// Define Supabase response types
+interface ScheduleRecord {
+  id: string;
+  user_id: number;
+  day: string;
+  start_time: string;
+  end_time: string;
+  label: string;
+  all_day: boolean;
+  created_at?: string;
+}
+
 // Define the days of the week as a type and constant array
 type DayName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 const DAYS_OF_WEEK: DayName[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -216,24 +228,13 @@ export default function Dashboard() {
         }>>> = {}
         
         for (const user of usersData) {
-          // Define the expected schedule type
-          interface ScheduleRecord {
-            id: string;
-            user_id: number;
-            day: string;
-            start_time: string;
-            end_time: string;
-            label: string;
-            all_day: boolean;
-            created_at?: string;
-          }
-          
+          // Get schedules from Supabase
           const { data, error: schedulesError } = await getSupabase()
             .from('schedules')
             .select('*')
             .eq('user_id', user.id)
             
-          // Ensure data is an array
+          // Ensure data is an array and properly typed
           const userSchedules = Array.isArray(data) ? data : []
             
           // Map the data to ensure it has the correct structure
