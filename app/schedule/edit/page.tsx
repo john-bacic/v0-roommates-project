@@ -327,46 +327,48 @@ export default function EditSchedule() {
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-3 shadow-md" data-component-name="EditSchedule">
         <div className="flex flex-col max-w-7xl mx-auto w-full">
           <div className="flex items-center justify-between w-full mb-3" data-component-name="EditSchedule">
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                
-                // Use a more direct approach to ensure dashboard refreshes
-                // Set a flag that will be checked by the dashboard
-                sessionStorage.setItem('dashboardNeedsRefresh', 'true');
-                
-                // Store timestamp to ensure we can detect this is a new refresh request
-                sessionStorage.setItem('refreshTimestamp', Date.now().toString());
-                
-                // Dispatch events for any components that might be listening
-                document.dispatchEvent(new CustomEvent('returnToScheduleView', {
-                  detail: { updatedAt: new Date().toISOString() }
-                }));
-                
-                document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
-                
-                // Navigate to dashboard with a forced reload to ensure fresh data
-                if (returnPath.includes('dashboard')) {
-                  // If returning to dashboard, force a complete page reload
-                  window.location.href = '/dashboard?refresh=' + Date.now();
-                } else {
-                  // For other pages, try history navigation first
-                  if (window.history.length > 1) {
-                    window.history.back();
+            <div className="flex items-center group w-[72px]">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  
+                  // Use a more direct approach to ensure dashboard refreshes
+                  // Set a flag that will be checked by the dashboard
+                  sessionStorage.setItem('dashboardNeedsRefresh', 'true');
+                  
+                  // Store timestamp to ensure we can detect this is a new refresh request
+                  sessionStorage.setItem('refreshTimestamp', Date.now().toString());
+                  
+                  // Dispatch events for any components that might be listening
+                  document.dispatchEvent(new CustomEvent('returnToScheduleView', {
+                    detail: { updatedAt: new Date().toISOString() }
+                  }));
+                  
+                  document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
+                  
+                  // Navigate to dashboard with a forced reload to ensure fresh data
+                  if (returnPath.includes('dashboard')) {
+                    // If returning to dashboard, force a complete page reload
+                    window.location.href = '/dashboard?refresh=' + Date.now();
                   } else {
-                    window.location.href = returnPath;
+                    // For other pages, try history navigation first
+                    if (window.history.length > 1) {
+                      window.history.back();
+                    } else {
+                      window.location.href = returnPath;
+                    }
                   }
-                }
-              }} 
-              className="flex items-center text-white hover:opacity-80 cursor-pointer"
-              data-component-name="BackButton"
-              title="Back"
-            >
-              <ArrowLeft className="h-6 w-6" />
-              <span className="sr-only">Back</span>
-            </button>
+                }} 
+                className="flex items-center text-white hover:opacity-80 cursor-pointer"
+                data-component-name="BackButton"
+                title="Back"
+              >
+                <ArrowLeft className="h-6 w-6" />
+                <span className="sr-only">Back</span>
+              </button>
+            </div>
             <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">Edit</h1>
-            <div className="w-16">{/* Spacer to balance layout */}</div>
+            <div className="w-[72px] flex justify-end">{/* Spacer to balance layout */}</div>
           </div>
           
           {/* Day selector tabs moved to header */}
