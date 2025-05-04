@@ -284,15 +284,31 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           <div className="w-12 min-w-12 sm:w-16 sm:min-w-16"></div>
           <div className="flex-grow flex">
             <div className="flex border-b border-[#333333] w-full">
-              {days.map((day, dayIndex) => (
-                <div 
-                  key={day} 
-                  className={`flex-1 py-2 text-center font-medium ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}
-                >
-                  <span className="hidden sm:inline">{day}</span>
-                  <span className="inline sm:hidden">{day.substring(0, 3)}</span>
-                </div>
-              ))}
+              {days.map((day, dayIndex) => {
+                // Get current day name (Monday, Tuesday, etc.)
+                const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+                const isCurrentDay = day === today;
+                
+                return (
+                  <div 
+                    key={day} 
+                    className={`flex-1 py-2 text-center font-medium ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}
+                  >
+                    <span 
+                      className="hidden sm:inline"
+                      style={{ color: isCurrentDay ? 'white' : '#888888' }}
+                    >
+                      {day}
+                    </span>
+                    <span 
+                      className="inline sm:hidden"
+                      style={{ color: isCurrentDay ? 'white' : '#888888' }}
+                    >
+                      {day.substring(0, 3)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

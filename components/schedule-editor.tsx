@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { TimeInput } from "@/components/ui/time-input"
 import { TimePickerDialog } from "@/components/ui/time-picker-dialog"
+import { Separator } from "@/components/ui/separator"
 import { Trash2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useSwipe } from "@/hooks/use-swipe"
@@ -382,17 +383,74 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
       </div>
 
       <div className="bg-[#333333] rounded-lg p-4" ref={scheduleContentRef}>
-        <div className="flex items-center mb-4">
-          <h3 className="text-sm font-medium">{activeDay}'s Schedule</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-medium" data-component-name="ScheduleEditor">{activeDay}'s Schedule</h3>
+          
+          {schedule[activeDay]?.length > 0 && schedule[activeDay][0] && (
+            <div className="flex items-center gap-3" data-component-name="ScheduleEditor">
+              <Label htmlFor="all-day-toggle-0" className="cursor-pointer order-1">
+                <span data-component-name="ScheduleEditor">All Day</span>
+              </Label>
+              <Switch
+                id="all-day-toggle-0"
+                checked={schedule[activeDay][0].allDay || false}
+                data-component-name="Primitive.button"
+                className="order-2 data-[state=checked]:bg-[var(--focus-ring-color)] data-[state=unchecked]:bg-black h-7 w-12 px-[3px]"
+                style={{
+                  '--switch-thumb-color': schedule[activeDay][0].allDay ? userColor : '#333333'
+                } as React.CSSProperties}
+                onCheckedChange={(checked) => {
+                  const key = `${activeDay}-0`;
+                  const newSchedule = { ...schedule };
+                  if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
+                  
+                  if (checked) {
+                    // Store original times
+                    originalTimesRef.current[key] = { start: schedule[activeDay][0].start || "09:00", end: schedule[activeDay][0].end || "17:00" };
+                    // Update block with all day values
+                    newSchedule[activeDay][0] = {
+                      ...schedule[activeDay][0],
+                      allDay: true,
+                      start: "00:00",
+                      end: "23:59"
+                    };
+                  } else {
+                    // Restore original times
+                    const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
+                    // Update block with original values
+                    newSchedule[activeDay][0] = {
+                      ...schedule[activeDay][0],
+                      allDay: false,
+                      start: prev.start,
+                      end: prev.end
+                    };
+                    delete originalTimesRef.current[key];
+                  }
+                  
+                  // Update UI immediately
+                  onChange(newSchedule);
+                  
+                  // Then persist to Supabase
+                  updateTimeBlock(activeDay, 0, "allDay", checked);
+                  if (checked) {
+                    updateTimeBlock(activeDay, 0, "start", "00:00");
+                    updateTimeBlock(activeDay, 0, "end", "23:59");
+                  } else {
+                    const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
+                    updateTimeBlock(activeDay, 0, "start", prev.start);
+                    updateTimeBlock(activeDay, 0, "end", prev.end);
+                  }
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {schedule[activeDay]?.length === 0 && (
           <p className="text-sm text-[#A0A0A0] mb-4">No scheduled times for this day.</p>
         )}
 
-        {schedule[activeDay]?.length > 0 && (
-          <p className="text-sm text-[#A0A0A0] mb-4">Add multiple time blocks to create breaks between activities</p>
-        )}
+        {/* Removed from here */}
 
         {[...(schedule[activeDay] || [])]
           .sort((a, b) => {
@@ -413,59 +471,6 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           })
           .map((block, index) => (
           <div key={index} className="mb-4">
-            {/* Toggle Switch */}
-            <div className="flex items-center justify-between mb-3">
-              <Label htmlFor={`all-day-toggle-${index}`} className="cursor-pointer">
-                <span>All Day</span>
-              </Label>
-              <Switch
-                id={`all-day-toggle-${index}`}
-                checked={block.allDay || false}
-                onCheckedChange={(checked) => {
-                  const key = `${activeDay}-${index}`;
-                  const newSchedule = { ...schedule };
-                  if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
-                  
-                  if (checked) {
-                    // Store original times
-                    originalTimesRef.current[key] = { start: block.start || "09:00", end: block.end || "17:00" };
-                    // Update block with all day values
-                    newSchedule[activeDay][index] = {
-                      ...block,
-                      allDay: true,
-                      start: "00:00",
-                      end: "23:59"
-                    };
-                  } else {
-                    // Restore original times
-                    const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
-                    // Update block with original values
-                    newSchedule[activeDay][index] = {
-                      ...block,
-                      allDay: false,
-                      start: prev.start,
-                      end: prev.end
-                    };
-                    delete originalTimesRef.current[key];
-                  }
-                  
-                  // Update UI immediately
-                  onChange(newSchedule);
-                  
-                  // Then persist to Supabase
-                  updateTimeBlock(activeDay, index, "allDay", checked);
-                  if (checked) {
-                    updateTimeBlock(activeDay, index, "start", "00:00");
-                    updateTimeBlock(activeDay, index, "end", "23:59");
-                  } else {
-                    const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
-                    updateTimeBlock(activeDay, index, "start", prev.start);
-                    updateTimeBlock(activeDay, index, "end", prev.end);
-                  }
-                }}
-                className="data-[state=checked]:bg-[var(--focus-ring-color)]"
-              />
-            </div>
             
             {/* Time Fields - Only shown when All Day is OFF */}
             {!block.allDay && (
@@ -541,16 +546,28 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           </div>
         ))}
 
-        <div className="flex justify-center mt-2 w-full">
-          <Button
-            onClick={addTimeBlock}
-            className="w-full px-6 py-2 h-10 text-sm border-2"
-            style={{ backgroundColor: "#333333", color: userColor, borderColor: userColor }}
-            data-dark-bg="true"
-          >
-            +ADD
-          </Button>
-        </div>
+        {schedule[activeDay]?.length > 0 && !schedule[activeDay][0]?.allDay && (
+          <p className="text-sm text-[#A0A0A0] mb-4" data-component-name="ScheduleEditor">Add multiple time blocks to create breaks between activities</p>
+        )}
+        
+        {/* Only show Add block button when All Day is not enabled */}
+        {(!schedule[activeDay] || schedule[activeDay].length === 0 || !schedule[activeDay][0]?.allDay) && (
+          <div className="flex justify-center mt-2 w-full">
+            <button
+              onClick={addTimeBlock}
+              className="w-full px-6 py-2 h-10 text-sm border-2 rounded-md font-medium"
+              style={{ 
+                backgroundColor: "#333333", 
+                color: userColor, 
+                borderColor: userColor 
+              }}
+              data-dark-bg="true"
+              data-component-name="_c"
+            >
+              + Add block
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Time Picker Dialog */}
