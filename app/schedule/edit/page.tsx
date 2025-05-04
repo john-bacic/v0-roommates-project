@@ -307,8 +307,8 @@ export default function EditSchedule() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
+      {/* Header - Fixed to top */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md" data-component-name="EditSchedule">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <button 
             onClick={(e) => {
@@ -353,8 +353,8 @@ export default function EditSchedule() {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 p-4 max-w-7xl mx-auto w-full">
+      {/* Main content - Added top padding to account for fixed header */}
+      <main className="flex-1 p-4 pt-16 max-w-7xl mx-auto w-full">
         <div className="mb-6">
           <h2 className="text-lg font-medium">Week of {formatWeekRange()}</h2>
         </div>
