@@ -319,7 +319,7 @@ export default function Overview() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at the top */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-3 shadow-md" data-component-name="Overview">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-0 shadow-md" data-component-name="Overview">
         <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="Overview">
           <div className="flex items-center justify-between w-full mb-3" data-component-name="Overview">
             <div className="flex items-center group w-[72px]">
@@ -357,7 +357,7 @@ export default function Overview() {
           </div>
           
           {/* Day selector tabs moved to header */}
-          <div className="grid grid-cols-7 gap-1 mb-1 pt-2 pb-1 px-2 w-full" role="tablist" aria-label="Day selector" data-component-name="Overview">
+          <div className="flex w-full" role="tablist" aria-label="Day selector" data-component-name="Overview">
             {days.map((day) => {
               const isActive = selectedDay === day;
               const dayIndex = days.indexOf(day);
@@ -365,16 +365,13 @@ export default function Overview() {
               const nextDay = dayIndex < days.length - 1 ? days[dayIndex + 1] : days[0];
               
               return (
-                <Button
+                <button
                   key={day}
                   onClick={() => selectDay(day)}
-                  className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-8 py-1 px-1 sm:px-2 text-xs ${isActive 
-                    ? 'bg-primary hover:bg-primary/90' 
-                    : 'border bg-[#333333] border-[#444444] text-white hover:bg-[#444444]'}`}
-                  style={isActive ? { 
-                    backgroundColor: userColor,
-                    color: "#000"
-                  } : {}}
+                  className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none ${isActive 
+                    ? 'text-white' 
+                    : 'text-[#999999] hover:text-white'}`}
+                  style={isActive ? { color: userColor } : {}}
                   role="tab"
                   aria-selected={isActive}
                   aria-controls={`${day.toLowerCase()}-panel`}
@@ -392,7 +389,13 @@ export default function Overview() {
                   }}
                 >
                   {day.substring(0, 3)}
-                </Button>
+                  {isActive && (
+                    <span 
+                      className="absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm" 
+                      style={{ backgroundColor: userColor }}
+                    />
+                  )}
+                </button>
               )
             })}
           </div>

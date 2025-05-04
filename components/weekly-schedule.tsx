@@ -644,8 +644,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Handle clicking on a time block - navigate to edit page
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
+    // Get the current path to use as the 'from' parameter
+    const currentPath = encodeURIComponent(window.location.pathname);
+    
     // Navigate to the edit page with the user's name and day as query parameters
-    window.location.href = `/schedule/edit?from=%2Fdashboard&user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}`;
+    window.location.href = `/schedule/edit?from=${currentPath}&user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}`;
   }
 
   // Close the modal and reset state
