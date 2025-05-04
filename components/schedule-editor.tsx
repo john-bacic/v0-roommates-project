@@ -21,18 +21,17 @@ interface TimeBlock {
 }
 
 interface ScheduleEditorProps {
-  schedule: Record<string, TimeBlock[]>
-  onChange: (schedule: Record<string, TimeBlock[]>) => void
-  userColor?: string
+  schedule: {activeDay: string, [key: string]: any}
+  onChange: (schedule: {activeDay: string, [key: string]: any}) => void
+  userColor: string
   onSave?: () => void
   use24HourFormat?: boolean
   userName?: string
-  initialActiveDay?: string
 }
 
-export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave, use24HourFormat = true, userName, initialActiveDay }: ScheduleEditorProps) {
+export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24HourFormat = false, userName }: ScheduleEditorProps) {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-  const [activeDay, setActiveDay] = useState(initialActiveDay || days[0])
+  const activeDay = schedule.activeDay as string
 
   // Time picker dialog state
   const [timePickerOpen, setTimePickerOpen] = useState(false)
@@ -46,13 +45,6 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
     document.documentElement.style.setProperty("--focus-ring-color", userColor)
   }, [userColor])
-  
-  // Update activeDay when initialActiveDay changes
-  useEffect(() => {
-    if (initialActiveDay && days.includes(initialActiveDay)) {
-      setActiveDay(initialActiveDay)
-    }
-  }, [initialActiveDay])
   
   // State to track the All Day toggle independently from the schedule data
   const [isAllDay, setIsAllDay] = useState(false);
@@ -181,6 +173,17 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
         console.error('Error saving schedule to Supabase:', error);
       }
     }
+  }
+
+  const handleScheduleChange = (day: string, blocks: TimeBlock[]) => {
+    const newSchedule = { ...schedule }
+    newSchedule[day] = blocks
+    onChange(newSchedule)
+  }
+  
+  const setActiveDay = (day: string) => {
+    const newSchedule = { ...schedule, activeDay: day }
+    onChange(newSchedule)
   }
 
   const updateTimeBlock = async (dayName: string, index: number, field: keyof TimeBlock, value: any) => {
@@ -335,69 +338,6 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
   
   return (
     <div className="w-full">
-      <div className="grid grid-cols-7 gap-1 mb-4 pb-2 w-full" role="tablist" aria-label="Day selector">
-        {days.map((day) => {
-          const isActive = activeDay === day;
-          const dayIndex = days.indexOf(day);
-          const prevDay = dayIndex > 0 ? days[dayIndex - 1] : days[days.length - 1];
-          const nextDay = dayIndex < days.length - 1 ? days[dayIndex + 1] : days[0];
-          
-          return (
-            <Button
-              key={day}
-              variant={isActive ? "default" : "outline"}
-              className={`px-1 sm:px-2 text-xs sm:text-sm ${
-                isActive ? "text-black" : "bg-[#333333] border-[#444444] text-white hover:bg-[#444444]"
-              }`}
-              style={isActive ? { backgroundColor: userColor, color: getTextColor(userColor) } : {}}
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`${day.toLowerCase()}-panel`}
-              onClick={() => setActiveDay(day)}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  setActiveDay(prevDay);
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  setActiveDay(nextDay);
-                }
-              }}
-              onDoubleClick={() => {
-                // On double click, go to next day
-                const nextIndex = days.indexOf(day) < days.length - 1 ? days.indexOf(day) + 1 : 0;
-                setActiveDay(days[nextIndex]);
-              }}
-              onTouchStart={(e) => {
-                // Track touch for potential double-tap
-                const touchTarget = e.currentTarget;
-                const lastTouch = touchTarget.getAttribute('data-last-touch') || '0';
-                const now = new Date().getTime();
-                const timeSince = now - parseInt(lastTouch);
-                
-                if (timeSince < 300 && timeSince > 0) {
-                  // Double tap detected
-                  e.preventDefault();
-                  const nextIndex = days.indexOf(day) < days.length - 1 ? days.indexOf(day) + 1 : 0;
-                  setActiveDay(days[nextIndex]);
-                }
-                
-                touchTarget.setAttribute('data-last-touch', now.toString());
-              }}
-              // Allow long-press to go to previous day
-              onContextMenu={(e) => {
-                e.preventDefault();
-                const prevIndex = days.indexOf(day) > 0 ? days.indexOf(day) - 1 : days.length - 1;
-                setActiveDay(days[prevIndex]);
-              }}
-              tabIndex={0}
-              aria-label={`${day} tab${isActive ? ', selected' : ''}`}
-            >
-              {day.substring(0, 3)}
-            </Button>
-          );
-        })}
-      </div>
 
       <div className="bg-[#333333] rounded-lg p-4" ref={scheduleContentRef}>
         <div className="flex items-center justify-between mb-4">
