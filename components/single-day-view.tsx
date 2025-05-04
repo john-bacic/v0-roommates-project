@@ -278,10 +278,10 @@ export function SingleDayView({
                 
                 // All-day events
                 const allDayBlocks = userBlocks
-                  .filter(block => block.allDay)
+                  .filter(block => block?.allDay)
                   .sort((a, b) => {
                     // Sort alphabetically by label for consistent display
-                    return a.label.localeCompare(b.label);
+                    return (a?.label || '').localeCompare(b?.label || '');
                   })
                   .map((block, blockIndex) => {
                     const isFirstAllDayBlock = blockIndex === 0; // Check if this is the first all-day block
@@ -336,11 +336,11 @@ export function SingleDayView({
                 
                 // Regular time blocks
                 const regularBlocks = userBlocks
-                  .filter(block => !block.allDay)
+                  .filter(block => block && !block.allDay)
                   .sort((a, b) => {
                     // Sort blocks by start time to ensure the first block is at the top
-                    const aStart = calculateBlockPosition(a.start);
-                    const bStart = calculateBlockPosition(b.start);
+                    const aStart = calculateBlockPosition(a?.start || '00:00');
+                    const bStart = calculateBlockPosition(b?.start || '00:00');
                     return aStart - bStart;
                   })
                   .map((block, blockIndex) => {
@@ -365,7 +365,7 @@ export function SingleDayView({
                         data-component-name="SingleDayView"
                       >
                         {/* User initial centered on top of the block - only shown for the first block if there's no All Day block */}
-                        {isFirstBlock && !(userSchedules[user.id]?.some(b => b.allDay)) && (
+                        {isFirstBlock && !(userSchedules[user.id]?.some(b => b && b.allDay)) && allDayBlocks.length === 0 && (
                           <div 
                             className="absolute -top-3 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold shadow-md border border-gray-700 z-50"
                             style={{
