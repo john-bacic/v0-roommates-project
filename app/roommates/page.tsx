@@ -99,32 +99,49 @@ export default function Roommates() {
   // Function to generate availability description based on schedules
   const generateAvailabilityDescription = (userId: number, schedules: Record<number, Record<string, Array<Schedule>>>) => {
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const availableDays: string[] = [];
-    const unavailableDays: string[] = [];
+    const workingDays: string[] = [];
+    const offDays: string[] = [];
     const allDayOffDays: string[] = [];
+    const noScheduleDays: string[] = [];
     
+    // First, analyze each day's schedule
     dayNames.forEach((day, index) => {
       const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(userId, schedules, index);
       
       if (isAllDayOff) {
+        // Day is marked as all day off
         allDayOffDays.push(day);
-        unavailableDays.push(day);
+        offDays.push(day);
       } else if (hasSchedules) {
-        availableDays.push(day);
+        // Day has work schedules
+        workingDays.push(day);
       } else {
-        unavailableDays.push(day);
+        // No schedule set for this day
+        noScheduleDays.push(day);
       }
     });
     
-    if (availableDays.length === 7) {
-      return "Available all week";
-    } else if (availableDays.length === 0) {
+    // Generate the description based on the schedule analysis
+    if (workingDays.length === 0 && offDays.length === 0) {
       return "No schedule set";
-    } else if (availableDays.length > unavailableDays.length) {
-      return `Available: ${formatDaysList(availableDays)}, Off: ${formatDaysList(unavailableDays)}`;
-    } else {
-      return `Off: ${formatDaysList(unavailableDays)}, Available: ${formatDaysList(availableDays)}`;
     }
+    
+    // Build a more descriptive message
+    const parts = [];
+    
+    if (workingDays.length > 0) {
+      parts.push(`Working: ${formatDaysList(workingDays)}`);
+    }
+    
+    if (allDayOffDays.length > 0) {
+      parts.push(`Day off: ${formatDaysList(allDayOffDays)}`);
+    }
+    
+    if (noScheduleDays.length > 0 && (workingDays.length > 0 || allDayOffDays.length > 0)) {
+      parts.push(`No schedule: ${formatDaysList(noScheduleDays)}`);
+    }
+    
+    return parts.join(' • ');
   };
   
   // Helper function to format a list of days nicely

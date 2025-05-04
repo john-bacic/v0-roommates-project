@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
 import { Plus, Edit2, Clock, ChevronUp, ChevronDown } from "lucide-react"
-import { getSupabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 interface User {
   id: number
@@ -134,15 +134,79 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return () => clearInterval(interval)
   }, [])
 
+  // Listen for the returnToScheduleView event dispatched from the edit page
+  useEffect(() => {
+    const handleReturnToScheduleView = (event: Event) => {
+      console.log('Return to schedule view event received:', (event as CustomEvent).detail);
+      // Fetch the latest data when returning from the edit page
+      fetchLatestData();
+    };
+
+    // Add event listener for the custom event
+    document.addEventListener('returnToScheduleView', handleReturnToScheduleView);
+
+    // Clean up the event listener when the component unmounts
+    return () => {
+      document.removeEventListener('returnToScheduleView', handleReturnToScheduleView);
+    };
+  }, []);
+
+  // Function to fetch the latest data for all users
+  const fetchLatestData = async () => {
+    console.log('Fetching latest schedule data...');
+    try {
+      // Fetch all schedules for all users
+      const { data: schedulesData, error } = await supabase
+        .from('schedules')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching schedules:', error);
+        return;
+      }
+
+      if (schedulesData && schedulesData.length > 0) {
+        // Group schedules by user_id and day
+        const updatedSchedules = { ...schedules };
+        
+        // Process the schedule data
+        schedulesData.forEach(item => {
+          const userId = typeof item.user_id === 'number' ? item.user_id : parseInt(String(item.user_id));
+          
+          if (!updatedSchedules[userId]) {
+            updatedSchedules[userId] = {};
+          }
+          
+          if (!updatedSchedules[userId][item.day]) {
+            updatedSchedules[userId][item.day] = [];
+          }
+          
+          // Add the schedule item
+          updatedSchedules[userId][item.day].push({
+            id: item.id,
+            start: item.start_time,
+            end: item.end_time,
+            label: item.label,
+            allDay: item.all_day
+          });
+        });
+        
+        setSchedules(updatedSchedules);
+      }
+    } catch (err) {
+      console.error('Error in fetchLatestData:', err);
+    }
+  };
+
   // Set up real-time subscriptions for schedule and user changes
   useEffect(() => {
     // Set up subscription for schedule changes
-    const scheduleSubscription = getSupabase()
+    const scheduleSubscription = supabase
       .channel('schedules-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, (payload) => {
         // Get the updated schedule data directly from Supabase
         // This ensures we have the latest data without a full reload
-        const fetchLatestData = async () => {
+        const fetchUserSchedule = async () => {
           try {
             // Get the user_id from the payload with proper type checking
             const newData = payload.new as Record<string, any> | null;
@@ -151,7 +215,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             
             if (userId) {
               // Fetch all schedules for this user
-              const { data: schedulesData, error } = await getSupabase()
+              const { data: schedulesData, error } = await supabase
                 .from('schedules')
                 .select('*')
                 .eq('user_id', userId);
@@ -190,12 +254,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           }
         };
         
-        fetchLatestData();
+        fetchUserSchedule();
       })
       .subscribe();
 
     // Set up subscription for user changes
-    const usersSubscription = getSupabase()
+    const usersSubscription = supabase
+{{ ... }}
       .channel('users-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
         // Update the user data when it changes with proper type checking
@@ -214,8 +279,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       .subscribe();
 
     return () => {
-      getSupabase().removeChannel(scheduleSubscription);
-      getSupabase().removeChannel(usersSubscription);
+      supabase.removeChannel(scheduleSubscription);
+      supabase.removeChannel(usersSubscription);
     };
   }, []);
 
@@ -428,68 +493,24 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return hours
   }
 
-  // Get smart default start and end times based on current view and existing time blocks
-  const getDefaultTimes = (day?: string, userId?: number): { start: string, end: string } => {
-    // Format hours as strings with leading zeros
-    const formatHour = (hour: number) => hour.toString().padStart(2, '0')
-    const formatMinutes = (minutes: number) => minutes.toString().padStart(2, '0')
-    
-    // Check if we have existing time blocks for this day and user
-    if (day && userId && schedules[userId] && schedules[userId][day] && schedules[userId][day].length > 0) {
-      // Find the latest end time from existing blocks
-      let latestEndTime = '00:00'
-      let latestEndBlock = null
-      
-      for (const block of schedules[userId][day]) {
-        // Skip all-day events when determining latest end time
-        if (block.allDay) continue
-        
-        if (block.end > latestEndTime) {
-          latestEndTime = block.end
-          latestEndBlock = block
-        }
-      }
-      
-      if (latestEndBlock) {
-        // Parse the end time
-        const [endHourStr, endMinuteStr] = latestEndTime.split(':')
-        let endHour = parseInt(endHourStr)
-        let endMinute = parseInt(endMinuteStr)
-        
-        // Use the end time as the start time for the new block
-        const startHour = endHour
-        const startMinute = endMinute
-        
-        // End time is 4 hours after start time
-        endHour = startHour + 4
-        
-        // Handle overflow to next day
-        if (endHour >= 24) {
-          endHour = 23
-          endMinute = 59
-        }
-        
-        return {
-          start: `${formatHour(startHour)}:${formatMinutes(startMinute)}`,
-          end: `${formatHour(endHour)}:${formatMinutes(endMinute)}`
-        }
-      }
-    }
-    
-    // Fallback to default behavior if no existing blocks or if day/userId not provided
+  // Get smart default start and end times based on current view
+  const getDefaultTimes = (): { start: string, end: string } => {
+    // Current hour rounded down
     const now = new Date()
     const currentHour = now.getHours()
     
     // Default to current hour or 9am if before 6am or after 8pm
     let startHour = (currentHour < 6 || currentHour > 20) ? 9 : currentHour
     
-    // End time is 4 hours after start time, but not past 11:59pm
-    let endHour = Math.min(startHour + 4, 23)
-    let endMinute = endHour === 23 ? 59 : 0
+    // End time is 2 hours after start time, but not past 11pm
+    let endHour = Math.min(startHour + 2, 23)
+    
+    // Format hours as strings with leading zeros
+    const formatHour = (hour: number) => hour.toString().padStart(2, '0')
     
     return {
       start: `${formatHour(startHour)}:00`,
-      end: `${formatHour(endHour)}:${formatMinutes(endMinute)}`
+      end: `${formatHour(endHour)}:00`
     }
   }
   
@@ -497,7 +518,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   const handleUserClick = (user: User, day: string) => {
     // Only allow editing your own schedule
     if (user.name === currentUserName) {
-      const { start, end } = getDefaultTimes(day, user.id)
+      const { start, end } = getDefaultTimes()
       setSelectedUser(user)
       setSelectedDay(day)
       setEditMode(false)
@@ -550,7 +571,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         console.log('Opening edit modal for:', modalTimeBlock);
       } else {
         // For add mode: create new time block with defaults
-        const { start, end } = getDefaultTimes(day, user.id)
+        const { start, end } = getDefaultTimes()
         modalTimeBlock = {
           id: crypto.randomUUID(),
           start,
@@ -584,55 +605,18 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     // Small delay to ensure modal is fully closed before reopening
     setTimeout(() => {
-      // Find the latest end time from existing blocks for this user and day
-      let startTime = "09:00"; // Default start time if no previous blocks
-      let endTime = "13:00";   // Default end time (4 hours later)
+      // Get default times for a new time block
+      const { start, end } = getDefaultTimes();
       
-      // Check if we have existing time blocks for this day and user
-      if (schedules[user.id] && schedules[user.id][day] && schedules[user.id][day].length > 0) {
-        // Find the latest end time from existing blocks
-        let latestEndTime = "00:00";
-        
-        for (const block of schedules[user.id][day]) {
-          // Skip all-day events when determining latest end time
-          if (block.allDay) continue;
-          
-          if (block.end > latestEndTime) {
-            latestEndTime = block.end;
-          }
-        }
-        
-        if (latestEndTime !== "00:00") {
-          // Use the latest end time as the start time for the new block
-          startTime = latestEndTime;
-          
-          // Calculate end time (4 hours later)
-          const [endHourStr, endMinuteStr] = latestEndTime.split(':');
-          let endHour = parseInt(endHourStr);
-          let endMinute = parseInt(endMinuteStr);
-          
-          // Add 4 hours
-          endHour = endHour + 4;
-          
-          // Handle overflow to next day
-          if (endHour >= 24) {
-            endHour = 23;
-            endMinute = 59;
-          }
-          
-          // Format the end time
-          endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
-        }
-      }
-      
+      // Direct state setup matching the QuickScheduleModal from the image
       // Set editMode to true to ensure all 3 buttons (Delete, Cancel, Update) are shown
       setEditMode(true);
       setSelectedUser(user);
       setSelectedDay(day);
       setSelectedTimeBlock({
         id: crypto.randomUUID(),
-        start: startTime,
-        end: endTime,
+        start,
+        end,
         label: "Work",
         allDay: false
       });
@@ -750,7 +734,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         )
         
         // Then update in Supabase
-        const { data: updatedData, error: updateError } = await getSupabase()
+        const { data: updatedData, error: updateError } = await supabase
           .from('schedules')
           .update({
             start_time: timeBlock.start,
@@ -780,7 +764,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         });
         
         // Then create in Supabase
-        const { data: insertedData, error: insertError } = await getSupabase()
+        const { data: insertedData, error: insertError } = await supabase
           .from('schedules')
           .insert({
             user_id: userId,
@@ -859,7 +843,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     if (isValidUUID) {
       // Delete the time block from Supabase
-      const { error: deleteError } = await getSupabase()
+      const { error: deleteError } = await supabase
         .from('schedules')
         .delete()
         .eq('id', timeBlockId);
@@ -898,7 +882,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
     // Save the color to Supabase
     try {
-      const { error } = await getSupabase()
+      const { error } = await supabase
         .from('users')
         .update({ color })
         .eq('id', user.id);
@@ -1132,37 +1116,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             }}
           >
             <div className="flex justify-between items-center pr-1">
-              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-                {day}
-                {/* Check if this is the current day and add the date */}
-                {(() => {
-                  // Get the day index (0-6, Monday-Sunday)
-                  const dayIndex = days.indexOf(day);
-                  
-                  // Get the date for this day based on the current week
-                  const date = new Date(currentWeek);
-                  date.setDate(date.getDate() - date.getDay() + (dayIndex === 6 ? 0 : dayIndex + 1));
-                  
-                  // Check if this date is today
-                  const today = new Date();
-                  const isToday = date.getDate() === today.getDate() && 
-                                  date.getMonth() === today.getMonth() && 
-                                  date.getFullYear() === today.getFullYear();
-                  
-                  if (isToday) {
-                    // Format the date as "Month Day"
-                    const month = date.toLocaleString('default', { month: 'long' });
-                    const dayOfMonth = date.getDate();
-                    
-                    return (
-                      <span className="ml-1 font-bold text-xs">
-                        {` • ${month} ${dayOfMonth}`}
-                      </span>
-                    );
-                  }
-                  return null;
-                })()}
-              </h4>
+              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
               
               {/* No toggle buttons in desktop view as requested */}
             </div>
@@ -1171,37 +1125,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - only for Monday */}
           {day === "Monday" && (
             <div className="flex justify-between items-center pr-1 mb-2">
-              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-                {day}
-                {/* Check if this is the current day and add the date */}
-                {(() => {
-                  // Get the day index (0-6, Monday-Sunday)
-                  const dayIndex = days.indexOf(day);
-                  
-                  // Get the date for this day based on the current week
-                  const date = new Date(currentWeek);
-                  date.setDate(date.getDate() - date.getDay() + (dayIndex === 6 ? 0 : dayIndex + 1));
-                  
-                  // Check if this date is today
-                  const today = new Date();
-                  const isToday = date.getDate() === today.getDate() && 
-                                  date.getMonth() === today.getMonth() && 
-                                  date.getFullYear() === today.getFullYear();
-                  
-                  if (isToday) {
-                    // Format the date as "Month Day"
-                    const month = date.toLocaleString('default', { month: 'long' });
-                    const dayOfMonth = date.getDate();
-                    
-                    return (
-                      <span className="ml-1 font-bold text-xs">
-                        {` • ${month} ${dayOfMonth}`}
-                      </span>
-                    );
-                  }
-                  return null;
-                })()}
-              </h4>
+              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
             </div>
           )}
 
@@ -1273,7 +1197,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                   <div key={`${day}-${user.id}`} className="mb-4 relative z-10">
                     <div className="flex items-center justify-between mb-1 pl-1">
                       <div
-                        className="flex items-center gap-2"
+                        className={`flex items-center gap-2 ${isCurrentUser ? "cursor-pointer hover:opacity-80" : ""}`}
+                        onClick={() => isCurrentUser && handleUserClick(user, day)}
                       >
                         {isCollapsed ? (
                           <span
@@ -1304,11 +1229,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           </span>
                         )}
                         {!isCollapsed && (
-                          <span 
-                            className="text-sm" 
-                            style={{ color: user.color }}
-                            data-component-name="WeeklySchedule"
-                          >
+                          <span className="text-sm" data-component-name="WeeklySchedule">
                             {user.name}
                             {isCurrentUser && " (You)"}
                           </span>

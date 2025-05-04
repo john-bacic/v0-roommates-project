@@ -128,7 +128,7 @@ export default function ViewSchedule() {
   // Check if the current user is viewing their own schedule
   const isCurrentUser = roommate.name === currentUserName
 
-  // Time conversion helper
+  // Time conversion helper - improved for more accurate positioning
   const timeToPosition = (time: string): number => {
     const [hours, minutes] = time.split(":").map(Number)
     const decimalHours = hours + (minutes / 60)
@@ -137,7 +137,12 @@ export default function ViewSchedule() {
     const adjustedHours = (hours >= 0 && hours < 6) ? decimalHours + 24 : decimalHours
     
     // Our visible range is 6am to 6am next day (24 hours)
-    return ((adjustedHours - 6) / 24) * 100
+    // The grid has 24 equal divisions (one per hour)
+    const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
+    
+    // Calculate position based on the hour grid
+    // Subtract 6 to align with our 6am start time
+    return (adjustedHours - 6) * hourWidth
   }
 
   // Format time for display
@@ -230,16 +235,19 @@ export default function ViewSchedule() {
     // Convert to decimal hours (e.g., 14:30 = 14.5)
     const decimalHours = hours + (minutes / 60)
     
+    // The grid has 24 equal divisions (one per hour)
+    const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
+    
     // Our visible range is 6am to 6am next day (24 hours)
     let position
     
     // Handle times after midnight (0-5am)
     if (hours < 6) {
       // For hours 0-5, show them at the end of the previous day (after hour 24)
-      position = ((hours + 24 - 6) / 24) * 100
+      position = (hours + 24 - 6) * hourWidth
     } else {
       // For normal hours (6am-11pm)
-      position = ((decimalHours - 6) / 24) * 100
+      position = (decimalHours - 6) * hourWidth
     }
     
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
@@ -398,7 +406,7 @@ export default function ViewSchedule() {
                         <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
                           <div
                             className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
-                            style={{ left: `${((hour - 6) / 24) * 100}%` }}
+                            style={{ left: `${(hour - 6) * (100 / 24)}%` }}
                             data-component-name="ViewSchedule"
                           >
                             {formatHour(hour)}
@@ -414,11 +422,18 @@ export default function ViewSchedule() {
                   className={`relative ${isCollapsed ? "h-2" : "h-10"} bg-[#373737] rounded-md overflow-hidden transition-all duration-200`}
                   data-component-name="ViewSchedule"
                 >
-                  {/* Vertical grid lines */}
-                  <div className="absolute inset-0 flex pointer-events-none">
-                    {hours.map((hour) => (
-                      <div key={hour} className="flex-1 border-l border-[#191919] first:border-l-0 h-full" />
-                    ))}
+                  {/* Vertical grid lines - improved positioning */}
+                  <div className="absolute inset-0 w-full h-full pointer-events-none">
+                    {hours.map((hour) => {
+                      const position = (hour - 6) * (100 / 24);
+                      return (
+                        <div 
+                          key={hour} 
+                          className="absolute h-full border-l border-[#191919]" 
+                          style={{ left: `${position}%` }}
+                        />
+                      );
+                    })}
                   </div>
 
 
@@ -438,7 +453,7 @@ export default function ViewSchedule() {
                       const endHour = parseInt(block.end.split(":")[0])
                       const endMinute = parseInt(block.end.split(":")[1])
                       
-                      // Use the same calculation as the WeeklySchedule component
+                      // Use the improved calculation for more accurate positioning
                       let startDecimalHours = startHour + (startMinute / 60)
                       let endDecimalHours = endHour + (endMinute / 60)
                       
@@ -450,8 +465,10 @@ export default function ViewSchedule() {
                         endDecimalHours += 24
                       }
                       
-                      startPos = ((startDecimalHours - 6) / 24) * 100
-                      endPos = ((endDecimalHours - 6) / 24) * 100
+                      // Calculate positions using the same logic as timeToPosition function
+                      const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
+                      startPos = (startDecimalHours - 6) * hourWidth
+                      endPos = (endDecimalHours - 6) * hourWidth
                       width = endPos - startPos
                     }
 
