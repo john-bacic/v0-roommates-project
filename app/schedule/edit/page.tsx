@@ -325,7 +325,7 @@ export default function EditSchedule() {
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - Fixed to top */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-3 shadow-md" data-component-name="EditSchedule">
-        <div className="flex flex-col max-w-7xl mx-auto w-full">
+        <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="EditSchedule">
           <div className="flex items-center justify-between w-full mb-3" data-component-name="EditSchedule">
             <div className="flex items-center group w-[72px]">
               <button 
@@ -367,8 +367,12 @@ export default function EditSchedule() {
                 <span className="sr-only">Back</span>
               </button>
             </div>
-            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">Edit</h1>
-            <div className="w-[72px] flex justify-end">{/* Spacer to balance layout */}</div>
+            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">
+              Edit
+            </h1>
+            <div className="w-[72px] flex justify-end">
+              {/* Spacer to balance layout */}
+            </div>
           </div>
           
           {/* Day selector tabs moved to header */}
