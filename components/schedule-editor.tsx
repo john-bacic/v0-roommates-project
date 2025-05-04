@@ -555,8 +555,8 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
             )}
 
             {/* Label Field and Remove Button */}
-            <div className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-11">
+            <div className="grid grid-cols-12 gap-1 items-end">
+              <div className="col-span-11 pr-0">
                 <Label htmlFor={`label-${index}`} className="text-xs mb-1 block">
                   Label
                 </Label>
@@ -581,16 +581,16 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                   )}
                 </div>
               </div>
-              <div className="col-span-1">
+              <div className="col-span-1 pl-0 flex items-center justify-center">
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => removeTimeBlock(activeDay, index)}
-                  className="h-9 w-9 text-[#CF6679] hover:text-[#CF6679] hover:bg-[#242424]"
+                  className="h-10 w-10 text-[#FF80AB] hover:text-[#FF80AB] hover:bg-[#242424]"
                   data-delete-for={`label-${index}`}
                   aria-label={`Delete ${block.label || (block.allDay ? 'Day Off' : 'Work')} time block`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-5 w-5" />
                   <span className="sr-only">Remove</span>
                 </Button>
               </div>
