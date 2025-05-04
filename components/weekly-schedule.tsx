@@ -1364,7 +1364,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                         <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
                                           {block.label}
                                         </span>
-                                        {isCurrentUser && (
+                                        {isCurrentUser && width > 12 && (
                                           <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
                                         )}
                                       </div>
@@ -1379,7 +1379,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                           <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
                                             {block.label}
                                           </span>
-                                          {isCurrentUser && (
+                                          {isCurrentUser && width > 30 && (
                                             <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
                                           )}
                                         </div>
@@ -1391,7 +1391,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                         {block.label}
                                         {" (All Day)"}
                                       </span>
-                                      {isCurrentUser && (
+                                      {isCurrentUser && width > 15 && (
                                         <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
                                       )}
                                     </div>
