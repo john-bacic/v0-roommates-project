@@ -54,6 +54,20 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     }
   }, [initialActiveDay])
   
+  // Effect to ensure the All Day toggle state is properly updated when schedule data changes
+  useEffect(() => {
+    // This will force a re-render when schedule data changes, ensuring the toggle state is updated
+    if (schedule[activeDay]?.length > 0) {
+      const isAllDay = schedule[activeDay][0].allDay === true;
+      // Update the UI to reflect the current state
+      const toggleElement = document.getElementById('all-day-toggle-0');
+      if (toggleElement) {
+        toggleElement.setAttribute('aria-checked', isAllDay ? 'true' : 'false');
+        toggleElement.setAttribute('data-state', isAllDay ? 'checked' : 'unchecked');
+      }
+    }
+  }, [schedule, activeDay]);
+  
   useEffect(() => {
     if (use24HourFormat) {
       document.documentElement.classList.add('use-24h-time')
@@ -175,6 +189,12 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
   const updateTimeBlock = async (dayName: string, index: number, field: keyof TimeBlock, value: any) => {
     const newSchedule = { ...schedule }
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
+    
+    // Ensure allDay is properly stored as a boolean
+    if (field === 'allDay') {
+      value = Boolean(value)
+    }
+    
     newSchedule[dayName][index] = {
       ...newSchedule[dayName][index],
       [field]: value,
@@ -207,7 +227,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
               start_time: block.start,
               end_time: block.end,
               label: block.label,
-              all_day: block.allDay || false
+              all_day: Boolean(block.allDay)
             })
             .eq('id', block.id);
           
@@ -224,7 +244,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
               start_time: block.start,
               end_time: block.end,
               label: block.label,
-              all_day: block.allDay || false
+              all_day: Boolean(block.allDay)
             })
             .select();
           
@@ -393,11 +413,11 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
               </Label>
               <Switch
                 id="all-day-toggle-0"
-                checked={schedule[activeDay][0].allDay || false}
+                checked={schedule[activeDay][0]?.allDay === true}
                 data-component-name="Primitive.button"
                 className="order-2 data-[state=checked]:bg-[var(--focus-ring-color)] data-[state=unchecked]:bg-black h-7 w-12 px-[3px]"
                 style={{
-                  '--switch-thumb-color': schedule[activeDay][0].allDay ? userColor : '#333333'
+                  '--switch-thumb-color': schedule[activeDay][0]?.allDay === true ? userColor : '#333333'
                 } as React.CSSProperties}
                 onCheckedChange={(checked) => {
                   const key = `${activeDay}-0`;

@@ -97,7 +97,7 @@ export default function EditSchedule() {
               start: item.start_time,
               end: item.end_time,
               label: item.label,
-              allDay: item.all_day
+              allDay: item.all_day === true
             });
           });
         }
