@@ -127,6 +127,10 @@ export default function ViewSchedule() {
 
   // Check if the current user is viewing their own schedule
   const isCurrentUser = roommate.name === currentUserName
+  
+  // Get the current day for the edit link
+  const today = new Date()
+  const dayIndex = today.getDay() // 0 = Sunday, 1 = Monday, etc.
 
   // Time conversion helper - improved for more accurate positioning
   const timeToPosition = (time: string): number => {
@@ -273,7 +277,7 @@ export default function ViewSchedule() {
   const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white relative">
       {/* Main header - fixed at the top */}
       <header 
         className="fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333] transform-gpu"
@@ -376,7 +380,7 @@ export default function ViewSchedule() {
         </div>
       </div>
 
-      <main className="flex-1 px-4 pb-20 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu">
+      <main className="flex-1 px-4 pb-20 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu" style={{ isolation: 'isolate' }}>
         {days.map((day, dayIndex) => (
           <div key={day} className="mb-4">
             {/* Day header - stays sticky below the WeeklySchedule header */}
@@ -530,23 +534,6 @@ export default function ViewSchedule() {
         ))}
         
 
-        {/* Floating edit button - only visible for the signed-in user */}
-        {isCurrentUser && (
-          <Link
-            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[0])}`}
-            className="absolute bottom-6 right-6 rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 flex items-center justify-center border-2 border-black/75 transition-all duration-200 ease-in-out overflow-visible"
-            style={{ 
-              backgroundColor: roommate?.color || '#03DAC6', 
-              color: '#000', 
-              zIndex: 9999
-            }}
-            title="Edit schedule"
-            data-component-name="LinkComponent"
-          >
-            <Edit2 className="h-6 w-6" />
-            <span className="sr-only">Edit schedule</span>
-          </Link>
-        )}
       </main>
 
       {/* Add CSS to hide scrollbars */}
@@ -558,7 +545,55 @@ export default function ViewSchedule() {
         .scrollbar-hide::-webkit-scrollbar {
           display: none;  /* Chrome, Safari and Opera */
         }
+        
+        /* Animation removed as requested */
+
+        /* Portal container for floating button */
+        #floating-button-portal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 40; /* Just above ViewSchedule's z-index of 30 */
+        }
+        
+        #floating-button-portal > * {
+          pointer-events: auto;
+        }
       `}</style>
+      
+      {/* Create a portal container for the floating button */}
+      <div id="floating-button-portal">
+        {/* Floating edit button - only visible for the signed-in user */}
+        {isCurrentUser && (
+          <div 
+            className="fixed-button-container" 
+            style={{ 
+              position: 'fixed', 
+              bottom: '24px', 
+              right: '24px',
+              filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.5))'
+            }}
+          >
+            <Link
+              href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[dayIndex])}`}
+              className="rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 flex items-center justify-center border-2 border-black/75 transition-all duration-200 ease-in-out overflow-visible hover:scale-105"
+              style={{ 
+                backgroundColor: roommate?.color || '#03DAC6', 
+                color: '#000'
+              }}
+              title="Edit schedule"
+              data-component-name="LinkComponent"
+            >
+              <Edit2 className="h-6 w-6" />
+              <span className="sr-only">Edit schedule</span>
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   )
+
 }

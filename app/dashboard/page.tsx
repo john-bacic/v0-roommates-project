@@ -3,19 +3,45 @@
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Edit2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ToastAction } from "@/components/ui/toast"
 import { WeeklySchedule } from "@/components/weekly-schedule"
 import Link from "next/link"
 import { getSupabase } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
+
+// Define types for the application
+interface User {
+  id: number;
+  name: string;
+  color: string;
+  initial: string;
+}
+
+interface TimeBlock {
+  id?: string;
+  start: string;
+  end: string;
+  label: string;
+  allDay?: boolean;
+}
+
+// Define the days of the week as a type and constant array
+type DayName = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+const DAYS_OF_WEEK: DayName[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Define schedule types to match Supabase schema
+type UserSchedule = Record<string, TimeBlock[]>;
+type SchedulesType = Record<number, UserSchedule>;
 
 // Initial users array
-const initialUsers = [
+const initialUsers: User[] = [
   { id: 1, name: "Riko", color: "#FF7DB1", initial: "R" },
   { id: 2, name: "Narumi", color: "#63D7C6", initial: "N" },
   { id: 3, name: "John", color: "#F8D667", initial: "J" },
 ]
 
 // Type guard function to check if an object is a valid user
-function isValidUser(obj: unknown): obj is { id: number; name: string; color: string; initial: string } {
+function isValidUser(obj: unknown): obj is User {
   return obj !== null && 
          typeof obj === 'object' && 
          'id' in obj && 
@@ -27,8 +53,9 @@ function isValidUser(obj: unknown): obj is { id: number; name: string; color: st
 export default function Dashboard() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
-  const [users, setUsers] = useState(initialUsers)
+  const [users, setUsers] = useState<User[]>(initialUsers)
   const [userColor, setUserColor] = useState("#B388F5") // Default color
+  const { toast } = useToast()
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
     // Only run in client-side
     if (typeof window !== 'undefined') {
@@ -139,13 +166,7 @@ export default function Dashboard() {
     })
   }, [use24HourFormat])
 
-  const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{
-    id: string;
-    start: string;
-    end: string;
-    label: string;
-    allDay: boolean;
-  }>>>>({})
+  const [schedules, setSchedules] = useState<SchedulesType>({})
   const [loading, setLoading] = useState(true)
 
   // Function to load data from Supabase
@@ -216,7 +237,7 @@ export default function Dashboard() {
           const userSchedules = Array.isArray(data) ? data : []
             
           // Map the data to ensure it has the correct structure
-          const typedSchedules = userSchedules.map(schedule => ({
+          const typedSchedules = userSchedules.map((schedule: any) => ({
             id: String(schedule?.id || ''),
             user_id: typeof schedule?.user_id === 'number' ? schedule.user_id : parseInt(String(schedule?.user_id || '0')),
             day: String(schedule?.day || ''),
@@ -396,9 +417,171 @@ export default function Dashboard() {
   const nextWeek = () => {
     const nextWeek = new Date(currentWeek)
     nextWeek.setDate(currentWeek.getDate() + 7)
+    
+    // Check if we're entering a new week (based on Sunday)
+    const currentSunday = new Date(currentWeek)
+    currentSunday.setDate(currentWeek.getDate() - currentWeek.getDay()) // Get the Sunday of current week
+    
+    const nextSunday = new Date(nextWeek)
+    nextSunday.setDate(nextWeek.getDate() - nextWeek.getDay()) // Get the Sunday of next week
+    
+    // If the Sunday dates are different, we're entering a new week
+    if (nextSunday.getTime() !== currentSunday.getTime()) {
+      // Clear schedules for the new week
+      clearSchedulesForNewWeek()
+      
+      // Show a toast message encouraging users to add new schedules with an option to repeat previous week
+      toast({
+        title: "New week, fresh start! 🎉",
+        description: "Time to plan your schedule for the week ahead. Click any time slot to add your activities!",
+        variant: "default",
+        duration: 8000,
+        action: (
+          <ToastAction altText="Repeat previous week" onClick={repeatPreviousWeek}>
+            Repeat previous week
+          </ToastAction>
+        ),
+      })
+    }
+    
     setCurrentWeek(nextWeek)
   }
 
+  // Function to repeat the previous week's schedule
+  const repeatPreviousWeek = async () => {
+    try {
+      // Store the previous week's schedules before clearing
+      const previousWeekSchedules = JSON.parse(JSON.stringify(schedules)) as SchedulesType
+      
+      // Clear the schedules first
+      await clearSchedulesForNewWeek(false) // Pass false to not show toast again
+      
+      // Create a copy of the schedules (which are now cleared)
+      const updatedSchedules = { ...schedules } as SchedulesType
+      
+      // Copy previous week's schedules to the new week
+      for (const userId in previousWeekSchedules) {
+        if (previousWeekSchedules.hasOwnProperty(userId)) {
+          const userIdNum = parseInt(userId)
+          
+          // Copy schedules for each day
+          DAYS_OF_WEEK.forEach((day: DayName) => {
+            if (previousWeekSchedules[userIdNum] && previousWeekSchedules[userIdNum][day]) {
+              // Create new array with new IDs for each time block
+              updatedSchedules[userIdNum][day] = previousWeekSchedules[userIdNum][day].map((block: TimeBlock) => {
+                // Generate a temporary ID
+                const tempId = `temp-${Math.random().toString(36).substring(2, 11)}`
+                
+                return {
+                  ...block,
+                  id: tempId // Use a new temporary ID
+                }
+              })
+              
+              // Add to Supabase if it's the current user
+              if (userName === users.find(u => u.id === userIdNum)?.name) {
+                // Add each block to Supabase
+                updatedSchedules[userIdNum][day].forEach(async (block: TimeBlock) => {
+                  const { data: insertedData, error } = await getSupabase()
+                    .from('schedules')
+                    .insert({
+                      user_id: userIdNum,
+                      day: day,
+                      start_time: block.start,
+                      end_time: block.end,
+                      label: block.label,
+                      all_day: block.allDay || false
+                    })
+                    .select()
+                  
+                  if (error) {
+                    console.error('Error adding repeated schedule to Supabase:', error)
+                  } else if (insertedData && insertedData.length > 0) {
+                    // Update the ID with the one from Supabase
+                    const newId = insertedData[0].id as string
+                    const blockIndex = updatedSchedules[userIdNum][day].findIndex(b => b.id === block.id)
+                    if (blockIndex !== -1) {
+                      updatedSchedules[userIdNum][day][blockIndex].id = newId
+                    }
+                  }
+                })
+              }
+            }
+          })
+        }
+      }
+      
+      // Update local state
+      setSchedules(updatedSchedules)
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem('roommate-schedules', JSON.stringify(updatedSchedules))
+      
+      // Show success toast
+      toast({
+        title: "Schedule repeated! 🔄",
+        description: "Your previous week's schedule has been copied to this week.",
+        variant: "default",
+        duration: 3000,
+      })
+      
+    } catch (error) {
+      console.error('Error repeating previous week\'s schedule:', error)
+      
+      // Show error toast
+      toast({
+        title: "Oops! Something went wrong",
+        description: "We couldn't repeat your previous schedule. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      })
+    }
+  }
+
+  // Function to clear schedules for the new week
+  const clearSchedulesForNewWeek = async (showToast = true) => {
+    try {
+      // Create a copy of the current schedules
+      const updatedSchedules = { ...schedules } as SchedulesType
+      
+      // Clear schedules for each user
+      for (const userId in updatedSchedules) {
+        if (updatedSchedules.hasOwnProperty(userId)) {
+          const userIdNum = parseInt(userId)
+          
+          // Clear schedules for each day
+          DAYS_OF_WEEK.forEach((day: DayName) => {
+            if (updatedSchedules[userIdNum] && updatedSchedules[userIdNum][day]) {
+              updatedSchedules[userIdNum][day] = []
+            }
+          })
+          
+          // Update in Supabase
+          if (userName === users.find(u => u.id === userIdNum)?.name) {
+            // Only clear schedules in Supabase for the current user
+            const { error } = await getSupabase()
+              .from('schedules')
+              .delete()
+              .eq('user_id', userIdNum)
+            
+            if (error) {
+              console.error('Error clearing schedules in Supabase:', error)
+            }
+          }
+        }
+      }
+      
+      // Update local state
+      setSchedules(updatedSchedules)
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem('roommate-schedules', JSON.stringify(updatedSchedules))
+      
+    } catch (error) {
+      console.error('Error clearing schedules for new week:', error)
+    }
+  }
+  
   // Function to handle color updates from the WeeklySchedule component
   const handleColorUpdate = async (name: string, color: string) => {
     // Always update userColor if it's the current user
