@@ -365,7 +365,7 @@ export function SingleDayView({
                         data-component-name="SingleDayView"
                       >
                         {/* User initial centered on top of the block - only shown for the first block if there's no All Day block */}
-                        {isFirstBlock && !(userSchedules[user.id]?.some(b => b && b.allDay)) && allDayBlocks.length === 0 && (
+                        {isFirstBlock && !(schedules && schedules[user.id] && schedules[user.id][day] && schedules[user.id][day].some(b => b && b.allDay)) && allDayBlocks.length === 0 && (
                           <div 
                             className="absolute -top-3 left-1/2 transform -translate-x-1/2 rounded-full flex items-center justify-center w-6 h-6 text-xs font-bold shadow-md border border-gray-700 z-50"
                             style={{
