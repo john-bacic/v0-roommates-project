@@ -34,8 +34,9 @@ export default function EditSchedule() {
     return false
   })
   const router = useRouter()
-  const [activeDay, setActiveDay] = useState("Monday") // Default active day
-  const [schedule, setSchedule] = useState<Record<string, TimeBlock[]>>({
+  // Using a combined state object that includes activeDay
+  const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>({  
+    activeDay: "Monday", // Default active day
     Monday: [],
     Tuesday: [],
     Wednesday: [],
@@ -46,13 +47,13 @@ export default function EditSchedule() {
   })
 
   // Function to load user data and schedules from Supabase
-  const loadUserData = async (userName: string) => {
+  const loadUserData = async (name: string) => {
     try {
       // Get user data from Supabase
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('name', userName)
+        .eq('name', name)
         .single();
       
       if (userError) {
@@ -60,50 +61,50 @@ export default function EditSchedule() {
         return;
       }
       
-      if (userData) {
-        // Set user color from Supabase
-        setUserColor(userData.color);
-        
-        // Get user schedules from Supabase
-        const { data: schedulesData, error: schedulesError } = await supabase
-          .from('schedules')
-          .select('*')
-          .eq('user_id', userData.id);
-        
-        if (schedulesError) {
-          console.error('Error fetching schedules:', schedulesError);
-          return;
-        }
-        
-        // Transform schedules data to the format needed by the editor
-        const formattedSchedule: Record<string, TimeBlock[]> = {
-          Monday: [],
-          Tuesday: [],
-          Wednesday: [],
-          Thursday: [],
-          Friday: [],
-          Saturday: [],
-          Sunday: [],
-        };
-        
-        if (schedulesData && schedulesData.length > 0) {
-          schedulesData.forEach(item => {
-            if (!formattedSchedule[item.day]) {
-              formattedSchedule[item.day] = [];
-            }
-            
-            formattedSchedule[item.day].push({
-              id: item.id,
-              start: item.start_time,
-              end: item.end_time,
-              label: item.label,
-              allDay: Boolean(item.all_day)
-            });
-          });
-        }
-        
-        setSchedule(formattedSchedule);
+      // Set user color
+      setUserColor(userData.color);
+      
+      // Get schedules for this user
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('user_id', userData.id);
+      
+      if (schedulesError) {
+        console.error('Error fetching schedules:', schedulesError);
+        return;
       }
+      
+      // Transform schedules data to the format needed by the editor
+      const formattedSchedule: {activeDay: string, [key: string]: any} = {
+        activeDay: schedule.activeDay, // Keep the current active day
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: [],
+        Sunday: [],
+      };
+      
+      if (schedulesData && schedulesData.length > 0) {
+        schedulesData.forEach(item => {
+          if (!formattedSchedule[item.day]) {
+            formattedSchedule[item.day] = [];
+          }
+          
+          formattedSchedule[item.day].push({
+            id: item.id,
+            start: item.start_time,
+            end: item.end_time,
+            label: item.label,
+            allDay: item.all_day
+          });
+        });
+      }
+      
+      // Set the formatted schedule
+      setSchedule(formattedSchedule);
     } catch (error) {
       console.error('Error loading user data:', error);
     }
@@ -150,7 +151,8 @@ export default function EditSchedule() {
     // Get the day parameter from URL if available
     const dayParam = urlParams.get('day')
     if (dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam)) {
-      setActiveDay(dayParam)
+      // Update the schedule with the new active day
+      setSchedule(prev => ({ ...prev, activeDay: dayParam }))
     }
     
     // Get the return path from URL if available
@@ -229,32 +231,46 @@ export default function EditSchedule() {
       
       const userId = userData.id;
       
-      // First, delete all existing schedules for this user to avoid duplicates
+      // Delete existing schedules for this user
       const { error: deleteError } = await supabase
         .from('schedules')
         .delete()
         .eq('user_id', userId);
       
       if (deleteError) {
-        console.error('Error deleting existing schedules:', deleteError);
+        console.error('Error deleting schedules:', deleteError);
       }
       
-      // Prepare schedule data for insertion
-      const schedulesToInsert = [];
+      // Insert new schedules
+      interface ScheduleRecord {
+        user_id: number;
+        day: string;
+        start_time: string;
+        end_time: string;
+        label: string;
+        all_day: boolean;
+      }
       
-      for (const [day, timeBlocks] of Object.entries(schedule)) {
-        for (const block of timeBlocks) {
-          schedulesToInsert.push({
-            user_id: userId,
-            day: day,
-            start_time: block.start,
-            end_time: block.end,
-            label: block.label,
-            all_day: block.allDay || false
+      const schedulesToInsert: ScheduleRecord[] = [];
+      
+      // Loop through each day and create records for each time block
+      for (const day in schedule) {
+        // Skip the activeDay property
+        if (day === 'activeDay') continue;
+        
+        if (Array.isArray(schedule[day])) {
+          schedule[day].forEach((block: TimeBlock) => {
+            schedulesToInsert.push({
+              user_id: userId,
+              day,
+              start_time: block.start,
+              end_time: block.end,
+              label: block.label,
+              all_day: block.allDay || false,
+            });
           });
         }
       }
-      
       // Insert all schedules at once
       if (schedulesToInsert.length > 0) {
         const { error: insertError } = await supabase
@@ -283,7 +299,7 @@ export default function EditSchedule() {
     }
   }
 
-  const handleScheduleChange = (newSchedule: Record<string, TimeBlock[]>) => {
+  const handleScheduleChange = (newSchedule: {activeDay: string, [key: string]: any}) => {
     setSchedule(newSchedule)
   }
 
@@ -308,53 +324,80 @@ export default function EditSchedule() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - Fixed to top */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md" data-component-name="EditSchedule">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              
-              // Use a more direct approach to ensure dashboard refreshes
-              // Set a flag that will be checked by the dashboard
-              sessionStorage.setItem('dashboardNeedsRefresh', 'true');
-              
-              // Store timestamp to ensure we can detect this is a new refresh request
-              sessionStorage.setItem('refreshTimestamp', Date.now().toString());
-              
-              // Dispatch events for any components that might be listening
-              document.dispatchEvent(new CustomEvent('returnToScheduleView', {
-                detail: { updatedAt: new Date().toISOString() }
-              }));
-              
-              document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
-              
-              // Navigate to dashboard with a forced reload to ensure fresh data
-              if (returnPath.includes('dashboard')) {
-                // If returning to dashboard, force a complete page reload
-                window.location.href = '/dashboard?refresh=' + Date.now();
-              } else {
-                // For other pages, try history navigation first
-                if (window.history.length > 1) {
-                  window.history.back();
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-3 shadow-md" data-component-name="EditSchedule">
+        <div className="flex flex-col max-w-7xl mx-auto w-full">
+          <div className="flex items-center justify-between w-full mb-3">
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                
+                // Use a more direct approach to ensure dashboard refreshes
+                // Set a flag that will be checked by the dashboard
+                sessionStorage.setItem('dashboardNeedsRefresh', 'true');
+                
+                // Store timestamp to ensure we can detect this is a new refresh request
+                sessionStorage.setItem('refreshTimestamp', Date.now().toString());
+                
+                // Dispatch events for any components that might be listening
+                document.dispatchEvent(new CustomEvent('returnToScheduleView', {
+                  detail: { updatedAt: new Date().toISOString() }
+                }));
+                
+                document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
+                
+                // Navigate to dashboard with a forced reload to ensure fresh data
+                if (returnPath.includes('dashboard')) {
+                  // If returning to dashboard, force a complete page reload
+                  window.location.href = '/dashboard?refresh=' + Date.now();
                 } else {
-                  window.location.href = returnPath;
+                  // For other pages, try history navigation first
+                  if (window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    window.location.href = returnPath;
+                  }
                 }
-              }
-            }} 
-            className="flex items-center text-white hover:opacity-80 cursor-pointer"
-            data-component-name="BackButton"
-            title="Back"
-          >
-            <ArrowLeft className="h-6 w-6" />
-            <span className="sr-only">Back</span>
-          </button>
-          <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Edit</h1>
-          <div className="w-16">{/* Spacer to balance layout */}</div>
+              }} 
+              className="flex items-center text-white hover:opacity-80 cursor-pointer"
+              data-component-name="BackButton"
+              title="Back"
+            >
+              <ArrowLeft className="h-6 w-6" />
+              <span className="sr-only">Back</span>
+            </button>
+            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2">Edit</h1>
+            <div className="w-16">{/* Spacer to balance layout */}</div>
+          </div>
+          
+          {/* Day selector tabs moved to header */}
+          <div className="grid grid-cols-7 gap-1 w-full" role="tablist" aria-label="Day selector" data-component-name="EditSchedule">
+            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => {
+              const isActive = schedule.activeDay === day;
+              return (
+                <Button
+                  key={day}
+                  variant={isActive ? "default" : "outline"}
+                  className={`px-1 sm:px-2 text-xs sm:text-sm h-10 py-2 ${isActive ? "text-black" : "bg-[#333333] border-[#444444] text-white hover:bg-[#444444]"}`}
+                  style={isActive ? { backgroundColor: userColor, color: userColor === "#FFFFFF" ? "#000000" : "#FFFFFF" } : {}}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`${day.toLowerCase()}-panel`}
+                  onClick={() => {
+                    const newSchedule = { ...schedule, activeDay: day };
+                    setSchedule(newSchedule);
+                  }}
+                  data-component-name="_c"
+                >
+                  {day.substring(0, 3)}
+                </Button>
+              );
+            })}
+          </div>
         </div>
       </header>
 
-      {/* Main content - Added top padding to account for fixed header */}
-      <main className="flex-1 p-4 pt-16 max-w-7xl mx-auto w-full">
+      {/* Main content - Added top padding to account for fixed header with tabs */}
+      <main className="flex-1 p-4 pt-32 max-w-7xl mx-auto w-full">
 
         <div className="bg-[#333333] rounded-lg p-4 mt-4" data-component-name="EditSchedule">
           <ScheduleEditor 
@@ -364,7 +407,6 @@ export default function EditSchedule() {
             onSave={handleSave} 
             use24HourFormat={use24HourFormat}
             userName={userName}
-            initialActiveDay={activeDay}
           />
         </div>
       </main>
