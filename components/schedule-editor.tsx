@@ -335,6 +335,8 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
   
   return (
     <div className="w-full">
+      {/* Divider at the top for better separation */}
+      <Separator className="my-4 bg-[#444444]" />
       <div className="grid grid-cols-7 gap-1 mb-4 pb-2 w-full" role="tablist" aria-label="Day selector">
         {days.map((day) => {
           const isActive = activeDay === day;
