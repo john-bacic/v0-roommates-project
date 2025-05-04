@@ -355,11 +355,8 @@ export default function EditSchedule() {
 
       {/* Main content - Added top padding to account for fixed header */}
       <main className="flex-1 p-4 pt-16 max-w-7xl mx-auto w-full">
-        <div className="mb-6">
-          <h2 className="text-lg font-medium">Week of {formatWeekRange()}</h2>
-        </div>
 
-        <div className="bg-[#333333] rounded-lg p-4">
+        <div className="bg-[#333333] rounded-lg p-4 mt-4" data-component-name="EditSchedule">
           <ScheduleEditor 
             schedule={schedule} 
             onChange={handleScheduleChange} 
