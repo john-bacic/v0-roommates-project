@@ -974,11 +974,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     }
     
     const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
-    const dayName = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1] // Convert to our days array index
+    const dayName = days[dayOfWeek] // With Sunday as first day, we can use dayOfWeek directly
     
     // Check if the current week includes the adjusted date
     const weekStart = new Date(currentWeek)
-    weekStart.setDate(currentWeek.getDate() - currentWeek.getDay() + (currentWeek.getDay() === 0 ? -6 : 1)) // Start of week (Monday)
+    weekStart.setDate(currentWeek.getDate() - currentWeek.getDay()) // Start of week (Sunday)
     
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of week (Sunday)
@@ -1097,7 +1097,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - stays sticky below the WeeklySchedule header - use same position for mobile and desktop */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80`}
+            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80 mb-2 shadow-sm`}
             onClick={() => handleDayHeaderClick(day)}
             onDoubleClick={() => handleDayHeaderDoubleClick(day)}
             onTouchStart={(e) => {
@@ -1141,7 +1141,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                   
                   // Get the date for this day based on the current week
                   const date = new Date(currentWeek);
-                  date.setDate(date.getDate() - date.getDay() + (dayIndex === 6 ? 0 : dayIndex + 1));
+                  // With Sunday as first day (index 0), we can directly use dayIndex
+                  date.setDate(date.getDate() - date.getDay() + dayIndex);
                   
                   // Check if this date is today
                   const today = new Date();
@@ -1168,42 +1169,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             </div>
           </div>
 
-          {/* Day header - only for Monday */}
-          {day === "Monday" && (
-            <div className="flex justify-between items-center pr-1 mb-2">
-              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-                {day}
-                {/* Check if this is the current day and add the date */}
-                {(() => {
-                  // Get the day index (0-6, Monday-Sunday)
-                  const dayIndex = days.indexOf(day);
-                  
-                  // Get the date for this day based on the current week
-                  const date = new Date(currentWeek);
-                  date.setDate(date.getDate() - date.getDay() + (dayIndex === 6 ? 0 : dayIndex + 1));
-                  
-                  // Check if this date is today
-                  const today = new Date();
-                  const isToday = date.getDate() === today.getDate() && 
-                                  date.getMonth() === today.getMonth() && 
-                                  date.getFullYear() === today.getFullYear();
-                  
-                  if (isToday) {
-                    // Format the date as "Month Day"
-                    const month = date.toLocaleString('default', { month: 'long' });
-                    const dayOfMonth = date.getDate();
-                    
-                    return (
-                      <span className="ml-1 font-bold text-xs">
-                        {` • ${month} ${dayOfMonth}`}
-                      </span>
-                    );
-                  }
-                  return null;
-                })()}
-              </h4>
-            </div>
-          )}
+          {/* No duplicate day header needed */}
 
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
@@ -1252,7 +1218,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       return (
                         <div 
                           key={`hour-timeline-${hour}-${hourIndex}`} 
-                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
+                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap z-20"
                           style={{ left: `${position}%` }}
                           data-component-name="WeeklySchedule"
                         >

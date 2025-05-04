@@ -446,7 +446,7 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Main header - fixed at the top */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#242424] shadow-md border-b border-[#333333]">
+      <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]" data-component-name="Dashboard">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           {/* Update the header title */}
           <h1 className="text-xl font-bold" data-component-name="Dashboard">Roomeez</h1>
@@ -491,7 +491,7 @@ export default function Dashboard() {
       {/* Main content */}
       {/* Spacer to account for fixed header */}
       <div className="h-[57px]"></div>
-      <main className="flex-1 px-4 pb-20 max-w-7xl mx-auto w-full relative">
+      <main className="flex-1 px-4 pb-20 pt-10 max-w-7xl mx-auto w-full relative" data-component-name="Dashboard">
         {/* Schedule content */}
         <div className="flex flex-col">
           {loading ? (
