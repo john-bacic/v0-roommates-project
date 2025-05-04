@@ -86,7 +86,7 @@ export function QuickScheduleModal({
   isColorPickerOnly = false,
   use24HourFormat = true,
 }: QuickScheduleModalProps) {
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const [day, setDay] = useState(initialDay)
   // Add state to track the current color within the modal
   const [currentColor, setCurrentColor] = useState(initialUserColor)

@@ -24,7 +24,7 @@ export default function Overview() {
   const [usersList, setUsersList] = useState<typeof initialUsers>(initialUsers)
   const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>>>({})
   const [loading, setLoading] = useState(true)
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#FF7DB1") // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(() => {

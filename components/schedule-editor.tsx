@@ -31,7 +31,7 @@ interface ScheduleEditorProps {
 }
 
 export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSave, use24HourFormat = true, userName, initialActiveDay }: ScheduleEditorProps) {
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const [activeDay, setActiveDay] = useState(initialActiveDay || days[0])
 
   // Time picker dialog state
