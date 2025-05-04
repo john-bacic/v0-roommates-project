@@ -36,7 +36,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
   // Time picker dialog state
   const [timePickerOpen, setTimePickerOpen] = useState(false)
-  const [currentTimeField, setCurrentTimeField] = useState<{dayName: string, index: number, field: 'start' | 'end'} | null>(null)
+  const [currentTimeField, setCurrentTimeField] = useState<{dayName: string, index: number, field: 'start' | 'end', label?: string} | null>(null)
   const [currentTimeValue, setCurrentTimeValue] = useState('')
 
   const [focusRingColor, setFocusRingColor] = useState(userColor)
@@ -335,8 +335,6 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
   
   return (
     <div className="w-full">
-      {/* Divider at the top for better separation */}
-      <Separator className="my-4 bg-[#444444]" />
       <div className="grid grid-cols-7 gap-1 mb-4 pb-2 w-full" role="tablist" aria-label="Day selector">
         {days.map((day) => {
           const isActive = activeDay === day;
@@ -483,8 +481,11 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           <p className="text-sm text-[#A0A0A0] mb-4">No scheduled times for this day.</p>
         )}
 
-        {/* Removed from here */}
-
+        {/* Separator above time blocks */}
+        {schedule[activeDay] && schedule[activeDay].length > 0 && (
+          <div className="h-[1px] bg-[#555555] w-full mb-4 mt-2"></div>
+        )}
+        
         {[...(schedule[activeDay] || [])]
           .sort((a, b) => {
             // Sort by start time (all-day events first, then by start time)
@@ -503,13 +504,15 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
             return aTime[1] - bTime[1];
           })
           .map((block, index) => (
-          <div key={index} className={`mb-4 ${block.allDay === true ? 'rounded-md p-3 relative border-2' : ''}`} 
+          <div key={index} className={`mb-4 ${block.allDay === true ? 'rounded-md p-3 relative border-2' : 'p-3 rounded-md'}`} 
             style={{
               borderColor: block.allDay === true ? userColor : 'transparent',
               backgroundImage: block.allDay === true ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+              backgroundColor: block.allDay === true ? 'transparent' : '#333333',
               color: block.allDay === true ? userColor : 'inherit'
             }}
             data-component-name="ScheduleEditor">
+            {index > 0 && <div className="h-[1px] bg-[#555555] w-full mb-4 mt-2"></div>}
             {/* Removed the absolute positioned All Day label */}
             
             {/* Time Fields - Only shown when All Day is OFF */}
@@ -520,7 +523,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                   <div 
                     className="cursor-pointer"
                     onClick={() => {
-                      setCurrentTimeField({dayName: activeDay, index, field: 'start'})
+                      setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
                       setCurrentTimeValue(block.start || '09:00')
                       setTimePickerOpen(true)
                     }}
@@ -539,7 +542,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                   <div 
                     className="cursor-pointer"
                     onClick={() => {
-                      setCurrentTimeField({dayName: activeDay, index, field: 'end'})
+                      setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
                       setCurrentTimeValue(block.end || '17:00')
                       setTimePickerOpen(true)
                     }}
@@ -638,6 +641,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
         use24HourFormat={use24HourFormat}
         userColor={userColor}
         title={currentTimeField?.field === 'start' ? 'Start Time' : 'End Time'}
+        label={currentTimeField?.label}
       />
     </div>
   )

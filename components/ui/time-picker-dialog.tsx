@@ -12,6 +12,7 @@ interface TimePickerDialogProps {
   use24HourFormat?: boolean
   userColor?: string
   title?: string
+  label?: string
 }
 
 export function TimePickerDialog({
@@ -21,7 +22,8 @@ export function TimePickerDialog({
   onTimeSelect,
   use24HourFormat = false,
   userColor = "#03DAC6",
-  title = "Select Time"
+  title = "Select Time",
+  label
 }: TimePickerDialogProps) {
   const [time, setTime] = useState(initialTime || "12:00")
 
@@ -55,8 +57,15 @@ export function TimePickerDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
       <div className="bg-[#282828] rounded-lg w-full max-w-sm mx-4">
-        <div className="flex justify-between items-center px-6 py-4 border-b border-[#333333]">
-          <h3 className="text-xl font-semibold">{title}</h3>
+        <div className="flex justify-between items-center px-6 py-4 border-b border-[#333333]" data-component-name="TimePickerDialog">
+          <div>
+            <h3 className="text-xl font-semibold" data-component-name="TimePickerDialog">{title}</h3>
+            {label && (
+              <p className="text-sm text-[#A0A0A0] mt-1" data-component-name="TimePickerDialog">
+                {label}
+              </p>
+            )}
+          </div>
           <button 
             onClick={onClose}
             className="p-1 rounded-full hover:bg-[#333333] text-white"
