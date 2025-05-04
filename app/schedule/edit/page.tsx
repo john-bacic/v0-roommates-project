@@ -370,22 +370,28 @@ export default function EditSchedule() {
           </div>
           
           {/* Day selector tabs moved to header */}
-          <div className="grid grid-cols-7 gap-1 w-full" role="tablist" aria-label="Day selector" data-component-name="EditSchedule">
+          <div className="grid grid-cols-7 gap-1 mb-1 pt-2 pb-1 px-2 w-full" role="tablist" aria-label="Day selector" data-component-name="EditSchedule">
             {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => {
               const isActive = schedule.activeDay === day;
               return (
                 <Button
                   key={day}
-                  variant={isActive ? "default" : "outline"}
-                  className={`px-1 sm:px-2 text-xs sm:text-sm h-10 py-2 ${isActive ? "text-black" : "bg-[#333333] border-[#444444] text-white hover:bg-[#444444]"}`}
-                  style={isActive ? { backgroundColor: userColor, color: userColor === "#FFFFFF" ? "#000000" : "#FFFFFF" } : {}}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`${day.toLowerCase()}-panel`}
                   onClick={() => {
                     const newSchedule = { ...schedule, activeDay: day };
                     setSchedule(newSchedule);
                   }}
+                  className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-8 py-1 px-1 sm:px-2 text-xs ${isActive 
+                    ? 'bg-primary hover:bg-primary/90' 
+                    : 'border bg-[#333333] border-[#444444] text-white hover:bg-[#444444]'}`}
+                  style={isActive ? { 
+                    backgroundColor: userColor,
+                    color: "#000"
+                  } : {}}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`${day.toLowerCase()}-panel`}
+                  tabIndex={0}
+                  aria-label={`${day} tab${isActive ? ', selected' : ''}`}
                   data-component-name="_c"
                 >
                   {day.substring(0, 3)}
@@ -397,7 +403,7 @@ export default function EditSchedule() {
       </header>
 
       {/* Main content - Added top padding to account for fixed header with tabs */}
-      <main className="flex-1 p-4 pt-32 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-4 pt-28 max-w-7xl mx-auto w-full">
 
         <div className="bg-[#333333] rounded-lg p-4 mt-4" data-component-name="EditSchedule">
           <ScheduleEditor 
