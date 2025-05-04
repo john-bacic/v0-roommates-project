@@ -54,17 +54,14 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
     }
   }, [initialActiveDay])
   
-  // Effect to ensure the All Day toggle state is properly updated when schedule data changes
+  // State to track the All Day toggle independently from the schedule data
+  const [isAllDay, setIsAllDay] = useState(false);
+  
+  // Effect to update the isAllDay state when the schedule changes
   useEffect(() => {
-    // This will force a re-render when schedule data changes, ensuring the toggle state is updated
     if (schedule[activeDay]?.length > 0) {
-      const isAllDay = schedule[activeDay][0].allDay === true;
-      // Update the UI to reflect the current state
-      const toggleElement = document.getElementById('all-day-toggle-0');
-      if (toggleElement) {
-        toggleElement.setAttribute('aria-checked', isAllDay ? 'true' : 'false');
-        toggleElement.setAttribute('data-state', isAllDay ? 'checked' : 'unchecked');
-      }
+      const allDayValue = Boolean(schedule[activeDay][0].allDay);
+      setIsAllDay(allDayValue);
     }
   }, [schedule, activeDay]);
   
@@ -294,7 +291,7 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
 
   // Create a ref for the schedule content area for swipe detection
   const scheduleContentRef = useRef<HTMLDivElement>(null);
-  const originalTimesRef = useRef<{ [key: string]: { start: string; end: string } }>({});
+  const originalTimesRef = useRef<{ [key: string]: { start: string; end: string; label?: string } }>({});
   
   // Navigate to the previous day
   const goToPreviousDay = () => {
@@ -413,26 +410,35 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
               </Label>
               <Switch
                 id="all-day-toggle-0"
-                checked={schedule[activeDay][0]?.allDay === true}
+                key={`all-day-toggle-${activeDay}-${isAllDay}`}
+                checked={isAllDay}
                 data-component-name="Primitive.button"
                 className="order-2 data-[state=checked]:bg-[var(--focus-ring-color)] data-[state=unchecked]:bg-black h-7 w-12 px-[3px]"
                 style={{
-                  '--switch-thumb-color': schedule[activeDay][0]?.allDay === true ? userColor : '#333333'
+                  '--switch-thumb-color': '#333333'
                 } as React.CSSProperties}
+                data-allday={isAllDay.toString()}
                 onCheckedChange={(checked) => {
+                  // Update our local state immediately
+                  setIsAllDay(checked);
                   const key = `${activeDay}-0`;
                   const newSchedule = { ...schedule };
                   if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
                   
                   if (checked) {
-                    // Store original times
-                    originalTimesRef.current[key] = { start: schedule[activeDay][0].start || "09:00", end: schedule[activeDay][0].end || "17:00" };
+                    // Store original times and label
+                    originalTimesRef.current[key] = { 
+                      start: schedule[activeDay][0].start || "09:00", 
+                      end: schedule[activeDay][0].end || "17:00",
+                      label: schedule[activeDay][0].label // Store the original label
+                    };
                     // Update block with all day values
                     newSchedule[activeDay][0] = {
                       ...schedule[activeDay][0],
                       allDay: true,
                       start: "00:00",
-                      end: "23:59"
+                      end: "23:59",
+                      label: "Day Off" // Always set to Day Off when toggling to All Day
                     };
                   } else {
                     // Restore original times
@@ -442,7 +448,8 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                       ...schedule[activeDay][0],
                       allDay: false,
                       start: prev.start,
-                      end: prev.end
+                      end: prev.end,
+                      label: prev.label || "Work" // Restore original label or default to "Work"
                     };
                     delete originalTimesRef.current[key];
                   }
@@ -455,10 +462,14 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                   if (checked) {
                     updateTimeBlock(activeDay, 0, "start", "00:00");
                     updateTimeBlock(activeDay, 0, "end", "23:59");
+                    // Always set label to "Day Off" when toggling to All Day
+                    updateTimeBlock(activeDay, 0, "label", "Day Off");
                   } else {
                     const prev = originalTimesRef.current[key] || { start: "09:00", end: "17:00" };
                     updateTimeBlock(activeDay, 0, "start", prev.start);
                     updateTimeBlock(activeDay, 0, "end", prev.end);
+                    // Restore original label or default to "Work"
+                    updateTimeBlock(activeDay, 0, "label", prev.label || "Work");
                   }
                 }}
               />
@@ -490,7 +501,14 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
             return aTime[1] - bTime[1];
           })
           .map((block, index) => (
-          <div key={index} className="mb-4">
+          <div key={index} className={`mb-4 ${block.allDay === true ? 'rounded-md p-3 relative border-2' : ''}`} 
+            style={{
+              borderColor: block.allDay === true ? userColor : 'transparent',
+              backgroundImage: block.allDay === true ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+              color: block.allDay === true ? userColor : 'inherit'
+            }}
+            data-component-name="ScheduleEditor">
+            {/* Removed the absolute positioned All Day label */}
             
             {/* Time Fields - Only shown when All Day is OFF */}
             {!block.allDay && (
@@ -542,14 +560,26 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                 <Label htmlFor={`label-${index}`} className="text-xs mb-1 block">
                   Label
                 </Label>
-                <Input
-                  id={`label-${index}`}
-                  type="text"
-                  value={block.label || ''}
-                  onChange={(e) => updateTimeBlock(activeDay, index, "label", e.target.value)}
-                  className="bg-[#242424] border-[#333333] text-white h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]"
-                  placeholder="Work, Class, etc."
-                />
+                <div className="relative">
+                  <Input
+                    id={`label-${index}`}
+                    type="text"
+                    value={block.label !== undefined ? block.label : ''}
+                    onChange={(e) => updateTimeBlock(activeDay, index, "label", e.target.value)}
+                    className={`${block.allDay === true ? 'bg-[#333333] border-[var(--focus-ring-color)] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]`}
+                    placeholder={block.allDay ? "Day Off, Out of Town, Busy, etc." : "Work, Class, etc."}
+                    data-component-name="_c"
+                    data-label-index={index}
+                  />
+                  {block.allDay === true && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium px-2 py-1 rounded bg-[#222222] border" 
+                      style={{ borderColor: userColor, color: userColor }}
+                      data-component-name="ScheduleEditor"
+                    >
+                      All Day
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="col-span-1">
                 <Button
@@ -557,6 +587,8 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
                   size="icon"
                   onClick={() => removeTimeBlock(activeDay, index)}
                   className="h-9 w-9 text-[#CF6679] hover:text-[#CF6679] hover:bg-[#242424]"
+                  data-delete-for={`label-${index}`}
+                  aria-label={`Delete ${block.label || (block.allDay ? 'Day Off' : 'Work')} time block`}
                 >
                   <Trash2 className="h-4 w-4" />
                   <span className="sr-only">Remove</span>
@@ -566,28 +598,29 @@ export function ScheduleEditor({ schedule, onChange, userColor = "#BB86FC", onSa
           </div>
         ))}
 
-        {schedule[activeDay]?.length > 0 && !schedule[activeDay][0]?.allDay && (
-          <p className="text-sm text-[#A0A0A0] mb-4" data-component-name="ScheduleEditor">Add multiple time blocks to create breaks between activities</p>
-        )}
+        {/* Always show instructional text */}
+        <p className="text-sm text-[#A0A0A0] mb-4" data-component-name="ScheduleEditor">
+          {schedule[activeDay]?.length > 0 && schedule[activeDay][0]?.allDay 
+            ? "Add time blocks for specific activities (will overlap with All Day)"
+            : "Add multiple time blocks to create breaks between activities"}
+        </p>
         
-        {/* Only show Add block button when All Day is not enabled */}
-        {(!schedule[activeDay] || schedule[activeDay].length === 0 || !schedule[activeDay][0]?.allDay) && (
-          <div className="flex justify-center mt-2 w-full">
-            <button
-              onClick={addTimeBlock}
-              className="w-full px-6 py-2 h-10 text-sm border-2 rounded-md font-medium"
-              style={{ 
-                backgroundColor: "#333333", 
-                color: userColor, 
-                borderColor: userColor 
-              }}
-              data-dark-bg="true"
-              data-component-name="_c"
-            >
-              + Add block
-            </button>
-          </div>
-        )}
+        {/* Always show Add block button */}
+        <div className="flex justify-center mt-2 w-full">
+          <button
+            onClick={addTimeBlock}
+            className="w-full px-6 py-2 h-10 text-sm border-2 rounded-md font-medium"
+            style={{ 
+              backgroundColor: "#333333", 
+              color: userColor, 
+              borderColor: userColor 
+            }}
+            data-dark-bg="true"
+            data-component-name="ScheduleEditor"
+          >
+            + Add time
+          </button>
+        </div>
       </div>
 
       {/* Time Picker Dialog */}

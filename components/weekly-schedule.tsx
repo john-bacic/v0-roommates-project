@@ -1367,7 +1367,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                             key={block.id || index}
                             className={`absolute ${
                               isCollapsed ? "h-2" : "top-0 h-full bottom-0"
-                            } rounded-md flex items-center justify-center transition-all duration-200 z-10 ${
+                            } rounded-md flex items-center justify-center transition-all duration-200 z-${block.allDay ? 5 : 10 + index} ${
                               isCurrentUser ? "cursor-pointer hover:opacity-90" : ""
                             }`}
                             style={{
@@ -1378,6 +1378,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                               top: isCollapsed ? "0" : undefined,
                               border: block.allDay ? `2px solid ${user.color}` : 'none',
                               backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                              zIndex: block.allDay ? 5 : 10 + (
+                                block.start ? 
+                                  parseInt(block.start.split(':')[0]) + 
+                                  parseInt(block.start.split(':')[1]) / 60 
+                                : 0
+                              )
                             }}
                             title={`${block.label}${block.allDay ? " (All Day)" : `: ${formatTimeDisplay(block.start)} - ${formatTimeDisplay(block.end)}`}`}
                             onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
