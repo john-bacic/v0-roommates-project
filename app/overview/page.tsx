@@ -319,52 +319,45 @@ export default function Overview() {
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at the top */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] px-4 py-2 shadow-md" data-component-name="Overview">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center justify-between w-full">
-              <div className="flex items-center group w-[72px]">
-                <Link 
-                  href="/dashboard" 
-                  className="flex items-center text-white hover:opacity-80"
-                  data-component-name="LinkComponent"
-                  title="Back to Dashboard"
-                >
-                  <ArrowLeft className="h-6 w-6" />
-                  <span className="sr-only">Back</span>
-                </Link>
-              </div>
-            <h1 className="text-xl font-bold text-center w-full absolute left-0 right-0 pointer-events-none z-0" data-component-name="Overview">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-3 shadow-md" data-component-name="Overview">
+        <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="Overview">
+          <div className="flex items-center justify-between w-full mb-3" data-component-name="Overview">
+            <div className="flex items-center group w-[72px]">
+              <Link 
+                href="/dashboard" 
+                className="flex items-center text-white hover:opacity-80"
+                data-component-name="LinkComponent"
+                title="Back to Dashboard"
+              >
+                <ArrowLeft className="h-6 w-6" />
+                <span className="sr-only">Back</span>
+              </Link>
+            </div>
+            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="Overview">
               Daily
             </h1>
-            <div className="w-[72px] flex justify-end">
-              {/* Time format toggle button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 h-8 w-8"
-                onClick={() => {
-                  const newFormat = !use24HourFormat
-                  setUse24HourFormat(newFormat)
-                  localStorage.setItem('use24HourFormat', newFormat.toString())
-                }}
-                title={`Switch to ${use24HourFormat ? '12-hour' : '24-hour'} format`}
-                data-component-name="Overview"
-              >
-                <Clock className="h-5 w-5" />
-                <span className="sr-only">
-                  {use24HourFormat ? '24h' : '12h'}
-                </span>
-              </Button>
-            </div>
+            {/* Time format toggle button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-1 h-8 w-8 ml-auto"
+              onClick={() => {
+                const newFormat = !use24HourFormat
+                setUse24HourFormat(newFormat)
+                localStorage.setItem('use24HourFormat', newFormat.toString())
+              }}
+              title={`Switch to ${use24HourFormat ? '12-hour' : '24-hour'} format`}
+              data-component-name="_c"
+            >
+              <Clock className="h-5 w-5" />
+              <span className="sr-only">
+                {use24HourFormat ? '24h' : '12h'}
+              </span>
+            </Button>
           </div>
-        </div>
-      </header>
-
-      {/* Main content - add padding to account for fixed header */}
-      <main className="flex-1 pt-[45px] md:px-4 px-0 pb-4 max-w-7xl mx-auto w-full">
-        {/* Day selector tabs - fixed below header */}
-        <div className="fixed top-[41px] left-0 right-0 z-40 bg-[#282828] border-b border-[#333333] shadow-sm opacity-90" data-component-name="Overview">
-          <div className="grid grid-cols-7 gap-1 mb-1 pt-2 pb-1 px-2 w-full" role="tablist" aria-label="Day selector">
+          
+          {/* Day selector tabs moved to header */}
+          <div className="grid grid-cols-7 gap-1 mb-1 pt-2 pb-1 px-2 w-full" role="tablist" aria-label="Day selector" data-component-name="Overview">
             {days.map((day) => {
               const isActive = selectedDay === day;
               const dayIndex = days.indexOf(day);
@@ -382,30 +375,34 @@ export default function Overview() {
                     backgroundColor: userColor,
                     color: "#000"
                   } : {}}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowLeft') {
-                      e.preventDefault();
-                      selectDay(prevDay);
-                    } else if (e.key === 'ArrowRight') {
-                      e.preventDefault();
-                      selectDay(nextDay);
-                    }
-                  }}
                   role="tab"
                   aria-selected={isActive}
                   aria-controls={`${day.toLowerCase()}-panel`}
                   tabIndex={0}
                   aria-label={`${day} tab${isActive ? ', selected' : ''}`}
+                  data-component-name="_c"
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowLeft') {
+                      e.preventDefault()
+                      selectDay(prevDay)
+                    } else if (e.key === 'ArrowRight') {
+                      e.preventDefault()
+                      selectDay(nextDay)
+                    }
+                  }}
                 >
                   {day.substring(0, 3)}
                 </Button>
-              );
+              )
             })}
           </div>
         </div>
+      </header>
 
-        {/* Add extra padding to account for fixed day selector tabs - reduced for mobile */}
-        <div className="bg-[#282828] rounded-lg md:p-4 p-2 mt-[56px]">
+      {/* Main content - add padding to account for fixed header with tabs */}
+      <main className="flex-1 p-4 pt-28 max-w-7xl mx-auto w-full">
+        {/* Content container */}
+        <div className="bg-[#282828] rounded-lg md:p-4 p-2">
           {loading ? (
             <div className="flex justify-center items-center py-4">
               <p className="text-[#A0A0A0]">Loading schedules...</p>

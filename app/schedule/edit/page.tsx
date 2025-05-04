@@ -370,9 +370,8 @@ export default function EditSchedule() {
             <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">
               Edit
             </h1>
-            <div className="w-[72px] flex justify-end">
-              {/* Spacer to balance layout */}
-            </div>
+            {/* Spacer element to balance layout with ml-auto */}
+            <div className="w-8 h-8 ml-auto" aria-hidden="true"></div>
           </div>
           
           {/* Day selector tabs moved to header */}
