@@ -710,6 +710,9 @@ export default function Dashboard() {
         <div 
           className="fixed bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
           data-component-name="LinkComponent"
+          style={{
+            filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.5))'
+          }}
         >
           <Button
             asChild
