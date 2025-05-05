@@ -479,7 +479,7 @@ export default function ViewSchedule() {
                     return (
                       <div
                         key={block.id || index}
-                        className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-center transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
+                        className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-start transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
                         onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
                         style={{
                           left: `${startPos}%`,
@@ -493,34 +493,86 @@ export default function ViewSchedule() {
                         title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                       >
                         {!isCollapsed && width > 15 ? (
-                          <div className="flex flex-row items-center justify-start w-full h-full pl-4">
-                            <div className="flex flex-row items-center justify-start">
+                          <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
+                            <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
                               {!block.allDay ? (
-                                <span className="text-xs opacity-80 mr-1 font-bold leading-tight">
-                                  {formatTime(block.start)} - {formatTime(block.end)}
-                                </span>
-                              ) : null}
-                              {!block.allDay && <span className="text-xs opacity-60 mr-1">|</span>}
-                              <span className="text-xs font-bold leading-tight">
-                                {block.label}
-                                {block.allDay ? " (All Day)" : ""}
-                                {isCurrentUser && (
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="h-3 w-3 opacity-70 ml-1 inline"
-                                  >
-                                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
-                                  </svg>
-                                )}
-                              </span>
+                                width < 20 ? (
+                                  // For very narrow blocks, show only the label
+                                  <div className="flex items-center max-w-full overflow-hidden">
+                                    <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                      {block.label}
+                                    </span>
+                                    {isCurrentUser && width > 12 && (
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                      >
+                                        <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                ) : (
+                                  // For wider blocks, show time and label
+                                  <>
+                                    <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
+                                      {formatTime(block.start)} - {formatTime(block.end)}
+                                    </span>
+                                    <span className="text-xs opacity-60 mr-1">|</span>
+                                    <div className="flex items-center max-w-full overflow-hidden">
+                                      <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                        {block.label}
+                                      </span>
+                                      {isCurrentUser && (
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          width="24"
+                                          height="24"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                        >
+                                          <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  </>
+                                )
+                              ) : (
+                                // All-day blocks
+                                <div className="flex items-center max-w-full overflow-hidden">
+                                  <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                    {block.label} (All Day)
+                                  </span>
+                                  {isCurrentUser && (
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="24"
+                                      height="24"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                    >
+                                      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                    </svg>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : null}

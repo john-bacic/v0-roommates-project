@@ -63,21 +63,24 @@ export default function Roommates() {
   const [currentUser, setCurrentUser] = useState<number | null>(3) // Default to John (id: 3) as the signed-in user
   const pathname = usePathname()
 
-  // Effect to get the current URL
+  // Effect to get the current URL and set up date-related state
   useEffect(() => {
     // Only run in client-side
     if (typeof window !== 'undefined') {
       // Get the base URL (protocol + host)
       const baseUrl = window.location.origin
       setCurrentUrl(baseUrl)
+      
+      // Set up current date information
+      fetchUsersAndSchedules()
     }
   }, [])
 
   // Function to determine if a user has any schedules on a specific day
   // and check if they have an all-day off schedule
   const checkDayScheduleStatus = (userId: number, schedules: any, dayIndex: number) => {
-    // Convert day index (0-6, Monday-Sunday) to day name
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    // Convert day index (0-6, Sunday-Saturday) to day name
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayName = dayNames[dayIndex];
     
     // Check if user has any schedules for this day
@@ -85,20 +88,127 @@ export default function Roommates() {
                         schedules[userId][dayName] && 
                         schedules[userId][dayName].length > 0;
     
-    // Check if any of the schedules are all-day off
+    // Check if any of the schedules are all-day (any kind)
     let isAllDayOff = false;
     if (hasSchedules) {
       isAllDayOff = schedules[userId][dayName].some((schedule: Schedule) => 
-        schedule.allDay === true && schedule.label.toLowerCase().includes('off')
+        schedule.allDay === true
       );
     }
     
     return { hasSchedules, isAllDayOff };
   };
   
+  // Function to fetch users and schedules from Supabase
+  const fetchUsersAndSchedules = async () => {
+    setLoading(true)
+    
+    try {
+      // Fetch users from Supabase
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+      
+      if (usersError) {
+        console.error('Error fetching users:', usersError)
+        // Fall back to initial users if there's an error
+        setRoommates(initialUsers)
+        setLoading(false)
+        return
+      }
+      
+      if (!usersData || usersData.length === 0) {
+        // Fall back to initial users if no data
+        setRoommates(initialUsers)
+        setLoading(false)
+        return
+      }
+      
+      // Create updated roommates array with data from Supabase
+      const updatedRoommates = usersData.map(user => {
+        // Find matching user in initialUsers for fallback data
+        const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id))
+        const initialUser = initialUsers.find(r => r.id === userId) || {
+          id: userId,
+          name: user.name || 'User',
+          color: '#BB86FC',
+          initial: user.initial || 'U',
+          description: '',
+          availableDays: []
+        }
+        
+        // Create user with Supabase data, falling back to initial data when needed
+        return {
+          id: userId,
+          name: user.name || initialUser.name,
+          // Use the color from Supabase
+          color: user.color || initialUser.color,
+          initial: user.initial || initialUser.initial,
+          description: initialUser.description,
+          availableDays: [] as number[],
+          allDayOffDays: [] as number[]
+        }
+      })
+      
+      // Process schedules for each user
+      for (const user of usersData) {
+        const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id))
+        const userIndex = updatedRoommates.findIndex(r => r.id === userId)
+        
+        if (userIndex === -1) continue
+        
+        // Get schedules from Supabase
+        const { data: userSchedules, error: schedulesError } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('user_id', userId)
+        
+        if (schedulesError || !userSchedules) continue
+        
+        // Process schedules to determine available days and all-day off days
+        const availableDays: number[] = []
+        const allDayOffDays: number[] = []
+        
+        // Process each schedule
+        userSchedules.forEach(schedule => {
+          // Convert day name to index (0 = Sunday, 1 = Monday, etc.)
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+          const dayIndex = dayNames.indexOf(schedule.day)
+          
+          if (dayIndex === -1) return
+          
+          // Check if this is an all-day schedule (any kind)
+          if (schedule.all_day) {
+            allDayOffDays.push(dayIndex)
+          } else {
+            // This is a regular schedule
+            if (!availableDays.includes(dayIndex)) {
+              availableDays.push(dayIndex)
+            }
+          }
+        })
+        
+        // Update the roommate with the calculated days
+        updatedRoommates[userIndex] = {
+          ...updatedRoommates[userIndex],
+          availableDays,
+          allDayOffDays
+        }
+      }
+      
+      // Update roommates state with the processed data
+      setRoommates(updatedRoommates)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      setRoommates(initialUsers)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
   // Function to generate availability description based on schedules
   const generateAvailabilityDescription = (userId: number, schedules: Record<number, Record<string, Array<Schedule>>>) => {
-    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const workingDays: string[] = [];
     const offDays: string[] = [];
     const allDayOffDays: string[] = [];
@@ -328,16 +438,18 @@ export default function Roommates() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {roommates.map((roommate) => (
             <Card key={roommate.id} className="bg-[#333333] border-[#333333]">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-medium"
-                    style={{ backgroundColor: roommate.color, color: "#000" }}
-                  >
-                    {roommate.initial}
-                  </div>
-                  <CardTitle>{roommate.name}</CardTitle>
+              <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-medium"
+                  style={{ 
+                    backgroundColor: roommate.color,
+                    color: '#000000'
+                  }}
+                  data-component-name="Roommates"
+                >
+                  {roommate.initial}
                 </div>
+                <CardTitle>{roommate.name}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[#A0A0A0]">{roommate.description}</p>
@@ -345,21 +457,35 @@ export default function Roommates() {
                 <div className="mt-4">
                   <h4 className="text-xs font-medium text-[#A0A0A0] mb-2">DAYS OFF</h4>
                   <div className="grid grid-cols-7 gap-1">
-                    {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => {
+                    {Array.from({ length: 7 }, (_, i) => {
+                      // Get the current date
+                      const today = new Date();
+                      // Calculate the date for this day of the week (starting from Sunday)
+                      const date = new Date(today);
+                      date.setDate(today.getDate() - today.getDay() + i);
+                      
+                      // Get the day of the month
+                      const dayOfMonth = date.getDate();
+                      // Get the day abbreviation
+                      const dayAbbr = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][i];
+                      // Get the full day name
+                      const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][i];
+                      
                       // Check if this day is marked as all-day off
-                      const isAllDayOff = roommate.allDayOffDays && roommate.allDayOffDays.includes(index);
+                      const isAllDayOff = roommate.allDayOffDays && roommate.allDayOffDays.includes(i);
                       // Check if this day has any schedules
-                      const hasSchedules = roommate.availableDays && roommate.availableDays.includes(index);
+                      const hasSchedules = roommate.availableDays && roommate.availableDays.includes(i);
                       
                       // Determine background color and status text
                       let bgColor = '#333333'; // Default gray background
                       let statusText = 'No schedule';
                       
                       if (isAllDayOff) {
-                        bgColor = '#FF5252'; // Red for all-day off
-                        statusText = 'All day off';
+                        // Use red for all-day events
+                        bgColor = '#FF5252'; // Red for all-day events
+                        statusText = 'All day';
                       } else if (hasSchedules) {
-                        // Convert the hex color to rgba with 50% opacity
+                        // Use the user's color at 50% opacity for regular schedules
                         const hexColor = roommate.color.replace('#', '');
                         const r = parseInt(hexColor.substring(0, 2), 16);
                         const g = parseInt(hexColor.substring(2, 4), 16);
@@ -369,12 +495,16 @@ export default function Roommates() {
                       }
                       
                       return (
-                        <div key={index} className="text-center">
-                          <div className="text-xs mb-1 text-white">{day}</div>
+                        <div key={i} className="text-center">
+                          <div className="text-xs mb-1 text-white">
+                            <div>{dayAbbr}</div>
+                            <div className="text-[10px] opacity-80">{dayOfMonth}</div>
+                          </div>
                           <div 
                             className="h-2 rounded-full" 
                             style={{ backgroundColor: bgColor }}
-                            title={`${statusText} on ${['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index]}`}
+                            title={`${statusText} on ${dayName} (${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()})`}
+                            data-component-name="Roommates"
                           ></div>
                         </div>
                       );
@@ -393,7 +523,7 @@ export default function Roommates() {
                     border: "none"
                   }}
                 >
-                  <Link href={`/schedule/view/${roommate.id}`}>View Schedule</Link>
+                  <Link href={`/schedule/view/${roommate.id}`} data-component-name="LinkComponent">View Schedule</Link>
                 </Button>
               </CardContent>
             </Card>
