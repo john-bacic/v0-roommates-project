@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Define Major Mono Display font class using Next.js font variable */
+.major-mono-display-regular {
+  font-family: var(--font-major-mono-display), monospace !important;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0.05em;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }

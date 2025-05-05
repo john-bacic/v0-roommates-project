@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
+import { majorMonoDisplay } from "./fonts"
 
 export default function Home() {
   const [name, setName] = useState("")
@@ -39,7 +40,13 @@ export default function Home() {
               data-component-name="Home"
             />
           </div>
-          <h1 className="text-3xl font-bold">Roomeez</h1>
+          <h1 
+            className="text-3xl major-mono-display-regular" 
+            style={{ fontFamily: 'var(--font-major-mono-display), monospace' }}
+            data-component-name="Home"
+          >
+            Roomeez
+          </h1>
           <p className="text-[#A0A0A0] mt-2">Share your weekly schedule with your roommates</p>
         </div>
 

@@ -9,6 +9,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { getSupabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
+import { majorMonoDisplay } from "../fonts"
 
 // Define types for the application
 interface User {
@@ -653,7 +654,13 @@ export default function Dashboard() {
               className="w-6 h-6"
               data-component-name="Dashboard"
             />
-            <h1 className="text-xl font-bold" data-component-name="Dashboard">Roomeez</h1>
+            <h1 
+              className="text-xl major-mono-display-regular" 
+              style={{ fontFamily: 'var(--font-major-mono-display), monospace' }}
+              data-component-name="Dashboard"
+            >
+              Roomeez
+            </h1>
           </div>
 
           {/* Add a link to the overview page in the header section */}

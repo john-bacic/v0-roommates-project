@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { majorMonoDisplay } from "../fonts"
 
 export default function Login() {
   const [email, setEmail] = useState("")
@@ -45,7 +46,13 @@ export default function Login() {
                 data-component-name="Login"
               />
             </div>
-            <h1 className="text-2xl font-bold">Roomeez</h1>
+            <h1 
+              className="text-2xl major-mono-display-regular" 
+              style={{ fontFamily: 'var(--font-major-mono-display), monospace' }}
+              data-component-name="Login"
+            >
+              Roomeez
+            </h1>
             <p className="text-[#A0A0A0] mt-2">Welcome back</p>
           </div>
 
