@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ToastAction } from "@/components/ui/toast"
 import { WeeklySchedule } from "@/components/weekly-schedule"
 import Link from "next/link"
+import Image from "next/image"
 import { getSupabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 
@@ -642,8 +643,18 @@ export default function Dashboard() {
       {/* Main header - fixed at the top */}
       <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]" data-component-name="Dashboard">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
-          {/* Update the header title */}
-          <h1 className="text-xl font-bold" data-component-name="Dashboard">Roomeez</h1>
+          {/* Update the header title with home icon */}
+          <div className="flex items-center gap-2">
+            <img 
+              src="/icons/small-icon.png?v=1"
+              alt="Roomeez Icon" 
+              width="24" 
+              height="24" 
+              className="w-6 h-6"
+              data-component-name="Dashboard"
+            />
+            <h1 className="text-xl font-bold" data-component-name="Dashboard">Roomeez</h1>
+          </div>
 
           {/* Add a link to the overview page in the header section */}
           <div className="flex items-center gap-2">

@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +35,16 @@ export default function Login() {
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <img 
+                src="/icons/small-icon.png?v=1"
+                alt="Roomeez Icon" 
+                width="84" 
+                height="84" 
+                className="w-20 h-20"
+                data-component-name="Login"
+              />
+            </div>
             <h1 className="text-2xl font-bold">Roomeez</h1>
             <p className="text-[#A0A0A0] mt-2">Welcome back</p>
           </div>
