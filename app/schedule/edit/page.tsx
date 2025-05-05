@@ -385,10 +385,13 @@ export default function EditSchedule() {
                     const newSchedule = { ...schedule, activeDay: day };
                     setSchedule(newSchedule);
                   }}
-                  className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none ${isActive 
+                  className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none touch-none select-none ${isActive 
                     ? 'text-white' 
                     : 'text-[#999999] hover:text-white'}`}
-                  style={isActive ? { color: userColor } : {}}
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    ...(isActive ? { color: userColor } : {})
+                  }}
                   role="tab"
                   aria-selected={isActive}
                   aria-controls={`${day.toLowerCase()}-panel`}
