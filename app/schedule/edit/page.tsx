@@ -25,30 +25,11 @@ interface TimeBlock {
 export default function EditSchedule() {
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#FF7DB1") // Default color
-  const [use24HourFormat, setUse24HourFormat] = useState(() => {
-    // Only run in client-side
-    if (typeof window !== 'undefined') {
-      const savedFormat = localStorage.getItem('use24HourFormat')
-      return savedFormat !== null ? savedFormat === 'true' : false
-    }
-    return false
-  })
+  const [use24HourFormat, setUse24HourFormat] = useState(false) // Default to false for server rendering
   const router = useRouter()
-  // Get the day parameter from URL if available (client-side only)
-  const getInitialActiveDay = () => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search)
-      const dayParam = urlParams.get('day')
-      if (dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam)) {
-        return dayParam
-      }
-    }
-    return "Monday" // Default if no valid day parameter
-  }
-
   // Using a combined state object that includes activeDay
   const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>({  
-    activeDay: getInitialActiveDay(), // Initialize with day from URL
+    activeDay: "Monday", // Default to Monday for server rendering, will be updated in useEffect
     Monday: [],
     Tuesday: [],
     Wednesday: [],
@@ -87,9 +68,16 @@ export default function EditSchedule() {
         return;
       }
       
+      // Get the day parameter from URL to ensure we maintain the selected day
+      const urlParams = new URLSearchParams(window.location.search);
+      const dayParam = urlParams.get('day');
+      const activeDay = dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam) 
+        ? dayParam 
+        : schedule.activeDay;
+      
       // Transform schedules data to the format needed by the editor
       const formattedSchedule: {activeDay: string, [key: string]: any} = {
-        activeDay: schedule.activeDay, // Keep the current active day
+        activeDay: activeDay, // Use the day from URL parameter or keep current
         Monday: [],
         Tuesday: [],
         Wednesday: [],
@@ -153,20 +141,24 @@ export default function EditSchedule() {
   // State to track the return path
   const [returnPath, setReturnPath] = useState("/dashboard") // Default to dashboard
 
-  // Effect for initialization and routing
+  // Effect for initialization and routing - runs only on client-side
   useEffect(() => {
+    // Initialize time format preference from localStorage
+    const savedFormat = localStorage.getItem('use24HourFormat')
+    if (savedFormat !== null) {
+      setUse24HourFormat(savedFormat === 'true')
+    }
+    
     // Get the user's name from localStorage or URL parameter
     const urlParams = new URLSearchParams(window.location.search)
     const userParam = urlParams.get('user')
     const storedName = localStorage.getItem("userName")
     
-    // We already set the initial day in the state initialization,
-    // so we don't need to set it again here unless it changed
+    // Get the day parameter and update active day if needed
     const dayParam = urlParams.get('day')
     if (dayParam && 
-        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam) &&
-        schedule.activeDay !== dayParam) {
-      // Only update if the active day is different from what we already have
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam)) {
+      // Update the active day based on URL parameter
       setSchedule(prev => ({ ...prev, activeDay: dayParam }))
     }
     

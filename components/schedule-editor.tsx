@@ -512,7 +512,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     value={block.label !== undefined ? block.label : ''}
                     onChange={(e) => updateTimeBlock(activeDay, index, "label", e.target.value)}
                     className={`${block.allDay === true ? 'bg-[#333333] border-[#333333] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]`}
-                    placeholder={block.allDay ? "Day Off, Out of Town, Busy, etc." : "Work, Class, etc."}
+                    placeholder={block.allDay ? "Day Off, Busy, etc." : "Work, Class, etc."}
                     data-component-name="_c"
                     data-label-index={index}
                   />
