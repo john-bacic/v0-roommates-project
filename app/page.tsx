@@ -47,30 +47,30 @@ export default function Home() {
           >
             Roomeez
           </h1>
-          <p className="text-[#A0A0A0] mt-2">Share your weekly schedule with your roommates</p>
+
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name">Your Name</Label>
+            {/* <Label htmlFor="name">Name</Label> */}
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
+              placeholder="Name"
               required
               className="bg-[#242424] border-[#333333] text-white"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            {/* <Label htmlFor="password">Password</Label> */}
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
+              placeholder="Password"
               required
               className="bg-[#242424] border-[#333333] text-white"
             />
