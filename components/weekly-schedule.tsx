@@ -1184,7 +1184,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                     {/* Current time indicator - only show in expanded mode or if this is the current day */}
                     {getCurrentTimeDay() === day && (!isCollapsed || day === getCurrentTimeDay()) && (
                       <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 overflow-visible" 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-50 overflow-visible" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
                           height: isCollapsed ? 'calc(100% + 7.5rem)' : 'calc(100% + 16rem)', // Tall enough to reach the 3rd user's row in collapsed mode
@@ -1200,7 +1200,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                             top: '-4px',
                             left: '-4px',
                             position: 'absolute',
-                            zIndex: 25, // Ensure it's above the line but below headers
+                            zIndex: 55, // Ensure it's above the line and time labels
                             pointerEvents: 'none' // Prevent it from blocking interactions
                           }}
                           data-component-name="WeeklySchedule"
@@ -1221,7 +1221,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       return (
                         <div 
                           key={`hour-timeline-${hour}-${hourIndex}`} 
-                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap z-20"
+                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap z-40"
                           style={{ left: `${position}%` }}
                           data-component-name="WeeklySchedule"
                         >
