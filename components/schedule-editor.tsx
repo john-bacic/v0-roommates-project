@@ -511,14 +511,14 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     type="text"
                     value={block.label !== undefined ? block.label : ''}
                     onChange={(e) => updateTimeBlock(activeDay, index, "label", e.target.value)}
-                    className={`${block.allDay === true ? 'bg-[#333333] border-[var(--focus-ring-color)] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]`}
+                    className={`${block.allDay === true ? 'bg-[#333333] border-[#333333] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]`}
                     placeholder={block.allDay ? "Day Off, Out of Town, Busy, etc." : "Work, Class, etc."}
                     data-component-name="_c"
                     data-label-index={index}
                   />
                   {block.allDay === true && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium px-2 py-1 rounded bg-[#222222] border" 
-                      style={{ borderColor: userColor, color: userColor }}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium px-1 py-1 " 
+                      style={{ color: userColor }}
                       data-component-name="ScheduleEditor"
                     >
                       All Day

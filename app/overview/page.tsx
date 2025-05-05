@@ -334,7 +334,7 @@ export default function Overview() {
               </Link>
             </div>
             <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="Overview">
-              Daily
+              Days
             </h1>
             {/* Time format toggle button */}
             <Button
@@ -420,12 +420,12 @@ export default function Overview() {
               day={selectedDay || days[0]}
               use24HourFormat={use24HourFormat}
               onBlockClick={(user, day, block) => {
-                // Navigate to edit schedule for this day
-                window.location.href = `/schedule/edit?day=${day}&from=%2Foverview`;
+                // Navigate to edit schedule for this day and user
+                window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview`;
               }}
               onAddClick={(user, day) => {
-                // Navigate to edit schedule for this day
-                window.location.href = `/schedule/edit?day=${day}&from=%2Foverview`;
+                // Navigate to edit schedule for this day and user
+                window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview`;
               }}
               currentUserName={userName}
               onTimeFormatChange={(use24Hour) => {

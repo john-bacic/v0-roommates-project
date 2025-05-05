@@ -238,7 +238,19 @@ export function SingleDayView({
             </div>
             
             {/* Time grid with blocks - further reduced height for mobile */}
-            <div className="relative" style={{ height: `50rem` }} data-component-name="SingleDayView">
+            <div 
+              className="relative cursor-pointer" 
+              style={{ height: `50rem` }} 
+              data-component-name="SingleDayView"
+              onClick={() => {
+                // Find the current user
+                const currentUser = users.find(user => user.name === currentUserName);
+                if (currentUser) {
+                  // Navigate to edit page for this day and user
+                  onBlockClick(currentUser, day, { label: '', start: '', end: '' });
+                }
+              }}
+            >
               {/* Hour lines */}
               {hours.map((hour, index) => (
                 <div 
@@ -318,7 +330,17 @@ export function SingleDayView({
                         </div>
                       )}
                       
-                      <div className="p-1 pt-4 pl-2 h-full flex flex-col overflow-hidden" style={{ zIndex: 10 }} data-component-name="SingleDayView">
+                      <div 
+                        className="p-1 pt-4 pl-2 h-full flex flex-col overflow-hidden cursor-pointer" 
+                        style={{ zIndex: 10 }} 
+                        data-component-name="SingleDayView"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent event bubbling
+                          if (user.name === currentUserName) {
+                            onBlockClick(user, day, block);
+                          }
+                        }}
+                      >
                         <div className="flex flex-wrap items-start max-w-full" data-component-name="SingleDayView">
                           <span className="text-[13px] font-bold leading-tight break-words" style={{ color: user.color }} data-component-name="SingleDayView">
                             {block.label}
@@ -360,7 +382,12 @@ export function SingleDayView({
                           backgroundColor: user.color,
                           zIndex: 20,
                         }}
-                        onClick={() => onBlockClick(user, day, block)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent event bubbling
+                          if (user.name === currentUserName) {
+                            onBlockClick(user, day, block);
+                          }
+                        }}
                         title={`${user.name}: ${block.label} (${block.start} - ${block.end})`}
                         data-component-name="SingleDayView"
                       >
