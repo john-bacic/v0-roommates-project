@@ -34,9 +34,21 @@ export default function EditSchedule() {
     return false
   })
   const router = useRouter()
+  // Get the day parameter from URL if available (client-side only)
+  const getInitialActiveDay = () => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const dayParam = urlParams.get('day')
+      if (dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam)) {
+        return dayParam
+      }
+    }
+    return "Monday" // Default if no valid day parameter
+  }
+
   // Using a combined state object that includes activeDay
   const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>({  
-    activeDay: "Monday", // Default active day
+    activeDay: getInitialActiveDay(), // Initialize with day from URL
     Monday: [],
     Tuesday: [],
     Wednesday: [],
@@ -148,10 +160,13 @@ export default function EditSchedule() {
     const userParam = urlParams.get('user')
     const storedName = localStorage.getItem("userName")
     
-    // Get the day parameter from URL if available
+    // We already set the initial day in the state initialization,
+    // so we don't need to set it again here unless it changed
     const dayParam = urlParams.get('day')
-    if (dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam)) {
-      // Update the schedule with the new active day
+    if (dayParam && 
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam) &&
+        schedule.activeDay !== dayParam) {
+      // Only update if the active day is different from what we already have
       setSchedule(prev => ({ ...prev, activeDay: dayParam }))
     }
     
