@@ -32,7 +32,7 @@ export default function Home() {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src="/icons/home-icon.png"
+              src="/icons/icon-336x336.png?v=1"
               alt="Roomeez Home Icon" 
               width="80" 
               height="80" 

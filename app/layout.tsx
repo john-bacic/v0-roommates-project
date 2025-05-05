@@ -43,8 +43,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         {/* Disable swipe to go back */}
         <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <link rel="icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-512x512.png?v=2" />
+        <link rel="icon" href="/icons/icon-512x512.png?v=2" />
         
         {/* iOS splash screens */}
         <link rel="apple-touch-startup-image" href="/splash.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" />

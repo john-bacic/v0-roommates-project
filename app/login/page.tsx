@@ -38,7 +38,7 @@ export default function Login() {
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <img 
-                src="/icons/small-icon.png?v=1"
+                src="/icons/icon-512x512.png?v=2"
                 alt="Roomeez Icon" 
                 width="84" 
                 height="84" 

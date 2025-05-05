@@ -647,11 +647,11 @@ export default function Dashboard() {
           {/* Update the header title with home icon */}
           <div className="flex items-center gap-2">
             <img 
-              src="/icons/small-icon.png?v=1"
+              src="/icons/small-icon.png?v=2"
               alt="Roomeez Icon" 
-              width="24" 
-              height="24" 
-              className="w-6 h-6"
+              width="18" 
+              height="18" 
+              className="w-[18px] h-[18px]"
               data-component-name="Dashboard"
             />
             <h1 
