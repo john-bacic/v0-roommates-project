@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
-import { majorMonoDisplay } from "./fonts"
+import { caveat } from "./fonts"
 
 export default function Home() {
   const [name, setName] = useState("")
@@ -41,8 +41,8 @@ export default function Home() {
             />
           </div>
           <h1 
-            className="text-3xl major-mono-display-regular" 
-            style={{ fontFamily: 'var(--font-major-mono-display), monospace' }}
+            className="text-6xl caveat-bold" 
+            style={{ fontFamily: 'var(--font-caveat), cursive' }}
             data-component-name="Home"
           >
             Roomeez

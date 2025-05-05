@@ -1,10 +1,10 @@
-import { Major_Mono_Display } from 'next/font/google';
+import { Caveat } from 'next/font/google';
 
-export const majorMonoDisplay = Major_Mono_Display({
-  weight: '400',
+export const caveat = Caveat({
+  weight: ['400', '700'],
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-major-mono-display',
+  variable: '--font-caveat',
   preload: true,
-  fallback: ['monospace']
+  fallback: ['cursive']
 });

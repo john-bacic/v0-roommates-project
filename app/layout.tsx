@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ClientOnlyScripts } from '@/components/client-only-scripts'
-import { majorMonoDisplay } from './fonts'
+import { caveat } from './fonts'
 
 export const metadata: Metadata = {
   title: 'Roomeez',
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={majorMonoDisplay.variable}>
+    <html lang="en" className={caveat.variable}>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

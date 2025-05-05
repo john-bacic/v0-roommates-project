@@ -9,7 +9,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { getSupabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
-import { majorMonoDisplay } from "../fonts"
+import { caveat } from "../fonts"
 
 // Define types for the application
 interface User {
@@ -655,8 +655,8 @@ export default function Dashboard() {
               data-component-name="Dashboard"
             />
             <h1 
-              className="text-xl major-mono-display-regular" 
-              style={{ fontFamily: 'var(--font-major-mono-display), monospace' }}
+              className="text-2xl caveat-bold" 
+              style={{ fontFamily: 'var(--font-caveat), cursive' }}
               data-component-name="Dashboard"
             >
               Roomeez

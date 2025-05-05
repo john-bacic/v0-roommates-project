@@ -9,7 +9,7 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { majorMonoDisplay } from "../fonts"
+import { caveat } from "../fonts"
 
 export default function Login() {
   const [email, setEmail] = useState("")
@@ -47,8 +47,8 @@ export default function Login() {
               />
             </div>
             <h1 
-              className="text-2xl major-mono-display-regular" 
-              style={{ fontFamily: 'var(--font-major-mono-display), monospace' }}
+              className="text-2xl caveat-bold" 
+              style={{ fontFamily: 'var(--font-caveat), cursive' }}
               data-component-name="Login"
             >
               Roomeez
