@@ -82,6 +82,9 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
     if (container) {
       container.addEventListener('wheel', handleWheel, { passive: false })
       
+      // Add touch-action: none to prevent browser handling of touch events
+      container.style.touchAction = 'none'
+      
       return () => {
         container.removeEventListener('wheel', handleWheel)
         if (animationRef.current) {
@@ -112,13 +115,18 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
       animationRef.current = null
     }
     
-    setIsDragging(true)
-    setDragStartY(clientY)
-    setDragCurrentY(clientY)
-    setLastMoveTime(Date.now())
-    setLastMoveY(clientY)
-    setVelocity(0)
-    setAnimating(false)
+    // Add a try-catch block to handle any potential errors
+    try {
+      setIsDragging(true)
+      setDragStartY(clientY)
+      setDragCurrentY(clientY)
+      setLastMoveTime(Date.now())
+      setLastMoveY(clientY)
+      setVelocity(0)
+      setAnimating(false)
+    } catch (error) {
+      console.error('Error in handleStartDrag:', error)
+    }
   }
   
   const handleMoveDrag = (clientY: number) => {
@@ -201,18 +209,34 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
   
   // Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    handleStartDrag(e.touches[0].clientY)
+    try {
+      // Prevent any potential browser handling that might interfere
+      if (e.cancelable) {
+        e.preventDefault()
+      }
+      handleStartDrag(e.touches[0].clientY)
+    } catch (error) {
+      console.error('Error in handleTouchStart:', error)
+    }
   }
   
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isDragging) {
-      e.preventDefault()
+      // Only prevent default if we're actually dragging to avoid conflicts
+      // with other touch events on the page
+      if (Math.abs(e.touches[0].clientY - dragStartY) > 5) {
+        e.preventDefault()
+      }
       handleMoveDrag(e.touches[0].clientY)
     }
   }
   
-  const handleTouchEnd = () => {
-    handleEndDrag()
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    try {
+      handleEndDrag()
+    } catch (error) {
+      console.error('Error in handleTouchEnd:', error)
+    }
   }
   
   // Handle direct click on a number
