@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { CircularTimePicker } from "./circular-time-picker"
-import { X } from "lucide-react"
+import { X, ChevronUp, ChevronDown } from "lucide-react"
 
 // Helper to detect if we're on a mobile device
 const isMobile = () => {
@@ -136,45 +136,47 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
     setLastMoveY(clientY)
     setDragCurrentY(clientY)
     
-    // Calculate how much to change the value
-    const deltaY = dragStartY - clientY
-    const valueChange = Math.floor(Math.abs(deltaY) / 30) * (deltaY > 0 ? 1 : -1)
+    // Determine how much to change the value based on the drag distance
+    const deltaY = dragCurrentY - dragStartY
+    const sensitivity = 20 // Pixels per value change
+    const valueChange = Math.floor(deltaY / sensitivity)
     
     if (valueChange !== 0) {
-      updateValue(currentValue + (valueChange * step))
-      setDragStartY(clientY)
+      updateValue(currentValue - valueChange)
+      setDragStartY(dragCurrentY)
     }
   }
   
   const handleEndDrag = () => {
+    if (!isDragging) return
+    
     setIsDragging(false)
     
-    // Start momentum scrolling animation
+    // Apply momentum scrolling if velocity is significant
     if (Math.abs(velocity) > 0.1) {
       setAnimating(true)
-      let lastTimestamp = performance.now()
       
+      // Start animation
+      const startTime = performance.now()
       const animate = (timestamp: number) => {
-        const delta = timestamp - lastTimestamp
-        lastTimestamp = timestamp
+        if (!animating) return
         
-        // Decay velocity
-        const newVelocity = velocity * 0.95
-        setVelocity(newVelocity)
+        const elapsed = timestamp - startTime
+        const dampingFactor = Math.exp(-elapsed / 300) // Adjust for faster/slower damping
+        const currentVelocity = velocity * dampingFactor
         
-        // Apply velocity to scroll
-        const pixelDelta = newVelocity * delta / 20
-        if (Math.abs(pixelDelta) > 5) {
-          const valueChange = Math.sign(pixelDelta) * step
-          updateValue(currentValue + valueChange)
-        }
-        
-        // Continue animation if velocity is significant
-        if (Math.abs(newVelocity) > 0.05) {
-          animationRef.current = requestAnimationFrame(animate)
-        } else {
+        if (Math.abs(currentVelocity) < 0.1) {
           setAnimating(false)
+          return
         }
+        
+        // Calculate how much to change the value based on velocity
+        const valueChange = Math.round(currentVelocity / 10) // Adjust sensitivity
+        if (valueChange !== 0) {
+          updateValue(currentValue + valueChange * step)
+        }
+        
+        animationRef.current = requestAnimationFrame(animate)
       }
       
       animationRef.current = requestAnimationFrame(animate)
@@ -183,7 +185,6 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
   
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault()
     handleStartDrag(e.clientY)
   }
   
@@ -195,14 +196,11 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
   }
   
   const handleMouseUp = () => {
-    if (isDragging) {
-      handleEndDrag()
-    }
+    handleEndDrag()
   }
   
   // Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault()
     handleStartDrag(e.touches[0].clientY)
   }
   
@@ -214,9 +212,7 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
   }
   
   const handleTouchEnd = () => {
-    if (isDragging) {
-      handleEndDrag()
-    }
+    handleEndDrag()
   }
   
   // Handle direct click on a number
@@ -225,50 +221,72 @@ function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) 
   }
   
   return (
-    <div 
-      className="h-40 overflow-hidden bg-[#222222] rounded-lg relative select-none"
-      ref={containerRef}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      data-component-name="RollingNumberContainer"
-    >
-      {/* Gradient overlays for fading effect */}
-      <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#222222] to-transparent pointer-events-none z-10"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#222222] to-transparent pointer-events-none z-10"></div>
-      
-      {/* Selection indicator */}
-      <div className="absolute top-1/2 left-0 right-0 h-14 -mt-7 border-t border-b border-[#444444] pointer-events-none z-0"></div>
-      
-      {/* Numbers */}
+    <div className="relative flex flex-col items-center">
+      {/* Up chevron */}
       <div 
-        className="flex flex-col items-center justify-center h-full"
-        ref={numbersRef}
-        data-component-name="RollingNumber"
+        className="w-full flex justify-center mb-1 cursor-pointer"
+        onClick={() => updateValue(currentValue + step)}
       >
-        {displayedNumbers.map((num, index) => {
-          // Center value is at index 4 (we have 4 before, current, 4 after)
-          const position = index - 4
-          const isCurrent = index === 4
-          
-          return (
-            <div 
-              key={`${num}-${index}`}
-              className={`flex items-center justify-center h-14 transition-transform duration-150 cursor-pointer ${isCurrent ? 'text-white text-2xl font-bold' : Math.abs(position) === 1 ? 'text-[#BBBBBB] text-lg' : 'text-[#888888] text-base'}`}
-              style={{
-                transform: `translateY(${position * 56}px)`,
-                opacity: isCurrent ? 1 : Math.max(0.6, 1 - Math.abs(position) * 0.15)
-              }}
-              onClick={() => handleNumberClick(num)}
-            >
-              {num.toString().padStart(2, '0')}
-            </div>
-          )
-        })}
+        <ChevronUp className="text-[#888888] hover:text-white transition-colors" size={24} />
+      </div>
+      
+      <div 
+        className="h-32 overflow-hidden bg-[#222222] rounded-lg relative select-none w-full"
+        ref={containerRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        data-component-name="RollingNumberContainer"
+      >
+        {/* Gradient overlays for fading effect */}
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#222222] to-transparent pointer-events-none z-10"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#222222] to-transparent pointer-events-none z-10"></div>
+        
+        {/* 3D perspective effect for the roller */}
+        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 bg-[#333333] opacity-70 pointer-events-none z-0" style={{ transform: 'perspective(500px) rotateX(5deg)' }}></div>
+        
+        {/* Selection indicator - highlight box around selected number */}
+        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 border-t border-b border-[#555555] pointer-events-none z-1"></div>
+        <div className="absolute top-1/2 left-4 right-4 h-10 -mt-5 border-2 border-[#666666] rounded-md pointer-events-none z-1 opacity-30"></div>
+        
+        {/* Numbers */}
+        <div 
+          className="flex flex-col items-center justify-center h-full"
+          ref={numbersRef}
+          data-component-name="RollingNumber"
+        >
+          {displayedNumbers.map((num, index) => {
+            // Center value is at index 4 (we have 4 before, current, 4 after)
+            const position = index - 4
+            const isCurrent = index === 4
+            
+            return (
+              <div 
+                key={`${num}-${index}`}
+                className={`flex items-center justify-center h-10 transition-transform duration-150 cursor-pointer ${isCurrent ? 'text-white text-2xl font-bold' : Math.abs(position) === 1 ? 'text-[#BBBBBB] text-lg' : 'text-[#888888] text-base'}`}
+                style={{
+                  transform: `translateY(${position * 40}px) ${Math.abs(position) <= 1 ? '' : `perspective(500px) rotateX(${position * 5}deg)`}`,
+                  opacity: isCurrent ? 1 : Math.max(0.65, 1 - Math.abs(position) * 0.1)
+                }}
+                onClick={() => handleNumberClick(num)}
+              >
+                {num.toString().padStart(2, '0')}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      
+      {/* Down chevron */}
+      <div 
+        className="w-full flex justify-center mt-1 cursor-pointer"
+        onClick={() => updateValue(currentValue - step)}
+      >
+        <ChevronDown className="text-[#888888] hover:text-white transition-colors" size={24} />
       </div>
     </div>
   )
@@ -382,7 +400,7 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
         
         {/* AM/PM toggle */}
         <div 
-          className="w-1/4 h-40 flex items-center justify-center cursor-pointer bg-[#222222] rounded-lg"
+          className="w-1/4 h-32 flex items-center justify-center cursor-pointer bg-[#222222] rounded-lg"
           onClick={handlePeriodToggle}
         >
           <div className="text-xl font-bold">{timeParts.period}</div>
@@ -493,9 +511,6 @@ function DesktopTimePicker({ time, onTimeChange }: { time: string, onTimeChange:
     }
   }
 
-  // This component now uses timeValue and period state instead of inputValue
-  // The initialization is handled in the useEffect above
-
   return (
     <div className="py-8 flex flex-col items-center">
       <div className="relative w-full max-w-xs">
@@ -521,6 +536,42 @@ function DesktopTimePicker({ time, onTimeChange }: { time: string, onTimeChange:
       </div>
     </div>
   )
+}
+
+// Global handler to prevent background scrolling on mobile
+const preventBackgroundScrolling = () => {
+  if (typeof window === 'undefined') return
+  // Lock body scrolling when modal is open
+  document.body.style.overflow = 'hidden'
+  document.body.style.position = 'fixed'
+  document.body.style.width = '100%'
+  document.body.style.touchAction = 'none'
+  
+  // Store the current scroll position to restore later
+  const scrollY = document.documentElement.style.getPropertyValue('--scroll-y')
+  document.body.style.top = `-${scrollY}`
+}
+
+// Global handler to restore background scrolling
+const restoreBackgroundScrolling = () => {
+  if (typeof window === 'undefined') return
+  // Unlock body scrolling when modal is closed
+  document.body.style.overflow = ''
+  document.body.style.position = ''
+  document.body.style.width = ''
+  document.body.style.top = ''
+  document.body.style.touchAction = ''
+  
+  // Restore scroll position
+  const scrollY = document.body.style.top
+  window.scrollTo(0, parseInt(scrollY || '0') * -1)
+}
+
+// Store scroll position for restoring later
+if (typeof window !== 'undefined') {
+  window.addEventListener('scroll', () => {
+    document.documentElement.style.setProperty('--scroll-y', `${window.scrollY}px`)
+  })
 }
 
 export function TimePickerDialog({
@@ -550,15 +601,15 @@ export function TimePickerDialog({
 
   useEffect(() => {
     if (isOpen) {
-      setTime(initialTime)
+      setTime(initialTime || "12:00")
       // Prevent scrolling on body when dialog is open
-      document.body.style.overflow = "hidden"
+      preventBackgroundScrolling()
     } else {
-      document.body.style.overflow = "auto"
+      restoreBackgroundScrolling()
     }
     
     return () => {
-      document.body.style.overflow = "auto"
+      restoreBackgroundScrolling()
     }
   }, [isOpen, initialTime])
 
