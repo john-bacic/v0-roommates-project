@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { CircularTimePicker } from "./circular-time-picker"
-import { X, ChevronUp, ChevronDown, Sun, Moon } from "lucide-react"
-import { Button } from "./button"
+import { X, ChevronUp, ChevronDown } from "lucide-react"
 
 // Helper to detect if we're on a mobile device
 const isMobile = () => {
@@ -17,10 +16,9 @@ interface RollingNumberProps {
   max: number
   step: number
   onChange: (value: number) => void
-  userColor?: string
 }
 
-function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" }: RollingNumberProps) {
+function RollingNumber({ value, min, max, step, onChange }: RollingNumberProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const numbersRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
@@ -84,9 +82,6 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     if (container) {
       container.addEventListener('wheel', handleWheel, { passive: false })
       
-      // Add touch-action: none to prevent browser handling of touch events
-      container.style.touchAction = 'none'
-      
       return () => {
         container.removeEventListener('wheel', handleWheel)
         if (animationRef.current) {
@@ -98,15 +93,17 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   
   // Update when external value changes
   useEffect(() => {
-    // Always update on mount or when value changes
-    setCurrentValue(value)
-    generateNumbers(value)
+    // Only update if the value actually changed
+    if (value !== currentValue) {
+      setCurrentValue(value)
+      generateNumbers(value)
+    }
   }, [value])
   
-  // Initialize numbers on first render and whenever value changes
+  // Initialize numbers on first render
   useEffect(() => {
     generateNumbers(currentValue)
-  }, [currentValue])
+  }, [])
   
   // Mouse/Touch event handlers
   const handleStartDrag = (clientY: number) => {
@@ -115,18 +112,13 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
       animationRef.current = null
     }
     
-    // Add a try-catch block to handle any potential errors
-    try {
-      setIsDragging(true)
-      setDragStartY(clientY)
-      setDragCurrentY(clientY)
-      setLastMoveTime(Date.now())
-      setLastMoveY(clientY)
-      setVelocity(0)
-      setAnimating(false)
-    } catch (error) {
-      console.error('Error in handleStartDrag:', error)
-    }
+    setIsDragging(true)
+    setDragStartY(clientY)
+    setDragCurrentY(clientY)
+    setLastMoveTime(Date.now())
+    setLastMoveY(clientY)
+    setVelocity(0)
+    setAnimating(false)
   }
   
   const handleMoveDrag = (clientY: number) => {
@@ -144,47 +136,45 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     setLastMoveY(clientY)
     setDragCurrentY(clientY)
     
-    // Determine how much to change the value based on the drag distance
-    const deltaY = dragCurrentY - dragStartY
-    const sensitivity = 20 // Pixels per value change
-    const valueChange = Math.floor(deltaY / sensitivity)
+    // Calculate how much to change the value
+    const deltaY = dragStartY - clientY
+    const valueChange = Math.floor(Math.abs(deltaY) / 30) * (deltaY > 0 ? 1 : -1)
     
     if (valueChange !== 0) {
-      updateValue(currentValue - valueChange)
-      setDragStartY(dragCurrentY)
+      updateValue(currentValue + (valueChange * step))
+      setDragStartY(clientY)
     }
   }
   
   const handleEndDrag = () => {
-    if (!isDragging) return
-    
     setIsDragging(false)
     
-    // Apply momentum scrolling if velocity is significant
+    // Start momentum scrolling animation
     if (Math.abs(velocity) > 0.1) {
       setAnimating(true)
+      let lastTimestamp = performance.now()
       
-      // Start animation
-      const startTime = performance.now()
       const animate = (timestamp: number) => {
-        if (!animating) return
+        const delta = timestamp - lastTimestamp
+        lastTimestamp = timestamp
         
-        const elapsed = timestamp - startTime
-        const dampingFactor = Math.exp(-elapsed / 300) // Adjust for faster/slower damping
-        const currentVelocity = velocity * dampingFactor
+        // Decay velocity
+        const newVelocity = velocity * 0.95
+        setVelocity(newVelocity)
         
-        if (Math.abs(currentVelocity) < 0.1) {
+        // Apply velocity to scroll
+        const pixelDelta = newVelocity * delta / 20
+        if (Math.abs(pixelDelta) > 5) {
+          const valueChange = Math.sign(pixelDelta) * step
+          updateValue(currentValue + valueChange)
+        }
+        
+        // Continue animation if velocity is significant
+        if (Math.abs(newVelocity) > 0.05) {
+          animationRef.current = requestAnimationFrame(animate)
+        } else {
           setAnimating(false)
-          return
         }
-        
-        // Calculate how much to change the value based on velocity
-        const valueChange = Math.round(currentVelocity / 10) // Adjust sensitivity
-        if (valueChange !== 0) {
-          updateValue(currentValue + valueChange * step)
-        }
-        
-        animationRef.current = requestAnimationFrame(animate)
       }
       
       animationRef.current = requestAnimationFrame(animate)
@@ -193,6 +183,7 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
     handleStartDrag(e.clientY)
   }
   
@@ -204,38 +195,27 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   }
   
   const handleMouseUp = () => {
-    handleEndDrag()
+    if (isDragging) {
+      handleEndDrag()
+    }
   }
   
   // Touch event handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    try {
-      // Prevent any potential browser handling that might interfere
-      if (e.cancelable) {
-        e.preventDefault()
-      }
-      handleStartDrag(e.touches[0].clientY)
-    } catch (error) {
-      console.error('Error in handleTouchStart:', error)
-    }
+    e.preventDefault()
+    handleStartDrag(e.touches[0].clientY)
   }
   
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isDragging) {
-      // Only prevent default if we're actually dragging to avoid conflicts
-      // with other touch events on the page
-      if (Math.abs(e.touches[0].clientY - dragStartY) > 5) {
-        e.preventDefault()
-      }
+      e.preventDefault()
       handleMoveDrag(e.touches[0].clientY)
     }
   }
   
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    try {
+  const handleTouchEnd = () => {
+    if (isDragging) {
       handleEndDrag()
-    } catch (error) {
-      console.error('Error in handleTouchEnd:', error)
     }
   }
   
@@ -244,25 +224,18 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     updateValue(num)
   }
   
-  // Reset displayed numbers when the component mounts or value changes
-  useEffect(() => {
-    generateNumbers(currentValue)
-  }, [currentValue])
-  
   return (
     <div className="relative flex flex-col items-center">
       {/* Up chevron */}
       <div 
-        className="w-full flex justify-center mb-1 cursor-pointer select-none touch-none"
+        className="w-full flex justify-center mb-1 cursor-pointer"
         onClick={() => updateValue(currentValue + step)}
-        style={{ WebkitTapHighlightColor: 'transparent' }}
       >
-        <ChevronUp className="hover:text-white transition-colors" style={{ color: userColor }} size={24} />
+        <ChevronUp className="text-[#888888] hover:text-white transition-colors" size={24} />
       </div>
       
       <div 
-        className="h-32 overflow-hidden bg-[#242424] border border-[#333333] rounded-md relative select-none w-full touch-none"
-        style={{ WebkitTapHighlightColor: 'transparent' }}
+        className="h-40 overflow-hidden bg-[#222222] rounded-lg relative select-none w-full"
         ref={containerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -274,58 +247,51 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
         data-component-name="RollingNumberContainer"
       >
         {/* Gradient overlays for fading effect */}
-        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#242424] to-transparent pointer-events-none z-10"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#242424] to-transparent pointer-events-none z-10"></div>
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#222222] to-transparent pointer-events-none z-10"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#222222] to-transparent pointer-events-none z-10"></div>
         
         {/* 3D perspective effect for the roller */}
-        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 bg-[#333333] opacity-70 pointer-events-none z-0" style={{ transform: 'perspective(500px) rotateX(5deg)' }}></div>
+        <div className="absolute top-1/2 left-0 right-0 h-14 -mt-7 bg-[#333333] opacity-70 pointer-events-none z-0" style={{ transform: 'perspective(500px) rotateX(5deg)' }}></div>
         
         {/* Selection indicator - highlight box around selected number */}
-        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 border-t border-b border-[#555555] pointer-events-none z-1"></div>
-        <div className="absolute top-1/2 left-4 right-4 h-10 -mt-5 border-2 border-[#666666] rounded-md pointer-events-none z-1 opacity-30"></div>
+        <div className="absolute top-1/2 left-0 right-0 h-14 -mt-7 border-t border-b border-[#555555] pointer-events-none z-1"></div>
+        <div className="absolute top-1/2 left-4 right-4 h-14 -mt-7 border-2 border-[#666666] rounded-md pointer-events-none z-1 opacity-30"></div>
         
         {/* Numbers */}
         <div 
           className="flex flex-col items-center justify-center h-full"
           ref={numbersRef}
           data-component-name="RollingNumber"
-          style={{ fontFamily: 'inherit' }}
         >
-          {displayedNumbers.map((num, index) => {
-            // Center value is at index 4 (we have 4 before, current, 4 after)
-            const position = index - 4
-            const isCurrent = index === 4
-            
-            return (
-              <div 
-                key={`${num}-${index}`}
-                className={`flex items-center justify-center h-10 transition-transform duration-150 cursor-pointer select-none touch-none ${isCurrent ? 'font-medium' : Math.abs(position) === 1 ? 'text-lg' : 'text-base'}`}
-                style={{
-                  transform: `translateY(${position * 40}px) ${Math.abs(position) <= 1 ? '' : `perspective(500px) rotateX(${position * 5}deg)`}`,
-                  opacity: isCurrent ? 1 : Math.max(0.65, 1 - Math.abs(position) * 0.1),
-                  WebkitTapHighlightColor: 'transparent',
-                  color: isCurrent ? userColor : Math.abs(position) === 1 ? '#BBBBBB' : '#888888',
-                  fontFamily: 'inherit'
-                }}
-                data-component-name={isCurrent ? "RollingNumber" : "_c"}
-                onClick={() => handleNumberClick(num)}
-              >
-                <span style={{ fontSize: isCurrent ? '1.25rem' : Math.abs(position) === 1 ? '1.125rem' : '1rem' }}>
-                  {num.toString().padStart(2, '0')}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        {displayedNumbers.map((num, index) => {
+          // Center value is at index 4 (we have 4 before, current, 4 after)
+          const position = index - 4
+          const isCurrent = index === 4
+          
+          return (
+            <div 
+              key={`${num}-${index}`}
+              className={`flex items-center justify-center h-14 transition-transform duration-150 cursor-pointer ${isCurrent ? 'text-white text-2xl font-bold' : Math.abs(position) === 1 ? 'text-[#BBBBBB] text-lg' : 'text-[#888888] text-base'}`}
+              style={{
+                transform: `translateY(${position * 56}px) ${Math.abs(position) <= 1 ? '' : `perspective(500px) rotateX(${position * 5}deg)`}`,
+                opacity: isCurrent ? 1 : Math.max(0.65, 1 - Math.abs(position) * 0.1)
+              }}
+              onClick={() => handleNumberClick(num)}
+            >
+              {num.toString().padStart(2, '0')}
+            </div>
+          )
+        })}
+      </div>
+      
       </div>
       
       {/* Down chevron */}
       <div 
-        className="w-full flex justify-center mt-1 cursor-pointer select-none touch-none"
+        className="w-full flex justify-center mt-1 cursor-pointer"
         onClick={() => updateValue(currentValue - step)}
-        style={{ WebkitTapHighlightColor: 'transparent' }}
       >
-        <ChevronDown className="hover:text-white transition-colors" style={{ color: userColor }} size={24} />
+        <ChevronDown className="text-[#888888] hover:text-white transition-colors" size={24} />
       </div>
     </div>
   )
@@ -389,15 +355,14 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
     updateTime()
   }, [timeParts])
 
-  // Parse the time string and update state when the time prop changes
+  // These functions will be called from the parent component
   useEffect(() => {
-    // Force an immediate update whenever the time prop changes
     if (time === "12:00") {
       setTimeParts({ hours: 12, minutes: 0, period: "PM" })
     } else if (time === "00:00") {
       setTimeParts({ hours: 12, minutes: 0, period: "AM" })
     } else {
-      // Regular time update - parse hours and minutes precisely
+      // Regular time update
       const [hoursStr, minutesStr] = time.split(":")
       let hours = parseInt(hoursStr, 10)
       const minutes = parseInt(minutesStr, 10)
@@ -411,27 +376,17 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
     }
   }, [time])
 
-  // Force re-render of rollers when timeParts change
-  const [forceRerender, setForceRerender] = useState(0)
-  
-  // When time parts change, force rollers to update
-  useEffect(() => {
-    setForceRerender(prev => prev + 1)
-  }, [timeParts.hours, timeParts.minutes, timeParts.period])
-
   return (
     <div className="py-4">
       <div className="flex justify-center items-center gap-2">
         {/* Hours roller */}
         <div className="w-1/3">
           <RollingNumber 
-            key={`hours-${timeParts.hours}-${forceRerender}`}
             value={timeParts.hours} 
             min={1} 
             max={12} 
             step={1} 
             onChange={handleHoursChange} 
-            userColor={userColor}
           />
         </div>
         
@@ -440,39 +395,37 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
         {/* Minutes roller */}
         <div className="w-1/3">
           <RollingNumber 
-            key={`minutes-${timeParts.minutes}-${forceRerender}`}
             value={timeParts.minutes} 
             min={0} 
             max={59} 
             step={5} 
             onChange={handleMinutesChange} 
-            userColor={userColor}
           />
         </div>
         
         {/* AM/PM toggle */}
         <div 
-          className="w-1/4 h-32 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
+          className="w-1/4 h-40 flex items-center justify-center cursor-pointer bg-[#222222] rounded-lg"
           onClick={handlePeriodToggle}
-          style={{ 
-            WebkitTapHighlightColor: 'transparent',
-            backgroundColor: timeParts.period === 'AM' ? userColor : '#333333'
-          }}
-          data-component-name="MobileTimePicker"
         >
-          <div className="text-3xl px-4 py-2" 
-            style={{ color: timeParts.period === 'AM' ? '#222222' : userColor }}
-          >
-            {timeParts.period}
-          </div>
+          <div className="text-xl font-bold">{timeParts.period}</div>
         </div>
+      </div>
+      
+      </div>
+      
+      {/* Down chevron */}
+      <div 
+        className="w-full flex justify-center mt-1 cursor-pointer"
+        onClick={() => updateValue(currentValue - step)}
+      >
+        <ChevronDown className="text-[#888888] hover:text-white transition-colors" size={24} />
       </div>
     </div>
   )
 }
 
-function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time: string, onTimeChange: (time: string) => void, userColor?: string }) {
-  // Make userColor available throughout the component
+function DesktopTimePicker({ time, onTimeChange }: { time: string, onTimeChange: (time: string) => void }) {
   // Separate time and period state for better control
   const [timeValue, setTimeValue] = useState('')
   const [period, setPeriod] = useState<'AM' | 'PM'>('AM')
@@ -573,13 +526,9 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
     }
   }
 
-  // Determine the style for the AM/PM toggle based on the current period
-  const amPmToggleStyles = {
-    backgroundColor: period === 'AM' ? userColor : '#444444',
-    color: period === 'AM' ? '#222222' : userColor,
-    borderColor: period === 'AM' ? '#222222' : userColor,
-  }
-  
+  // This component now uses timeValue and period state instead of inputValue
+  // The initialization is handled in the useEffect above
+
   return (
     <div className="py-8 flex flex-col items-center">
       <div className="relative w-full max-w-xs">
@@ -596,13 +545,22 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
         <button 
           type="button"
           onClick={togglePeriod}
-          className="absolute right-3 top-1/2 -translate-y-1/2 font-medium rounded-md px-3 py-1.5 transition-colors border-2 shadow-sm hover:opacity-90"
-          style={amPmToggleStyles}
+          className="absolute right-3 top-1/2 -translate-y-1/2 bg-[#444444] hover:bg-[#555555] text-white font-medium rounded-md px-3 py-1.5 transition-colors border-2 border-[#222222] shadow-sm"
           aria-label="Toggle AM/PM"
           data-component-name="DesktopTimePicker"
         >
           {period}
         </button>
+      </div>
+      
+      </div>
+      
+      {/* Down chevron */}
+      <div 
+        className="w-full flex justify-center mt-1 cursor-pointer"
+        onClick={() => updateValue(currentValue - step)}
+      >
+        <ChevronDown className="text-[#888888] hover:text-white transition-colors" size={24} />
       </div>
     </div>
   )
@@ -656,7 +614,6 @@ export function TimePickerDialog({
 }: TimePickerDialogProps) {
   const [time, setTime] = useState(initialTime || "12:00")
   const [isMobileView, setIsMobileView] = useState(isMobile())
-  const initialTimeRef = useRef(initialTime || "12:00")
 
   // Track window size changes to update the view
   useEffect(() => {
@@ -672,10 +629,7 @@ export function TimePickerDialog({
 
   useEffect(() => {
     if (isOpen) {
-      // Force immediate time update when dialog opens and store in ref
-      const timeValue = initialTime || "12:00"
-      setTime(timeValue)
-      initialTimeRef.current = timeValue
+      setTime(initialTime)
       // Prevent scrolling on body when dialog is open
       preventBackgroundScrolling()
     } else {
@@ -734,7 +688,6 @@ export function TimePickerDialog({
         <div className="p-6 pb-2" data-component-name="TimePickerDialog">
           {isMobileView ? (
             <MobileTimePicker 
-              key={`mobile-picker-${initialTimeRef.current}`} 
               time={time} 
               onTimeChange={handleTimeChange} 
               userColor={userColor} 
@@ -743,7 +696,6 @@ export function TimePickerDialog({
             <DesktopTimePicker 
               time={time} 
               onTimeChange={handleTimeChange} 
-              userColor={userColor}
             />
           )}
           
@@ -751,19 +703,17 @@ export function TimePickerDialog({
           <div className="flex justify-center gap-4 mt-4 mb-4">
             <button
               type="button"
-              className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all flex items-center gap-2"
+              className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all"
               onClick={handleNoonClick}
-              data-component-name="TimePickerDialog"
             >
-              <Sun className="h-4 w-4 text-yellow-300" /> Noon
+              Noon
             </button>
             <button
               type="button"
-              className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all flex items-center gap-2"
+              className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all"
               onClick={handleMidnightClick}
-              data-component-name="TimePickerDialog"
             >
-              <Moon className="h-4 w-4 text-blue-300" /> Midnight
+              Midnight
             </button>
           </div>
           
@@ -777,6 +727,16 @@ export function TimePickerDialog({
             </button>
           </div>
         </div>
+      </div>
+      
+      </div>
+      
+      {/* Down chevron */}
+      <div 
+        className="w-full flex justify-center mt-1 cursor-pointer"
+        onClick={() => updateValue(currentValue - step)}
+      >
+        <ChevronDown className="text-[#888888] hover:text-white transition-colors" size={24} />
       </div>
     </div>
   )

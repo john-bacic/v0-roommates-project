@@ -37,6 +37,8 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   const [timePickerOpen, setTimePickerOpen] = useState(false)
   const [currentTimeField, setCurrentTimeField] = useState<{dayName: string, index: number, field: 'start' | 'end', label?: string} | null>(null)
   const [currentTimeValue, setCurrentTimeValue] = useState('')
+  const [startTimeDialogKey, setStartTimeDialogKey] = useState(0)
+  const [endTimeDialogKey, setEndTimeDialogKey] = useState(0)
 
   const [focusRingColor, setFocusRingColor] = useState(userColor)
 
@@ -463,8 +465,10 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                   <div 
                     className="cursor-pointer"
                     onClick={() => {
+                      // Force immediate synchronization of start time values only
                       setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
                       setCurrentTimeValue(block.start || '09:00')
+                      setStartTimeDialogKey(prev => prev + 1) // Increment start time dialog key
                       setTimePickerOpen(true)
                     }}
                   >
@@ -482,8 +486,10 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                   <div 
                     className="cursor-pointer"
                     onClick={() => {
+                      // Force immediate synchronization of end time values only
                       setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
                       setCurrentTimeValue(block.end || '17:00')
+                      setEndTimeDialogKey(prev => prev + 1) // Increment end time dialog key
                       setTimePickerOpen(true)
                     }}
                   >
@@ -570,6 +576,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
 
       {/* Time Picker Dialog */}
       <TimePickerDialog
+        key={currentTimeField?.field === 'start' ? `start-time-${startTimeDialogKey}` : `end-time-${endTimeDialogKey}`}
         isOpen={timePickerOpen}
         onClose={() => setTimePickerOpen(false)}
         initialTime={currentTimeValue}

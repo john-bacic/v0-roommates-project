@@ -168,17 +168,16 @@ export function TimeInput({
             placeholder="00"
           />
           {!use24HourFormat && (
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation(); // Stop event from bubbling up to parent
-                handlePeriodChange();
+            <span 
+              className="ml-1 sm:ml-2 px-1 sm:px-2 py-1 text-xs rounded"
+              style={{ 
+                backgroundColor: period === 'AM' ? userColor : '#333333',
+                color: period === 'AM' ? '#222222' : userColor
               }}
-              className="ml-1 sm:ml-2 px-1 sm:px-2 py-1 text-xs bg-[#333333] rounded hover:bg-[#444444] focus:outline-none"
-              style={{ color: userColor }}
+              data-component-name="TimeInput"
             >
               {period}
-            </button>
+            </span>
           )}
         </div>
       </div>

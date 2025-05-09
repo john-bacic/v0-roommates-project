@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ClientOnlyScripts } from '@/components/client-only-scripts'
 import { caveat } from './fonts'
@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   description: 'Schedule coordination app for roommates',
   generator: 'v0.dev',
   manifest: '/manifest.json',
-  themeColor: '#282828',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -17,13 +16,15 @@ export const metadata: Metadata = {
       '/splash.png',
     ],
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-  },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#282828',
 }
 
 export default function RootLayout({
