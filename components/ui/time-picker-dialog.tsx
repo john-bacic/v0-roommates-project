@@ -108,7 +108,7 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     generateNumbers(currentValue)
   }, [currentValue])
   
-  // Mouse/Touch event handlers
+  // Handle mouse/touch events with improved tactile feedback
   const handleStartDrag = (clientY: number) => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current)
@@ -124,6 +124,17 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
       setLastMoveY(clientY)
       setVelocity(0)
       setAnimating(false)
+      
+      // Add haptic feedback if available
+      if (typeof window !== 'undefined' && 'navigator' in window && navigator.vibrate) {
+        navigator.vibrate(5) // Subtle vibration for 5ms
+      }
+      
+      // Visual feedback - highlight the container
+      const container = containerRef.current
+      if (container) {
+        container.style.borderColor = userColor
+      }
     } catch (error) {
       console.error('Error in handleStartDrag:', error)
     }
@@ -132,26 +143,32 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   const handleMoveDrag = (clientY: number) => {
     if (!isDragging) return
     
-    // Calculate velocity for momentum scrolling
+    // Calculate smoother velocity with weighted averaging
     const now = Date.now()
     const elapsed = now - lastMoveTime
     if (elapsed > 0) {
-      const distance = lastMoveY - clientY
-      setVelocity(distance / elapsed * 15) // Scale factor
+      // Calculate new velocity with smoothing
+      const newVelocity = (lastMoveY - clientY) / elapsed * 15 // Scale factor
+      
+      // Apply weighted average (80% previous, 20% new) for smoother feel
+      setVelocity(velocity => velocity * 0.8 + newVelocity * 0.2)
+      
+      setLastMoveTime(now)
+      setLastMoveY(clientY)
     }
     
-    setLastMoveTime(now)
-    setLastMoveY(clientY)
+    // Update current position
     setDragCurrentY(clientY)
     
-    // Determine how much to change the value based on the drag distance
+    // Smoother value updates with fractional changes
     const deltaY = dragCurrentY - dragStartY
     const sensitivity = 20 // Pixels per value change
-    const valueChange = Math.floor(deltaY / sensitivity)
     
-    if (valueChange !== 0) {
-      updateValue(currentValue - valueChange)
-      setDragStartY(dragCurrentY)
+    // Use a smaller threshold for more responsive updates
+    if (Math.abs(deltaY) >= 5) {
+      const fractionalChange = deltaY / sensitivity
+      updateValue(currentValue - fractionalChange)
+      setDragStartY(clientY)
     }
   }
   
@@ -160,34 +177,74 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     
     setIsDragging(false)
     
-    // Apply momentum scrolling if velocity is significant
-    if (Math.abs(velocity) > 0.1) {
+    // Reset border color when drag ends
+    const container = containerRef.current
+    if (container) {
+      container.style.borderColor = '#333333'
+    }
+    
+    // Apply enhanced momentum scrolling with better physics
+    if (Math.abs(velocity) > 0.05) { // Lower threshold for more responsive feel
       setAnimating(true)
       
-      // Start animation
+      // Start animation with physics-based deceleration
       const startTime = performance.now()
+      let currentVelocity = velocity
+      let lastFrameTime = startTime
+      let accumulatedChange = 0
+      
       const animate = (timestamp: number) => {
-        if (!animating) return
-        
-        const elapsed = timestamp - startTime
-        const dampingFactor = Math.exp(-elapsed / 300) // Adjust for faster/slower damping
-        const currentVelocity = velocity * dampingFactor
-        
-        if (Math.abs(currentVelocity) < 0.1) {
-          setAnimating(false)
+        if (!animating) {
+          // When animation ends, snap to nearest step
+          const roundedValue = Math.round(currentValue / step) * step
+          updateValue(roundedValue)
           return
         }
         
-        // Calculate how much to change the value based on velocity
-        const valueChange = Math.round(currentVelocity / 10) // Adjust sensitivity
-        if (valueChange !== 0) {
+        // Calculate time since last frame
+        const deltaTime = timestamp - lastFrameTime
+        lastFrameTime = timestamp
+        
+        // Apply non-linear deceleration for natural feeling
+        // The 0.95 factor controls how quickly it slows down - higher = longer slide
+        const frictionFactor = Math.pow(0.96, deltaTime / 16) 
+        currentVelocity *= frictionFactor
+        
+        // Accumulate partial changes for smoother animation
+        accumulatedChange += currentVelocity * (deltaTime / 16)
+        
+        // Only update value when accumulated change is significant
+        if (Math.abs(accumulatedChange) >= 0.25) {
+          const valueChange = Math.sign(accumulatedChange) * 0.25
           updateValue(currentValue + valueChange * step)
+          accumulatedChange -= valueChange
+        }
+        
+        // Stop when velocity becomes very small
+        if (Math.abs(currentVelocity) < 0.05) {
+          // Final snap to nearest valid value
+          const roundedValue = Math.round(currentValue / step) * step
+          updateValue(roundedValue)
+          setAnimating(false)
+          if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current)
+            animationRef.current = null
+          }
+          return
         }
         
         animationRef.current = requestAnimationFrame(animate)
       }
       
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+      
       animationRef.current = requestAnimationFrame(animate)
+    } else {
+      // If no significant velocity, just snap to nearest value
+      const roundedValue = Math.round(currentValue / step) * step
+      updateValue(roundedValue)
     }
   }
   
@@ -280,9 +337,16 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
         {/* 3D perspective effect for the roller */}
         <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 bg-[#333333] opacity-70 pointer-events-none z-0" style={{ transform: 'perspective(500px) rotateX(5deg)' }}></div>
         
-        {/* Selection indicator - highlight box around selected number */}
-        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 border-t border-b border-[#555555] pointer-events-none z-1"></div>
-        <div className="absolute top-1/2 left-4 right-4 h-10 -mt-5 border-2 border-[#666666] rounded-md pointer-events-none z-1 opacity-30"></div>
+        {/* Selection indicator - highlight box around selected number with dynamic color */}
+        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 border-t border-b pointer-events-none z-1" 
+          style={{ borderColor: isDragging ? userColor : '#555555' }}
+        ></div>
+        <div className="absolute top-1/2 left-4 right-4 h-10 -mt-5 border-2 rounded-md pointer-events-none z-1" 
+          style={{ 
+            borderColor: isDragging ? userColor : '#666666', 
+            opacity: isDragging ? 0.5 : 0.3
+          }}
+        ></div>
         
         {/* Numbers */}
         <div 
@@ -299,13 +363,14 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
             return (
               <div 
                 key={`${num}-${index}`}
-                className={`flex items-center justify-center h-10 transition-transform duration-150 cursor-pointer select-none touch-none ${isCurrent ? 'font-medium' : Math.abs(position) === 1 ? 'text-lg' : 'text-base'}`}
+                className={`flex items-center justify-center h-10 cursor-pointer select-none touch-none ${isCurrent ? 'font-medium' : Math.abs(position) === 1 ? 'text-lg' : 'text-base'}`}
                 style={{
                   transform: `translateY(${position * 40}px) ${Math.abs(position) <= 1 ? '' : `perspective(500px) rotateX(${position * 5}deg)`}`,
                   opacity: isCurrent ? 1 : Math.max(0.65, 1 - Math.abs(position) * 0.1),
                   WebkitTapHighlightColor: 'transparent',
                   color: isCurrent ? userColor : Math.abs(position) === 1 ? '#BBBBBB' : '#888888',
-                  fontFamily: 'inherit'
+                  fontFamily: 'inherit',
+                  transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease'
                 }}
                 data-component-name={isCurrent ? "RollingNumber" : "_c"}
                 onClick={() => handleNumberClick(num)}
