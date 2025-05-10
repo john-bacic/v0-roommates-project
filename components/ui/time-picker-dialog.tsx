@@ -26,35 +26,64 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   const numbersRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
   const [displayedNumbers, setDisplayedNumbers] = useState<number[]>([])
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStartY, setDragStartY] = useState(0)
-  const [dragCurrentY, setDragCurrentY] = useState(0)
-  const [velocity, setVelocity] = useState(0)
+  // Simplified state - removed drag-related state variables
   const [currentValue, setCurrentValue] = useState(value)
-  const [lastMoveTime, setLastMoveTime] = useState(0)
-  const [lastMoveY, setLastMoveY] = useState(0)
-  const [animating, setAnimating] = useState(false)
-  const [touchSensitivity, setTouchSensitivity] = useState(1) // For mobile sensitivity
-  const [lastSwipeDirection, setLastSwipeDirection] = useState<number | null>(null) // Track swipe direction
   
   // Handle wheel events for desktop
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault()
     // Determine direction and amount
     const delta = e.deltaY > 0 ? -1 : 1
+    
+    // Update value based on wheel direction
     updateValue(currentValue + (delta * step))
   }
   
-  // Update internal value and notify parent
-  const updateValue = (newVal: number) => {
-    // Handle wrapping
-    let adjustedValue = newVal
-    while (adjustedValue < min) adjustedValue = max - (min - adjustedValue - 1)
-    while (adjustedValue > max) adjustedValue = min + (adjustedValue - max - 1)
+  // Update value with cycling behavior when reaching bounds
+  const updateValue = (newValue: number) => {
+    // Apply cycling (wrapping) behavior instead of bounds
+    let cyclicValue = newValue
     
-    setCurrentValue(adjustedValue)
-    onChange(adjustedValue)
-    generateNumbers(adjustedValue)
+    // Calculate the range size (add 1 because range is inclusive)
+    const range = max - min + 1
+    
+    // Handle cycling with a simpler, more robust approach
+    if (cyclicValue < min) {
+      // When going below min, wrap to max (or appropriate value)
+      cyclicValue = max - ((min - cyclicValue - 1) % range)
+      // Safety check to prevent invalid values
+      if (isNaN(cyclicValue) || cyclicValue < min || cyclicValue > max) {
+        cyclicValue = max
+      }
+    } else if (cyclicValue > max) {
+      // When going above max, wrap to min (or appropriate value)
+      cyclicValue = min + ((cyclicValue - max - 1) % range)
+      // Safety check to prevent invalid values
+      if (isNaN(cyclicValue) || cyclicValue < min || cyclicValue > max) {
+        cyclicValue = min
+      }
+    }
+    
+    // Only update if value changed
+    if (cyclicValue !== currentValue) {
+      // Add haptic feedback for value changes if available
+      try {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          // Special feedback when cycling from min to max or max to min
+          if (newValue < min || newValue > max) {
+            navigator.vibrate(5) // Simple feedback for cycling
+          } else {
+            navigator.vibrate(3) // Subtle feedback for regular changes
+          }
+        }
+      } catch (e) {
+        // Ignore vibration errors
+      }
+      
+      setCurrentValue(cyclicValue)
+      onChange(cyclicValue)
+      generateNumbers(cyclicValue)
+    }
   }
   
   // Generate the array of numbers to display
@@ -81,28 +110,17 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     setDisplayedNumbers(numbers)
   }
   
-  // Set up wheel event listener and initialize numbers
+  // Set up wheel event listener
   useEffect(() => {
     const container = containerRef.current
     if (container) {
       container.addEventListener('wheel', handleWheel, { passive: false })
       
-      // Add touch-action: none to prevent browser handling of touch events
-      container.style.touchAction = 'none'
-      
-      // Detect if we're on mobile and set higher sensitivity
-      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-        setTouchSensitivity(1.8) // More responsive on mobile devices
-      }
-      
       return () => {
         container.removeEventListener('wheel', handleWheel)
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current)
-        }
       }
     }
-  }, [currentValue])
+  }, [])
   
   // Update when external value changes
   useEffect(() => {
@@ -116,334 +134,14 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     generateNumbers(currentValue)
   }, [currentValue])
   
-  // Handle mouse/touch events with improved tactile feedback
-  const handleStartDrag = (clientY: number) => {
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-      animationRef.current = null
-    }
-    
-    // Add a try-catch block to handle any potential errors
-    try {
-      setIsDragging(true)
-      setDragStartY(clientY)
-      setDragCurrentY(clientY)
-      setLastMoveTime(Date.now())
-      setLastMoveY(clientY)
-      setVelocity(0)
-      setAnimating(false)
-      
-      // Add haptic feedback if available
-      if (typeof window !== 'undefined' && 'navigator' in window && navigator.vibrate) {
-        navigator.vibrate(5) // Subtle vibration for 5ms
-      }
-      
-      // Visual feedback - highlight the container
-      const container = containerRef.current
-      if (container) {
-        container.style.borderColor = userColor
-      }
-    } catch (error) {
-      console.error('Error in handleStartDrag:', error)
-    }
-  }
-  
-  const handleMoveDrag = (clientY: number) => {
-    try {
-      if (!isDragging) return
-      
-      setDragCurrentY(clientY)
-      
-      // Calculate distance moved
-      const deltaY = clientY - dragStartY
-      
-      // Apply sensitivity multiplier (higher for mobile)
-      const effectiveDelta = deltaY * touchSensitivity
-      
-      // Calculate exact value change based on drag distance
-      // Each "step" is 40px, so we divide by 40 to get the number of steps
-      const valueChange = effectiveDelta / 40
-      
-      // Calculate velocity (pixels per millisecond)
-      const currentTime = Date.now()
-      const timeDelta = currentTime - lastMoveTime
-      if (timeDelta > 0) {
-        const distanceDelta = clientY - lastMoveY
-        const newVelocity = distanceDelta / timeDelta
-        // Apply smoothing to velocity updates
-        setVelocity(prev => prev * 0.7 + newVelocity * 0.3)
-      }
-      
-      // Update tracking variables
-      setLastMoveTime(currentTime)
-      setLastMoveY(clientY)
-      
-      // Update value based on drag distance - invert for more intuitive control
-      // Dragging up should increase the value, down should decrease
-      updateValue(currentValue - (valueChange * step))
-      
-      // Reset start position to avoid jumps, but keep some memory
-      // of the movement for better momentum feel
-      setDragStartY(prev => prev * 0.3 + clientY * 0.7)
-    } catch (error) {
-      console.error('Error in handleMoveDrag:', error)
-      setDragStartY(clientY)
-    }
-  }
-  
-  const handleEndDrag = () => {
-    if (!isDragging) return
-    
-    setIsDragging(false)
-    
-    // Reset border color when drag ends
-    const container = containerRef.current
-    if (container) {
-      container.style.borderColor = '#333333'
-    }
-    
-    // Apply enhanced momentum scrolling with better physics
-    if (Math.abs(velocity) > 0.05) { // Lower threshold for more responsive feel
-      setAnimating(true)
-      
-      let lastFrameTime = Date.now()
-      let currentVelocity = velocity
-      let accumulatedChange = 0
-      let totalRotation = 0
-      
-      // Create a physics-based animation with realistic roller momentum
-      const animate = (timestamp: number) => {
-        if (!animating) {
-          return
-        }
-        
-        // Calculate time since last frame
-        const deltaTime = timestamp - lastFrameTime
-        lastFrameTime = timestamp
-        
-        // Calculate physical properties for realistic roller motion
-        // Roller drum physics: higher initial momentum with non-linear friction
-        const initialMomentumBoost = Math.min(1.2, 1 + (Math.abs(currentVelocity) * 2))
-        const inertia = 0.9 + Math.min(0.08, Math.abs(currentVelocity) * 0.5) // Higher inertia for faster initial speed
-        
-        // Apply non-linear deceleration with physical friction model
-        // Gradually increasing friction as it slows (simulating bearing friction)
-        const frictionFactor = Math.pow(inertia, deltaTime / 16) 
-        const damping = 1 - Math.min(0.05, Math.abs(1 / (currentVelocity + 0.1) * 0.01))
-        
-        // Apply physics calculations
-        currentVelocity *= frictionFactor * damping * initialMomentumBoost
-        
-        // Track total rotation for oscillation effects
-        totalRotation += currentVelocity * (deltaTime / 16)
-        
-        // Accumulate partial changes with micro-oscillations for realistic feel
-        accumulatedChange += currentVelocity * (deltaTime / 16)
-        
-        // Apply slight oscillation at the end for authentic roller feel
-        const oscillation = Math.abs(currentVelocity) < 0.15 ? 
-          Math.sin(totalRotation * 30) * 0.02 * Math.min(1, Math.abs(currentVelocity) * 10) : 0
-        
-        // Only update value when accumulated change is significant
-        if (Math.abs(accumulatedChange + oscillation) >= 0.25) {
-          const valueChange = Math.sign(accumulatedChange) * 0.25
-          updateValue(currentValue + valueChange * step)
-          accumulatedChange -= valueChange
-          
-          // Provide subtle haptic feedback during momentum scrolling
-          if (Math.random() < 0.1 && typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(2) // Very subtle
-          }
-        }
-        
-        // Stop when velocity becomes very small
-        if (Math.abs(currentVelocity) < 0.03) {
-          // Final snap to nearest valid value with subtle haptics
-          const roundedValue = Math.round(currentValue / step) * step
-          updateValue(roundedValue)
-          setAnimating(false)
-          
-          // Final snap feedback
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(5)
-          }
-          
-          if (animationRef.current) {
-            cancelAnimationFrame(animationRef.current)
-            animationRef.current = null
-          }
-          return
-        }
-        
-        animationRef.current = requestAnimationFrame(animate)
-      }
-      
-      animationRef.current = requestAnimationFrame(animate)
-    } else {
-      // If no significant velocity, just snap to nearest value with feedback
-      const roundedValue = Math.round(currentValue / step) * step
-      updateValue(roundedValue)
-      
-      // Provide haptic feedback for the snap
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(3)
-      }
-    }
-  }
-  
-  // Mouse event handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    handleStartDrag(e.clientY)
-  }
-  
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      e.preventDefault()
-      handleMoveDrag(e.clientY)
-    }
-  }
-  
-  const handleMouseUp = () => {
-    handleEndDrag()
-  }
-  
-  // Enhanced touch event handlers for mobile swipe gestures with better vertical detection
-  const handleTouchStart = (e: React.TouchEvent) => {
-    try {
-      // Prevent any potential browser handling that might interfere
-      if (e.cancelable) {
-        e.preventDefault()
-      }
-      
-      // Start the drag operation
-      handleStartDrag(e.touches[0].clientY)
-      
-      // Visual feedback - highlight the border
-      if (containerRef.current) {
-        containerRef.current.style.borderColor = userColor
-        containerRef.current.style.boxShadow = `0 0 8px ${userColor}40`
-      }
-      
-      // Reset swipe direction tracking on new touch
-      setLastSwipeDirection(null)
-      
-      // Set a higher touch sensitivity specifically for mobile swipes
-      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-        setTouchSensitivity(2.2) // Even more responsive on mobile for quick swipes
-      }
-      
-      // Provide haptic feedback if available
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate(5) // Subtle vibration
-      }
-    } catch (error) {
-      console.error('Error in handleTouchStart:', error)
-    }
-  }
-  
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (isDragging) {
-      // Always prevent default during drag to stop page scrolling
-      e.preventDefault()
-      
-      // Get current touch position
-      const touchY = e.touches[0].clientY
-      
-      // Calculate distance moved
-      const distance = touchY - dragStartY
-      const absDistance = Math.abs(distance)
-      
-      // Determine direction (positive = down, negative = up)
-      const direction = Math.sign(distance)
-      
-      // Check if direction changed during this drag
-      const directionChanged = lastSwipeDirection !== null && direction !== lastSwipeDirection
-      
-      // Update the last swipe direction
-      setLastSwipeDirection(direction)
-      
-      // Apply acceleration for faster response with touchSensitivity
-      // Shorter movements get higher acceleration for responsiveness
-      const accelerationFactor = Math.min(3.0, 1 + (absDistance / 50)) * touchSensitivity
-      
-      // Apply the accelerated movement
-      handleMoveDrag(dragStartY + (distance * accelerationFactor))
-      
-      // Determine if we should provide haptic feedback
-      // Based on crossing number thresholds
-      const valueChange = Math.floor(absDistance / 40)
-      if (valueChange > 0 && valueChange % 1 === 0) {
-        // Provide subtle haptic feedback when crossing number boundaries
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate(2)
-        }
-      }
-    }
-  }
-  
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    try {
-      // Reset the visual feedback when touch ends
-      if (containerRef.current) {
-        containerRef.current.style.borderColor = '#333333'
-        containerRef.current.style.boxShadow = 'none'
-      }
-      
-      if (isDragging) {
-        // Calculate the time and distance of the swipe
-        const endTime = Date.now()
-        const swipeTime = endTime - lastMoveTime
-        const swipeDistance = Math.abs(lastMoveY - dragStartY)
-        const direction = Math.sign(dragStartY - lastMoveY) // Reverse for intuitive direction
-        
-        // Handle different types of swipes
-        if (swipeTime < 100 && swipeDistance > 5) {
-          // Very quick flick - immediately jump one or more steps
-          const jumpSteps = Math.min(3, Math.floor(swipeDistance / 20))
-          
-          // Update value directly for immediate feedback
-          updateValue(currentValue + (direction * jumpSteps * step))
-          
-          // Add haptic feedback for the jump
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate([5, 10, 5]) // Pulsed haptic feedback for jumps
-          }
-          
-          // Skip momentum scrolling for very short, fast swipes
-          if (swipeDistance < 30) {
-            setIsDragging(false)
-            return
-          }
-          
-          // For longer swipes, add extra velocity for momentum
-          const boostFactor = 5.0 * touchSensitivity * (jumpSteps / 2)
-          setVelocity(velocity => velocity + (direction * boostFactor))
-        } 
-        else if (swipeTime < 300 && swipeDistance > 10) {
-          // Medium-speed swipe - boost momentum
-          const boostFactor = 3.0 * touchSensitivity
-          setVelocity(velocity => velocity + (direction * boostFactor))
-        }
-        
-        // Apply momentum scrolling
-        handleEndDrag()
-        
-        // Provide haptic confirmation based on swipe intensity
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          if (swipeDistance > 50) {
-            navigator.vibrate(15) // Stronger feedback for bigger swipes
-          } else {
-            navigator.vibrate(8) // Subtle feedback for smaller swipes
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in handleTouchEnd:', error)
-    }
-  }
-  
-  // Handle direct click on a number
+  // Handle direct number click with enhanced feedback
   const handleNumberClick = (num: number) => {
+    // Provide haptic feedback if available
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(5) // Subtle feedback for taps
+    }
+    
+    // Update the value
     updateValue(num)
   }
   
@@ -478,17 +176,9 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
           WebkitTapHighlightColor: 'transparent',
           perspective: '800px',
           boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8)',
-          transform: isDragging ? 'scale(1.02)' : 'scale(1)',
           transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out'
         }}
         ref={containerRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         data-component-name="RollingNumberContainer"
       >
         {/* Enhanced 3D roller drum effect */}
@@ -533,25 +223,21 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
           }}
         ></div>
         
-        {/* Enhanced selection indicator with dynamic highlight */}
+        {/* Enhanced selection indicator with highlight */}
         <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 pointer-events-none z-2 border-t border-b" 
           style={{ 
-            borderColor: isDragging ? userColor : 'rgba(125,125,125,0.5)',
-            borderWidth: isDragging ? '1.5px' : '1px',
-            boxShadow: isDragging 
-              ? `0 0 12px ${userColor}60, inset 0 0 6px ${userColor}30` 
-              : 'inset 0 1px 3px rgba(0,0,0,0.3)',
+            borderColor: 'rgba(125,125,125,0.5)',
+            borderWidth: '1px',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)',
             transition: 'all 0.2s cubic-bezier(0.23, 1, 0.32, 1)'
           }}
         ></div>
         
-        {/* Light glint effect - subtle highlight that moves during interaction */}
+        {/* Light glint effect - subtle highlight */}
         <div className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none z-20"
           style={{
-            background: isDragging 
-              ? `linear-gradient(${45 + (dragCurrentY - dragStartY) / 5}deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%)` 
-              : 'linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)',
-            transition: isDragging ? 'none' : 'all 0.5s ease-out'
+            background: 'linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)',
+            transition: 'all 0.5s ease-out'
           }}
         ></div>
         
@@ -585,6 +271,7 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
                   WebkitTapHighlightColor: 'transparent',
                   color: isCurrent ? userColor : Math.abs(position) === 1 ? '#BBBBBB' : '#888888',
                   fontFamily: 'inherit',
+                  transition: 'all 0.25s cubic-bezier(0.23, 1, 0.32, 1)',
                   textShadow: isCurrent ? `0 0 6px ${userColor}40` : 'none',
                   backfaceVisibility: 'hidden',
                   transformStyle: 'preserve-3d'
@@ -598,15 +285,19 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
                   scale: isCurrent ? 1.05 : 1
                 }}
                 transition={{
-                  type: isDragging ? 'tween' : 'spring',
-                  stiffness: isDragging ? undefined : 300,
-                  damping: isDragging ? undefined : 20,
-                  mass: isDragging ? undefined : 0.8,
-                  duration: isDragging ? 0 : 0.3
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 20,
+                  mass: 0.8,
+                  duration: 0.3
                 }}
-                whileTap={isCurrent ? { scale: 0.95 } : undefined}
+                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.08 }}
                 data-component-name={isCurrent ? "RollingNumber" : "_c"}
                 onClick={() => handleNumberClick(num)}
+                tabIndex={isCurrent ? 0 : -1}
+                role="button"
+                aria-label={`Select ${num}`}
               >
                 <motion.span 
                   style={{ fontSize: isCurrent ? '1.25rem' : Math.abs(position) === 1 ? '1.125rem' : '1rem' }}
@@ -888,9 +579,9 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
 
   // Determine the style for the AM/PM toggle based on the current period
   const amPmToggleStyles = {
-    backgroundColor: period === 'AM' ? userColor : '#444444',
+    backgroundColor: period === 'AM' ? userColor : '#333333', // Match TimeInput PM background
     color: period === 'AM' ? '#222222' : userColor,
-    borderColor: period === 'AM' ? '#222222' : userColor,
+    borderColor: '#333333', // Neutral border color for both states
   }
   
   return (
@@ -901,7 +592,8 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
           value={timeValue}
           onChange={handleInputChange}
           onBlur={handleBlur}
-          className="text-2xl font-bold text-center bg-[#333333] border border-[#444444] rounded-lg py-4 pl-6 pr-16 w-full"
+          className="text-2xl font-bold text-center border border-[#444444] rounded-lg py-4 pl-6 pr-16 w-full"
+          style={{ color: userColor, backgroundColor: '#222222' }}
           placeholder="12:00"
           aria-label="Time input"
           data-component-name="DesktopTimePicker"
@@ -914,7 +606,11 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
           aria-label="Toggle AM/PM"
           data-component-name="DesktopTimePicker"
         >
-          {period}
+          {period === 'PM' ? (
+            <span style={{ color: userColor, fontWeight: 'bold' }}>PM</span>
+          ) : (
+            'AM'
+          )}
         </button>
       </div>
     </div>
