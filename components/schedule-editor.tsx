@@ -108,39 +108,27 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         // Calculate end time (4 hours later)
         const [endHourStr, endMinuteStr] = latestEndTime.split(':');
-        let endHour = parseInt(endHourStr, 10) + 4;
-        const endMinute = endMinuteStr;
+        let endHour = parseInt(endHourStr);
+        let endMinute = parseInt(endMinuteStr);
         
-        // Handle day overflow
+        // Add 4 hours
+        endHour = endHour + 4;
+        
+        // Handle overflow to next day
         if (endHour >= 24) {
           endHour = 23;
+          endMinute = 59;
         }
         
-        endTime = `${endHour.toString().padStart(2, '0')}:${endMinute}`;
+        // Format the end time
+        endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       }
     }
     
-    // Make sure the blocks are sorted by start time
-    const newBlock: TimeBlock = { start: startTime, end: endTime, label: "", allDay: false };
-    
-    // Add the new block to the schedule
-    const newSchedule = { ...schedule };
-    newSchedule[activeDay] = [...(newSchedule[activeDay] || [])];
-    newSchedule[activeDay].push(newBlock);
-    
-    // Sort time blocks by start time (earliest first)
-    newSchedule[activeDay].sort((a: TimeBlock, b: TimeBlock) => {
-      // Keep all-day events at the top
-      if (a.allDay && !b.allDay) return -1;
-      if (!a.allDay && b.allDay) return 1;
-      if (a.allDay && b.allDay) return 0;
-      
-      // Sort by start time for non-all-day events
-      return a.start.localeCompare(b.start);
-    });
-    
-    // Update the schedule
-    onChange(newSchedule);
+    const newBlock = { start: startTime, end: endTime, label: "Work", allDay: false };
+    const newSchedule = { ...schedule }
+    newSchedule[activeDay] = [...(newSchedule[activeDay] || []), newBlock]
+    onChange(newSchedule)
     
     // Save to Supabase immediately if we have a userName
     if (userName) {
@@ -209,46 +197,10 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
       value = Boolean(value)
     }
     
-    // Create the updated block
-    const updatedBlock = {
+    newSchedule[dayName][index] = {
       ...newSchedule[dayName][index],
       [field]: value,
     }
-    
-    // If we're updating a time field, make sure start is before end
-    if (field === 'start' || field === 'end') {
-      const startTime = field === 'start' ? value : updatedBlock.start
-      const endTime = field === 'end' ? value : updatedBlock.end
-      
-      // If start time is after end time, adjust the end time to be after start time
-      if (startTime > endTime) {
-        // Calculate a new end time (1 hour after start time)
-        const [startHour, startMinute] = startTime.split(':').map(Number)
-        let endHour = startHour + 1
-        const endMinute = startMinute
-        
-        // Handle day overflow
-        if (endHour >= 24) {
-          endHour = 23
-        }
-        
-        updatedBlock.end = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
-      }
-    }
-    
-    newSchedule[dayName][index] = updatedBlock
-    
-    // Sort time blocks by start time (earliest first)
-    newSchedule[dayName].sort((a: TimeBlock, b: TimeBlock) => {
-      // Keep all-day events at the top
-      if (a.allDay && !b.allDay) return -1;
-      if (!a.allDay && b.allDay) return 1;
-      if (a.allDay && b.allDay) return 0;
-      
-      // Sort by start time for non-all-day events
-      return a.start.localeCompare(b.start);
-    });
-    
     onChange(newSchedule)
     
     // Save to Supabase immediately if we have a userName
@@ -316,34 +268,19 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   }
 
   const removeTimeBlock = async (dayName: string, index: number) => {
+    const block = schedule[dayName][index];
     const newSchedule = { ...schedule }
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
-    const blockToRemove = newSchedule[dayName][index]
-    
-    // Remove the block
     newSchedule[dayName].splice(index, 1)
-    
-    // Re-sort the remaining blocks to maintain order
-    newSchedule[dayName].sort((a: TimeBlock, b: TimeBlock) => {
-      // Keep all-day events at the top
-      if (a.allDay && !b.allDay) return -1;
-      if (!a.allDay && b.allDay) return 1;
-      if (a.allDay && b.allDay) return 0;
-      
-      // Sort by start time for non-all-day events
-      return a.start.localeCompare(b.start);
-    });
-    
-    // Update the schedule
     onChange(newSchedule)
     
     // Delete from Supabase if we have an ID and userName
-    if (blockToRemove && blockToRemove.id && userName) {
+    if (block.id && userName) {
       try {
         const { error: deleteError } = await supabase
           .from('schedules')
           .delete()
-          .eq('id', blockToRemove.id);
+          .eq('id', block.id);
         
         if (deleteError) {
           console.error('Error deleting schedule:', deleteError);
@@ -525,17 +462,16 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="flex flex-col">
                   <Label htmlFor={`start-${index}`} className="text-xs mb-1 block">Start</Label>
-                  <div className="relative">
-                    <div 
-                      className="absolute inset-0 z-10 cursor-pointer"
-                      onClick={() => {
-                        // Force immediate synchronization of start time values only
-                        setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
-                        setCurrentTimeValue(block.start || '09:00')
-                        setStartTimeDialogKey(prev => prev + 1) // Increment start time dialog key
-                        setTimePickerOpen(true)
-                      }}
-                    ></div>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      // Force immediate synchronization of start time values only
+                      setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
+                      setCurrentTimeValue(block.start || '09:00')
+                      setStartTimeDialogKey(prev => prev + 1) // Increment start time dialog key
+                      setTimePickerOpen(true)
+                    }}
+                  >
                     <TimeInput
                       id={`start-${index}`}
                       value={block.start || ''}
@@ -547,17 +483,16 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                 </div>
                 <div className="flex flex-col">
                   <Label htmlFor={`end-${index}`} className="text-xs mb-1 block">End</Label>
-                  <div className="relative">
-                    <div 
-                      className="absolute inset-0 z-10 cursor-pointer"
-                      onClick={() => {
-                        // Force immediate synchronization of end time values only
-                        setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
-                        setCurrentTimeValue(block.end || '17:00')
-                        setEndTimeDialogKey(prev => prev + 1) // Increment end time dialog key
-                        setTimePickerOpen(true)
-                      }}
-                    ></div>
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      // Force immediate synchronization of end time values only
+                      setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
+                      setCurrentTimeValue(block.end || '17:00')
+                      setEndTimeDialogKey(prev => prev + 1) // Increment end time dialog key
+                      setTimePickerOpen(true)
+                    }}
+                  >
                     <TimeInput
                       id={`end-${index}`}
                       value={block.end || ''}

@@ -151,18 +151,9 @@ export function TimeInput({
           <Input
             id={`${id}-hours`}
             type="text"
+            readOnly
             value={hours}
-            onChange={handleHoursChange}
-            onBlur={() => {
-              // Ensure hours are properly formatted on blur
-              if (hours === '') {
-                setHours(use24HourFormat ? '00' : '12')
-                updateTime(use24HourFormat ? '00' : '12', minutes, period)
-              } else if (hours.length === 1) {
-                setHours(hours.padStart(2, '0'))
-              }
-            }}
-            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3"
+            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3 cursor-pointer"
             style={{ color: userColor }}
             placeholder={use24HourFormat ? "00" : "12"}
           />
@@ -170,26 +161,15 @@ export function TimeInput({
           <Input
             id={`${id}-minutes`}
             type="text"
+            readOnly
             value={minutes}
-            onChange={handleMinutesChange}
-            onBlur={() => {
-              // Ensure minutes are properly formatted on blur
-              if (minutes === '') {
-                setMinutes('00')
-                updateTime(hours, '00', period)
-              } else if (minutes.length === 1) {
-                setMinutes(minutes.padStart(2, '0'))
-                updateTime(hours, minutes.padStart(2, '0'), period)
-              }
-            }}
-            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3"
+            className="w-8 sm:w-10 min-w-0 border-none bg-transparent text-center no-spinners px-1 sm:px-3 cursor-pointer"
             style={{ color: userColor }}
             placeholder="00"
           />
           {!use24HourFormat && (
             <span 
-              className="ml-1 sm:ml-2 px-1 sm:px-2 py-1 text-xs rounded cursor-pointer"
-              onClick={handlePeriodChange}
+              className="ml-1 sm:ml-2 px-1 sm:px-2 py-1 text-xs rounded"
               style={{ 
                 backgroundColor: period === 'AM' ? userColor : '#333333',
                 color: period === 'AM' ? '#222222' : userColor
