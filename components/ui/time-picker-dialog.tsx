@@ -344,7 +344,7 @@ interface TimePickerDialogProps {
   label?: string
 }
 
-function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onTimeChange: (time: string) => void, userColor: string }) {
+function MobileTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false }: { time: string, onTimeChange: (time: string) => void, userColor?: string, use24HourFormat?: boolean }) {
   // Parse time string "HH:MM" or "H:MM" into separate hour and minute values
   const [timeParts, setTimeParts] = useState(() => {
     const [hoursStr, minutesStr] = time.split(":")
@@ -361,12 +361,16 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
 
   // Update parent when time changes
   const updateTime = () => {
-    // Convert back to 24-hour format
-    let hours24 = timeParts.hours
-    if (timeParts.period === "PM" && hours24 < 12) hours24 += 12
-    else if (timeParts.period === "AM" && hours24 === 12) hours24 = 0
+    // Convert to 24-hour format for the time string
+    let hours = timeParts.hours
     
-    const timeString = `${hours24.toString().padStart(2, '0')}:${timeParts.minutes.toString().padStart(2, '0')}`
+    // Only convert if not already in 24-hour format
+    if (!use24HourFormat) {
+      if (timeParts.period === "PM" && hours !== 12) hours += 12
+      if (timeParts.period === "AM" && hours === 12) hours = 0
+    }
+    
+    const timeString = `${hours.toString().padStart(2, '0')}:${timeParts.minutes.toString().padStart(2, '0')}`
     onTimeChange(timeString)
   }
 
@@ -395,22 +399,27 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
   useEffect(() => {
     // Force an immediate update whenever the time prop changes
     if (time === "12:00") {
-      setTimeParts({ hours: 12, minutes: 0, period: "PM" })
+      setTimeParts({ hours: use24HourFormat ? 12 : 12, minutes: 0, period: "PM" })
     } else if (time === "00:00") {
-      setTimeParts({ hours: 12, minutes: 0, period: "AM" })
+      setTimeParts({ hours: use24HourFormat ? 0 : 12, minutes: 0, period: "AM" })
     } else {
       // Regular time update - parse hours and minutes precisely
       const [hoursStr, minutesStr] = time.split(":")
       let hours = parseInt(hoursStr, 10)
       const minutes = parseInt(minutesStr, 10)
       
-      // Convert 24-hour format to 12-hour
+      // Handle period based on 24-hour format
       const period = hours >= 12 ? "PM" : "AM"
-      if (hours === 0) hours = 12
-      else if (hours > 12) hours = hours - 12
+      
+      // Convert to 12-hour format if needed
+      if (!use24HourFormat) {
+        if (hours === 0) hours = 12
+        else if (hours > 12) hours = hours - 12
+      }
       
       setTimeParts({ hours, minutes, period })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [time])
 
   // Force re-render of rollers when timeParts change
@@ -429,8 +438,8 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
           <RollingNumber 
             key={`hours-${timeParts.hours}-${forceRerender}`}
             value={timeParts.hours} 
-            min={1} 
-            max={12} 
+            min={use24HourFormat ? 0 : 1} 
+            max={use24HourFormat ? 23 : 12} 
             step={1} 
             onChange={handleHoursChange} 
             userColor={userColor}
@@ -452,30 +461,32 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
           />
         </div>
         
-        {/* AM/PM toggle - shorter version */}
-        <motion.div 
-          className="w-1/4 h-16 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
-          onClick={handlePeriodToggle}
-          style={{ 
-            WebkitTapHighlightColor: 'transparent',
-            backgroundColor: timeParts.period === 'AM' ? userColor : '#333333'
-          }}
-          whileTap={{ scale: 0.95 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-          data-component-name="MobileTimePicker"
-        >
-          <div className="text-xl font-medium px-3 py-1" 
-            style={{ color: timeParts.period === 'AM' ? '#222222' : userColor }}
+        {/* AM/PM toggle - only show in 12-hour mode */}
+        {!use24HourFormat && (
+          <motion.div 
+            className="w-1/4 h-16 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
+            onClick={handlePeriodToggle}
+            style={{ 
+              WebkitTapHighlightColor: 'transparent',
+              backgroundColor: timeParts.period === 'AM' ? userColor : '#333333'
+            }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+            data-component-name="MobileTimePicker"
           >
-            {timeParts.period}
-          </div>
-        </motion.div>
+            <div className="text-xl font-medium px-3 py-1" 
+              style={{ color: timeParts.period === 'AM' ? '#222222' : userColor }}
+            >
+              {timeParts.period}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   )
 }
 
-function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time: string, onTimeChange: (time: string) => void, userColor?: string }) {
+function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false }: { time: string, onTimeChange: (time: string) => void, userColor?: string, use24HourFormat?: boolean }) {
   // Make userColor available throughout the component
   // Separate time and period state for better control
   const [timeValue, setTimeValue] = useState('')
@@ -484,18 +495,30 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
   // Initialize values from the time prop
   useEffect(() => {
     // Format the time as HH:MM and determine AM/PM
-    const [hoursStr, minutesStr] = time.split(":")
-    let hours = parseInt(hoursStr, 10)
-    const minutes = parseInt(minutesStr, 10)
-    
-    // Convert 24-hour format to 12-hour
-    const newPeriod = hours >= 12 ? "PM" : "AM"
-    if (hours === 0) hours = 12
-    else if (hours > 12) hours = hours - 12
-    
-    setTimeValue(`${hours}:${minutes.toString().padStart(2, '0')}`)
-    setPeriod(newPeriod as 'AM' | 'PM')
-  }, [time])
+    if (time) {
+      const [hoursStr, minutesStr] = time.split(":")
+      let hours = parseInt(hoursStr, 10)
+      const minutes = parseInt(minutesStr, 10)
+      
+      // Determine period
+      const newPeriod = hours >= 12 ? 'PM' : 'AM'
+      
+      // Format for display based on 12/24 hour format
+      let formattedTime = ""
+      if (use24HourFormat) {
+        formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      } else {
+        // Convert to 12-hour format for display
+        if (hours > 12) hours -= 12
+        else if (hours === 0) hours = 12
+        formattedTime = `${hours}:${minutes.toString().padStart(2, '0')}`
+      }
+      
+      setTimeValue(formattedTime)
+      setPeriod(newPeriod)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [time, use24HourFormat])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTimeValue(e.target.value)
@@ -511,25 +534,20 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
   
   // Convert to 24-hour format and notify parent
   const updateParentTime = (timeStr: string, periodStr: 'AM' | 'PM') => {
-    try {
-      // Parse HH:MM
-      const timeParts = timeStr.split(':')
-      if (timeParts.length !== 2) return
-      
-      let hours = parseInt(timeParts[0], 10)
-      const minutes = parseInt(timeParts[1], 10)
-      
-      if (isNaN(hours) || isNaN(minutes) || hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return
-      
-      // Convert to 24-hour format
-      if (periodStr === "PM" && hours < 12) hours += 12
-      else if (periodStr === "AM" && hours === 12) hours = 0
-      
-      const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-      onTimeChange(formattedTime)
-    } catch (err) {
-      console.error('Error parsing time:', err)
+    // Parse the time string
+    const [hoursStr, minutesStr] = timeStr.split(":")
+    let hours = parseInt(hoursStr, 10)
+    const minutes = parseInt(minutesStr, 10)
+    
+    // Convert to 24-hour format for the output if needed
+    if (!use24HourFormat) {
+      if (periodStr === 'PM' && hours !== 12) hours += 12
+      if (periodStr === 'AM' && hours === 12) hours = 0
     }
+    
+    // Format the output time string
+    const outputTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    onTimeChange(outputTime)
   }
 
   const handleBlur = () => {
@@ -598,20 +616,22 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6" }: { time
           aria-label="Time input"
           data-component-name="DesktopTimePicker"
         />
-        <button 
-          type="button"
-          onClick={togglePeriod}
-          className="absolute right-3 top-1/2 -translate-y-1/2 font-medium rounded-md px-3 py-1.5 transition-colors border-2 shadow-sm hover:opacity-90"
-          style={amPmToggleStyles}
-          aria-label="Toggle AM/PM"
-          data-component-name="DesktopTimePicker"
-        >
-          {period === 'PM' ? (
-            <span style={{ color: userColor, fontWeight: 'bold' }}>PM</span>
-          ) : (
-            'AM'
-          )}
-        </button>
+        {!use24HourFormat && (
+          <button 
+            type="button"
+            onClick={togglePeriod}
+            className="absolute right-3 top-1/2 -translate-y-1/2 font-medium rounded-md px-3 py-1.5 transition-colors border-2 shadow-sm hover:opacity-90"
+            style={amPmToggleStyles}
+            aria-label="Toggle AM/PM"
+            data-component-name="DesktopTimePicker"
+          >
+            {period === 'PM' ? (
+              <span style={{ color: userColor, fontWeight: 'bold' }}>PM</span>
+            ) : (
+              'AM'
+            )}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -694,6 +714,7 @@ export function TimePickerDialog({
     return () => {
       restoreBackgroundScrolling()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialTime])
 
   const handleTimeChange = (newTime: string) => {
@@ -753,13 +774,15 @@ export function TimePickerDialog({
               key={`mobile-picker-${initialTimeRef.current}`} 
               time={time} 
               onTimeChange={handleTimeChange} 
-              userColor={userColor} 
+              userColor={userColor}
+              use24HourFormat={use24HourFormat}
             />
           ) : (
             <DesktopTimePicker 
               time={time} 
               onTimeChange={handleTimeChange} 
               userColor={userColor}
+              use24HourFormat={use24HourFormat}
             />
           )}
           
