@@ -205,17 +205,14 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     if (Math.abs(velocity) > 0.05) { // Lower threshold for more responsive feel
       setAnimating(true)
       
-      // Start animation with physics-based deceleration
-      const startTime = performance.now()
+      let lastFrameTime = Date.now()
       let currentVelocity = velocity
-      let lastFrameTime = startTime
       let accumulatedChange = 0
+      let totalRotation = 0
       
+      // Create a physics-based animation with realistic roller momentum
       const animate = (timestamp: number) => {
         if (!animating) {
-          // When animation ends, snap to nearest step
-          const roundedValue = Math.round(currentValue / step) * step
-          updateValue(roundedValue)
           return
         }
         
@@ -223,27 +220,53 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
         const deltaTime = timestamp - lastFrameTime
         lastFrameTime = timestamp
         
-        // Apply non-linear deceleration for natural feeling
-        // The 0.95 factor controls how quickly it slows down - higher = longer slide
-        const frictionFactor = Math.pow(0.96, deltaTime / 16) 
-        currentVelocity *= frictionFactor
+        // Calculate physical properties for realistic roller motion
+        // Roller drum physics: higher initial momentum with non-linear friction
+        const initialMomentumBoost = Math.min(1.2, 1 + (Math.abs(currentVelocity) * 2))
+        const inertia = 0.9 + Math.min(0.08, Math.abs(currentVelocity) * 0.5) // Higher inertia for faster initial speed
         
-        // Accumulate partial changes for smoother animation
+        // Apply non-linear deceleration with physical friction model
+        // Gradually increasing friction as it slows (simulating bearing friction)
+        const frictionFactor = Math.pow(inertia, deltaTime / 16) 
+        const damping = 1 - Math.min(0.05, Math.abs(1 / (currentVelocity + 0.1) * 0.01))
+        
+        // Apply physics calculations
+        currentVelocity *= frictionFactor * damping * initialMomentumBoost
+        
+        // Track total rotation for oscillation effects
+        totalRotation += currentVelocity * (deltaTime / 16)
+        
+        // Accumulate partial changes with micro-oscillations for realistic feel
         accumulatedChange += currentVelocity * (deltaTime / 16)
         
+        // Apply slight oscillation at the end for authentic roller feel
+        const oscillation = Math.abs(currentVelocity) < 0.15 ? 
+          Math.sin(totalRotation * 30) * 0.02 * Math.min(1, Math.abs(currentVelocity) * 10) : 0
+        
         // Only update value when accumulated change is significant
-        if (Math.abs(accumulatedChange) >= 0.25) {
+        if (Math.abs(accumulatedChange + oscillation) >= 0.25) {
           const valueChange = Math.sign(accumulatedChange) * 0.25
           updateValue(currentValue + valueChange * step)
           accumulatedChange -= valueChange
+          
+          // Provide subtle haptic feedback during momentum scrolling
+          if (Math.random() < 0.1 && typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(2) // Very subtle
+          }
         }
         
         // Stop when velocity becomes very small
-        if (Math.abs(currentVelocity) < 0.05) {
-          // Final snap to nearest valid value
+        if (Math.abs(currentVelocity) < 0.03) {
+          // Final snap to nearest valid value with subtle haptics
           const roundedValue = Math.round(currentValue / step) * step
           updateValue(roundedValue)
           setAnimating(false)
+          
+          // Final snap feedback
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(5)
+          }
+          
           if (animationRef.current) {
             cancelAnimationFrame(animationRef.current)
             animationRef.current = null
@@ -254,15 +277,16 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
         animationRef.current = requestAnimationFrame(animate)
       }
       
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-      
       animationRef.current = requestAnimationFrame(animate)
     } else {
-      // If no significant velocity, just snap to nearest value
+      // If no significant velocity, just snap to nearest value with feedback
       const roundedValue = Math.round(currentValue / step) * step
       updateValue(roundedValue)
+      
+      // Provide haptic feedback for the snap
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(3)
+      }
     }
   }
   
@@ -439,10 +463,13 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
       </div>
       
       <div 
-        className="h-32 overflow-hidden bg-[#242424] border border-[#333333] rounded-md relative select-none w-full touch-none"
+        className="h-32 overflow-hidden bg-[#1e1e1e] border border-[#333333] rounded-lg relative select-none w-full touch-none"
         style={{ 
           WebkitTapHighlightColor: 'transparent',
-          perspective: '500px'
+          perspective: '800px',
+          boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8)',
+          transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+          transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out'
         }}
         ref={containerRef}
         onMouseDown={handleMouseDown}
@@ -454,40 +481,67 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
         onTouchEnd={handleTouchEnd}
         data-component-name="RollingNumberContainer"
       >
-        {/* Gradient overlays for fading effect */}
-        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#242424] to-transparent pointer-events-none z-10"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#242424] to-transparent pointer-events-none z-10"></div>
+        {/* Enhanced 3D roller drum effect */}
+        
+        {/* Gradient overlays for fading top and bottom */}
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#151515] to-transparent pointer-events-none z-10"
+          style={{ opacity: 0.9 }}
+        ></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#151515] to-transparent pointer-events-none z-10"
+          style={{ opacity: 0.9 }}
+        ></div>
+        
+        {/* Side lighting effects to enhance cylindrical appearance */}
+        <div className="absolute top-0 bottom-0 left-0 w-[10%] bg-gradient-to-r from-[#111111] to-transparent pointer-events-none z-9" 
+          style={{ opacity: 0.7 }}
+        ></div>
+        <div className="absolute top-0 bottom-0 right-0 w-[10%] bg-gradient-to-l from-[#111111] to-transparent pointer-events-none z-9" 
+          style={{ opacity: 0.7 }}
+        ></div>
         
         {/* 3D cylindrical effect with curved surfaces */}
-        <div className="absolute top-0 left-0 right-0 h-1/4 bg-gradient-to-b from-[#1a1a1a] to-transparent pointer-events-none z-0" 
+        <div className="absolute top-0 left-0 right-0 h-1/4 bg-gradient-to-b from-black to-transparent pointer-events-none z-0" 
           style={{ 
-            borderRadius: '50% 50% 0 0 / 20%',
+            borderRadius: '60% 60% 0 0 / 30%',
             opacity: 0.7,
-            transform: 'translateY(-5px)'
+            transform: 'translateY(-10px) scale(1.1)'
           }}
         ></div>
-        <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-[#1a1a1a] to-transparent pointer-events-none z-0" 
+        <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-black to-transparent pointer-events-none z-0" 
           style={{ 
-            borderRadius: '0 0 50% 50% / 20%',
+            borderRadius: '0 0 60% 60% / 30%',
             opacity: 0.7,
-            transform: 'translateY(5px)'
+            transform: 'translateY(10px) scale(1.1)'
           }}
         ></div>
         
-        {/* Center highlight with cylindrical appearance */}
-        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 bg-[#333333] opacity-70 pointer-events-none z-1" 
+        {/* Center highlight band with enhanced depth */}
+        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 pointer-events-none z-1" 
           style={{ 
-            transform: 'perspective(500px) rotateX(5deg)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2), 0 -2px 8px rgba(0,0,0,0.2)'
+            background: 'linear-gradient(to bottom, rgba(80,80,80,0.2), rgba(50,50,50,0.4), rgba(80,80,80,0.2))',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.5), 0 -1px 2px rgba(0,0,0,0.5), inset 0 0 8px rgba(0,0,0,0.3)'
           }}
         ></div>
         
-        {/* Selection indicator with highlight glow */}
+        {/* Enhanced selection indicator with dynamic highlight */}
         <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 pointer-events-none z-2 border-t border-b" 
           style={{ 
-            borderColor: isDragging ? userColor : '#555555',
-            boxShadow: isDragging ? `0 0 8px ${userColor}40` : 'none',
-            transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
+            borderColor: isDragging ? userColor : 'rgba(125,125,125,0.5)',
+            borderWidth: isDragging ? '1.5px' : '1px',
+            boxShadow: isDragging 
+              ? `0 0 12px ${userColor}60, inset 0 0 6px ${userColor}30` 
+              : 'inset 0 1px 3px rgba(0,0,0,0.3)',
+            transition: 'all 0.2s cubic-bezier(0.23, 1, 0.32, 1)'
+          }}
+        ></div>
+        
+        {/* Light glint effect - subtle highlight that moves during interaction */}
+        <div className="absolute top-0 bottom-0 left-0 right-0 pointer-events-none z-20"
+          style={{
+            background: isDragging 
+              ? `linear-gradient(${45 + (dragCurrentY - dragStartY) / 5}deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%)` 
+              : 'linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%)',
+            transition: isDragging ? 'none' : 'all 0.5s ease-out'
           }}
         ></div>
         
@@ -503,18 +557,30 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
             const position = index - 4
             const isCurrent = index === 4
             
+            // Calculate cylinder effect values - create a wrapping roller appearance
+            const angle = position * 22.5 // 22.5 degrees per position for circular effect
+            const radius = 80 // Virtual radius of our roller drum
+            
+            // Calculate Z offset to create cylinder illusion
+            const zOffset = Math.cos(angle * Math.PI / 180) * radius - radius
+            
+            // Calculate vertical position along the curved surface
+            const yOffset = Math.sin(angle * Math.PI / 180) * radius
+            
             return (
               <div 
                 key={`${num}-${index}`}
                 className={`flex items-center justify-center h-10 cursor-pointer select-none touch-none ${isCurrent ? 'font-medium' : Math.abs(position) === 1 ? 'text-lg' : 'text-base'}`}
                 style={{
-                  transform: `translateY(${position * 40}px) ${`perspective(500px) rotateX(${position * 8}deg) translateZ(${Math.abs(position) * 5}px)`}`,
-                  opacity: isCurrent ? 1 : Math.max(0.55, 1 - Math.abs(position) * 0.15),
+                  transform: `translateY(${yOffset}px) perspective(500px) rotateX(${angle}deg) translateZ(${zOffset}px)`,
+                  opacity: isCurrent ? 1 : Math.max(0.4, 1 - Math.abs(angle/90) * 0.6),
                   WebkitTapHighlightColor: 'transparent',
                   color: isCurrent ? userColor : Math.abs(position) === 1 ? '#BBBBBB' : '#888888',
                   fontFamily: 'inherit',
-                  transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.25s ease',
-                  textShadow: isCurrent ? `0 0 6px ${userColor}40` : 'none'
+                  transition: isDragging ? 'none' : 'all 0.25s cubic-bezier(0.23, 1, 0.32, 1)',
+                  textShadow: isCurrent ? `0 0 6px ${userColor}40` : 'none',
+                  backfaceVisibility: 'hidden',
+                  transformStyle: 'preserve-3d'
                 }}
                 data-component-name={isCurrent ? "RollingNumber" : "_c"}
                 onClick={() => handleNumberClick(num)}
