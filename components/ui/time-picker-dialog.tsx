@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { CircularTimePicker } from "./circular-time-picker"
 import { X, ChevronUp, ChevronDown, Sun, Moon } from "lucide-react"
 import { Button } from "./button"
+import { motion, AnimatePresence } from "framer-motion"
 
 // Helper to detect if we're on a mobile device
 const isMobile = () => {
@@ -24,7 +25,7 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   const containerRef = useRef<HTMLDivElement>(null)
   const numbersRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number | null>(null)
-  const [displayedNumbers, setDisplayedNumbers] = useState<string[]>([])
+  const [displayedNumbers, setDisplayedNumbers] = useState<number[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [dragStartY, setDragStartY] = useState(0)
   const [dragCurrentY, setDragCurrentY] = useState(0)
@@ -53,66 +54,40 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     
     setCurrentValue(adjustedValue)
     onChange(adjustedValue)
-    setDisplayedNumbers(getNumbersToShow())
+    generateNumbers(adjustedValue)
   }
   
-  // Generate array of numbers to display with enhanced physics simulation
-  const getNumbersToShow = () => {
-    // Generate more numbers for smoother rolling effect (11 values instead of 9)
+  // Generate the array of numbers to display
+  const generateNumbers = (centerValue: number) => {
     const numbers = []
     
-    // Expand visible range from -5 to +5 (11 values total) for more fluid animation
-    for (let i = -5; i <= 5; i++) {
-      let num = currentValue + (i * step)
-      
-      // Handle wrapping for hours (1-12)
-      if (type === 'hour') {
-        while (num > 12) num = num - 12
-        while (num <= 0) num = num + 12
-      }
-      // Handle wrapping for minutes (0-59) with improved wrapping logic
-      else if (type === 'minute') {
-        while (num >= 60) num = num - 60
-        while (num < 0) num = num + 60
-      }
-      
-      // Format the number with leading zeros if needed
-      const formatted = format(num)
-      numbers.push(formatted)
+    // 4 numbers before current
+    for (let i = 4; i > 0; i--) {
+      let num = centerValue - (i * step)
+      while (num < min) num = max - (min - num - step) + step
+      numbers.push(num)
     }
     
-    return numbers
+    // Current value
+    numbers.push(centerValue)
+    
+    // 4 numbers after current
+    for (let i = 1; i <= 4; i++) {
+      let num = centerValue + (i * step)
+      while (num > max) num = min + (num - max - step) + step
+      numbers.push(num)
+    }
+    
+    setDisplayedNumbers(numbers)
   }
   
-  // Initialize numbers and set up animations
-  useEffect(() => {
-    setDisplayedNumbers(getNumbersToShow())
-    
-    return () => {
-      // Clean up any animations when unmounting
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-        animationRef.current = null
-      }
-    }
-  }, [currentValue, step])
-  
-  // Set up wheel event listener
+  // Set up wheel event listener and initialize numbers
   useEffect(() => {
     const container = containerRef.current
     if (container) {
       container.addEventListener('wheel', handleWheel, { passive: false })
-      return () => {
-        container.removeEventListener('wheel', handleWheel)
-      }
-    }
-    
-    return undefined
-  }, [handleWheel])
-  
-  useEffect(() => {
-    const container = containerRef.current
-    if (container) {
+      
+      // Add touch-action: none to prevent browser handling of touch events
       container.style.touchAction = 'none'
       
       // Detect if we're on mobile and set higher sensitivity
@@ -480,13 +455,22 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   return (
     <div className="relative flex flex-col items-center">
       {/* Up chevron */}
-      <div 
+      <motion.div 
         className="w-full flex justify-center mb-1 cursor-pointer select-none touch-none"
         onClick={() => updateValue(currentValue + step)}
         style={{ WebkitTapHighlightColor: 'transparent' }}
+        whileTap={{ scale: 0.9 }}
+        whileHover={{ y: -2 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       >
-        <ChevronUp className="hover:text-white transition-colors" style={{ color: userColor }} size={24} />
-      </div>
+        <motion.div
+          initial={{ y: 0 }}
+          animate={{ y: [0, -3, 0] }}
+          transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1.5, ease: 'easeInOut' }}
+        >
+          <ChevronUp className="hover:text-white transition-colors" style={{ color: userColor }} size={24} />
+        </motion.div>
+      </motion.div>
       
       <div 
         className="h-32 overflow-hidden bg-[#1e1e1e] border border-[#333333] rounded-lg relative select-none w-full touch-none"
@@ -583,102 +567,77 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
             const position = index - 4
             const isCurrent = index === 4
             
-            // Use a more natural angle distribution - non-linear to create natural tension at edges
-            // This creates a natural acceleration/deceleration effect for numbers as they roll
-            const baseAngle = position * 12 // Reduced base angle for smoother transitions
+            // Calculate cylinder effect values - create a wrapping roller appearance
+            const angle = position * 22.5 // 22.5 degrees per position for circular effect
+            const radius = 80 // Virtual radius of our roller drum
             
-            // Apply easing function to create natural acceleration/deceleration when rolling
-            // This makes numbers slow down at the edges and speed up in the middle for natural physics
-            const easeInOutCubic = (x: number) => {
-              return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2
-            }
+            // Calculate Z offset to create cylinder illusion
+            const zOffset = Math.cos(angle * Math.PI / 180) * radius - radius
             
-            // Apply ease to the angle for more natural movement (steeper in center, flatter at edges)
-            const normalizedPos = (position + 5) / 10 // Normalize position to 0-1 range
-            const easedPosition = easeInOutCubic(normalizedPos)
-            const adjustedAngle = (easedPosition - 0.5) * 120 // Scale back to angle range
-            
-            // Create dynamic radius that changes based on position for more realistic rolling
-            const baseRadius = 120
-            const radiusVariation = Math.abs(position) < 2 ? 
-              baseRadius * (1 - Math.abs(position) * 0.05) : 
-              baseRadius * (0.9 - Math.abs(position - Math.sign(position) * 2) * 0.01)
-            
-            // Calculate Z offset with improved physics based on rolling angle
-            const zOffset = Math.cos(adjustedAngle * Math.PI / 180) * radiusVariation - radiusVariation
-            
-            // Enhanced vertical position calculation with variable elliptical factor
-            // This creates a more natural flattening at the center of the roller
-            const ellipticalFactor = 0.7 + 0.1 * (1 - Math.min(1, Math.abs(position) / 3))
-            const yOffset = Math.sin(adjustedAngle * Math.PI / 180) * radiusVariation * ellipticalFactor
+            // Calculate vertical position along the curved surface
+            const yOffset = Math.sin(angle * Math.PI / 180) * radius
             
             return (
-              <div 
+              <motion.div 
                 key={`${num}-${index}`}
                 className={`flex items-center justify-center h-10 cursor-pointer select-none touch-none ${isCurrent ? 'font-medium' : Math.abs(position) === 1 ? 'text-lg' : 'text-base'}`}
                 style={{
-                  // Enhanced 3D transformation with modified perspective and better angles
-                  transform: `translateY(${yOffset}px) perspective(800px) rotateX(${adjustedAngle}deg) translateZ(${zOffset}px) ${Math.abs(position) > 2 ? 'scale(0.98)' : ''}`,
-                  
-                  // Smoother opacity gradient for a more natural blend between numbers
-                  opacity: isCurrent 
-                    ? 1 
-                    : Math.max(0.35, 1 - (Math.abs(adjustedAngle) / 45) * 0.4),
-                  
-                  // Keep tap highlight disabled for better mobile experience
                   WebkitTapHighlightColor: 'transparent',
-                  
-                  // Enhanced color gradient transitions between positions
-                  color: isCurrent 
-                    ? userColor 
-                    : Math.abs(position) === 1 
-                      ? '#BBBBBB' 
-                      : `rgba(136, 136, 136, ${Math.max(0.6, 1 - Math.abs(position) * 0.1)})`,
-                  
+                  color: isCurrent ? userColor : Math.abs(position) === 1 ? '#BBBBBB' : '#888888',
                   fontFamily: 'inherit',
-                  
-                  // Spring-like physics with natural easing - longer for farther positions
-                  transition: isDragging 
-                    ? 'none' 
-                    : `transform ${0.35 + Math.abs(position) * 0.05}s cubic-bezier(0.2, 0.9, 0.4, 1.2), 
-                       opacity ${0.25 + Math.abs(position) * 0.05}s cubic-bezier(0.25, 1, 0.5, 1)`,
-                  
-                  // Enhanced text highlight for the selected item
-                  textShadow: isCurrent 
-                    ? `0 0 6px ${userColor}40` 
-                    : Math.abs(position) === 1 
-                      ? '0 0 2px rgba(255,255,255,0.1)' 
-                      : 'none',
-                  
-                  // Maintain critical 3D settings
+                  textShadow: isCurrent ? `0 0 6px ${userColor}40` : 'none',
                   backfaceVisibility: 'hidden',
-                  transformStyle: 'preserve-3d',
-                  
-                  // Add subtle text scaling for more natural perspective
-                  fontSize: isCurrent 
-                    ? '1.25rem' 
-                    : `${Math.max(0.85, 1 - Math.abs(position) * 0.05)}rem`
+                  transformStyle: 'preserve-3d'
                 }}
+                initial={false}
+                animate={{
+                  y: yOffset,
+                  rotateX: angle,
+                  z: zOffset,
+                  opacity: isCurrent ? 1 : Math.max(0.4, 1 - Math.abs(angle/90) * 0.6),
+                  scale: isCurrent ? 1.05 : 1
+                }}
+                transition={{
+                  type: isDragging ? 'tween' : 'spring',
+                  stiffness: isDragging ? undefined : 300,
+                  damping: isDragging ? undefined : 20,
+                  mass: isDragging ? undefined : 0.8,
+                  duration: isDragging ? 0 : 0.3
+                }}
+                whileTap={isCurrent ? { scale: 0.95 } : undefined}
                 data-component-name={isCurrent ? "RollingNumber" : "_c"}
                 onClick={() => handleNumberClick(num)}
               >
-                <span style={{ fontSize: isCurrent ? '1.25rem' : Math.abs(position) === 1 ? '1.125rem' : '1rem' }}>
+                <motion.span 
+                  style={{ fontSize: isCurrent ? '1.25rem' : Math.abs(position) === 1 ? '1.125rem' : '1rem' }}
+                  animate={{ scale: isCurrent ? 1.1 : 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                >
                   {num.toString().padStart(2, '0')}
-                </span>
-              </div>
+                </motion.span>
+              </motion.div>
             )
           })}
         </div>
       </div>
       
       {/* Down chevron */}
-      <div 
+      <motion.div 
         className="w-full flex justify-center mt-1 cursor-pointer select-none touch-none"
         onClick={() => updateValue(currentValue - step)}
         style={{ WebkitTapHighlightColor: 'transparent' }}
+        whileTap={{ scale: 0.9 }}
+        whileHover={{ y: 2 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       >
-        <ChevronDown className="hover:text-white transition-colors" style={{ color: userColor }} size={24} />
-      </div>
+        <motion.div
+          initial={{ y: 0 }}
+          animate={{ y: [0, 3, 0] }}
+          transition={{ repeat: Infinity, repeatType: 'reverse', duration: 1.5, ease: 'easeInOut' }}
+        >
+          <ChevronDown className="hover:text-white transition-colors" style={{ color: userColor }} size={24} />
+        </motion.div>
+      </motion.div>
     </div>
   )
 }
@@ -802,22 +761,24 @@ function MobileTimePicker({ time, onTimeChange, userColor }: { time: string, onT
           />
         </div>
         
-        {/* AM/PM toggle */}
-        <div 
-          className="w-1/4 h-32 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
+        {/* AM/PM toggle - shorter version */}
+        <motion.div 
+          className="w-1/4 h-16 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
           onClick={handlePeriodToggle}
           style={{ 
             WebkitTapHighlightColor: 'transparent',
             backgroundColor: timeParts.period === 'AM' ? userColor : '#333333'
           }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           data-component-name="MobileTimePicker"
         >
-          <div className="text-3xl px-4 py-2" 
+          <div className="text-xl font-medium px-3 py-1" 
             style={{ color: timeParts.period === 'AM' ? '#222222' : userColor }}
           >
             {timeParts.period}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )
@@ -1071,9 +1032,16 @@ export function TimePickerDialog({
           <div>
             <h3 className="text-xl font-semibold" data-component-name="TimePickerDialog">{title}</h3>
             {label && (
-              <p className="text-sm text-[#A0A0A0] mt-1" data-component-name="TimePickerDialog">
+              <motion.p 
+                className="text-sm mt-1 font-medium" 
+                style={{ color: userColor }}
+                initial={{ opacity: 0.8 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                data-component-name="TimePickerDialog"
+              >
                 {label}
-              </p>
+              </motion.p>
             )}
           </div>
           <button 
