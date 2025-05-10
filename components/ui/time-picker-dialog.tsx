@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from "react"
 import { CircularTimePicker } from "./circular-time-picker"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { X, ChevronUp, ChevronDown, Sun, Moon } from "lucide-react"
-import { Button } from "./button"
 import { motion, AnimatePresence } from "framer-motion"
 
 // Helper to detect if we're on a mobile device
@@ -603,18 +605,23 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24Hou
   }
   
   return (
-    <div className="py-8 flex flex-col items-center">
-      <div className="relative w-full max-w-xs">
-        <input
+    <div className="py-4">
+      <div className="relative">
+        <Input
           type="text"
           value={timeValue}
           onChange={handleInputChange}
           onBlur={handleBlur}
           className="text-2xl font-bold text-center border border-[#444444] rounded-lg py-4 pl-6 pr-16 w-full"
-          style={{ color: userColor, backgroundColor: '#222222' }}
           placeholder="12:00"
+          style={{ 
+            color: userColor,
+            backgroundColor: '#222222',
+            caretColor: userColor
+          }}
           aria-label="Time input"
           data-component-name="DesktopTimePicker"
+          autoFocus
         />
         {!use24HourFormat && (
           <button 
@@ -632,6 +639,11 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24Hou
             )}
           </button>
         )}
+      </div>
+      <div className="mt-4 flex justify-center">
+        <div className="text-sm text-[#888888]">
+          Type directly or use the time picker below
+        </div>
       </div>
     </div>
   )
@@ -681,7 +693,7 @@ export function TimePickerDialog({
   use24HourFormat = false,
   userColor = "#03DAC6",
   title = "Select Time",
-  label
+  label,
 }: TimePickerDialogProps) {
   const [time, setTime] = useState(initialTime || "12:00")
   const [isMobileView, setIsMobileView] = useState(isMobile())
@@ -719,8 +731,11 @@ export function TimePickerDialog({
 
   const handleTimeChange = (newTime: string) => {
     setTime(newTime)
-    // Automatically save the time change
-    onTimeSelect(newTime)
+  }
+  
+  const handleApplyTime = () => {
+    onTimeSelect(time)
+    onClose()
   }
 
   const handleConfirm = () => {
@@ -786,8 +801,8 @@ export function TimePickerDialog({
             />
           )}
           
-          {/* Preset buttons */}
-          <div className="flex justify-center gap-4 mt-4 mb-4">
+          {/* Quick presets */}
+          <div className="flex justify-center gap-2 mt-4">
             <button
               type="button"
               className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all flex items-center gap-2"
@@ -805,15 +820,23 @@ export function TimePickerDialog({
               <Moon className="h-4 w-4 text-blue-300" /> Midnight
             </button>
           </div>
-          
-          <div className="flex justify-center">
-            <button
+
+          {/* Dialog footer */}
+          <div className="p-4 flex justify-end gap-2 border-t border-[#333333]">
+            <Button
+              variant="outline"
               onClick={onClose}
-              className="px-6 py-3 rounded bg-[#333333] hover:bg-[#444444] text-white font-medium w-full max-w-md"
-              data-component-name="TimePickerDialog"
+              className="bg-[#333333] text-white border-[#444444] hover:bg-[#444444] hover:text-white"
             >
-              Save
-            </button>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApplyTime}
+              className="bg-[#222222] hover:bg-[#333333]"
+              style={{ color: userColor, borderColor: userColor }}
+            >
+              Apply
+            </Button>
           </div>
         </div>
       </div>
