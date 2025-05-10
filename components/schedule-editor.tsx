@@ -108,27 +108,39 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         // Calculate end time (4 hours later)
         const [endHourStr, endMinuteStr] = latestEndTime.split(':');
-        let endHour = parseInt(endHourStr);
-        let endMinute = parseInt(endMinuteStr);
+        let endHour = parseInt(endHourStr, 10) + 4;
+        const endMinute = endMinuteStr;
         
-        // Add 4 hours
-        endHour = endHour + 4;
-        
-        // Handle overflow to next day
+        // Handle day overflow
         if (endHour >= 24) {
           endHour = 23;
-          endMinute = 59;
         }
         
-        // Format the end time
-        endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+        endTime = `${endHour.toString().padStart(2, '0')}:${endMinute}`;
       }
     }
     
-    const newBlock = { start: startTime, end: endTime, label: "Work", allDay: false };
-    const newSchedule = { ...schedule }
-    newSchedule[activeDay] = [...(newSchedule[activeDay] || []), newBlock]
-    onChange(newSchedule)
+    // Make sure the blocks are sorted by start time
+    const newBlock: TimeBlock = { start: startTime, end: endTime, label: "", allDay: false };
+    
+    // Add the new block to the schedule
+    const newSchedule = { ...schedule };
+    newSchedule[activeDay] = [...(newSchedule[activeDay] || [])];
+    newSchedule[activeDay].push(newBlock);
+    
+    // Sort time blocks by start time (earliest first)
+    newSchedule[activeDay].sort((a: TimeBlock, b: TimeBlock) => {
+      // Keep all-day events at the top
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      if (a.allDay && b.allDay) return 0;
+      
+      // Sort by start time for non-all-day events
+      return a.start.localeCompare(b.start);
+    });
+    
+    // Update the schedule
+    onChange(newSchedule);
     
     // Save to Supabase immediately if we have a userName
     if (userName) {
@@ -197,10 +209,46 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
       value = Boolean(value)
     }
     
-    newSchedule[dayName][index] = {
+    // Create the updated block
+    const updatedBlock = {
       ...newSchedule[dayName][index],
       [field]: value,
     }
+    
+    // If we're updating a time field, make sure start is before end
+    if (field === 'start' || field === 'end') {
+      const startTime = field === 'start' ? value : updatedBlock.start
+      const endTime = field === 'end' ? value : updatedBlock.end
+      
+      // If start time is after end time, adjust the end time to be after start time
+      if (startTime > endTime) {
+        // Calculate a new end time (1 hour after start time)
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        let endHour = startHour + 1
+        const endMinute = startMinute
+        
+        // Handle day overflow
+        if (endHour >= 24) {
+          endHour = 23
+        }
+        
+        updatedBlock.end = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`
+      }
+    }
+    
+    newSchedule[dayName][index] = updatedBlock
+    
+    // Sort time blocks by start time (earliest first)
+    newSchedule[dayName].sort((a: TimeBlock, b: TimeBlock) => {
+      // Keep all-day events at the top
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      if (a.allDay && b.allDay) return 0;
+      
+      // Sort by start time for non-all-day events
+      return a.start.localeCompare(b.start);
+    });
+    
     onChange(newSchedule)
     
     // Save to Supabase immediately if we have a userName
@@ -268,19 +316,34 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   }
 
   const removeTimeBlock = async (dayName: string, index: number) => {
-    const block = schedule[dayName][index];
     const newSchedule = { ...schedule }
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
+    const blockToRemove = newSchedule[dayName][index]
+    
+    // Remove the block
     newSchedule[dayName].splice(index, 1)
+    
+    // Re-sort the remaining blocks to maintain order
+    newSchedule[dayName].sort((a: TimeBlock, b: TimeBlock) => {
+      // Keep all-day events at the top
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      if (a.allDay && b.allDay) return 0;
+      
+      // Sort by start time for non-all-day events
+      return a.start.localeCompare(b.start);
+    });
+    
+    // Update the schedule
     onChange(newSchedule)
     
     // Delete from Supabase if we have an ID and userName
-    if (block.id && userName) {
+    if (blockToRemove && blockToRemove.id && userName) {
       try {
         const { error: deleteError } = await supabase
           .from('schedules')
           .delete()
-          .eq('id', block.id);
+          .eq('id', blockToRemove.id);
         
         if (deleteError) {
           console.error('Error deleting schedule:', deleteError);
