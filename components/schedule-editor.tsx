@@ -525,16 +525,17 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="flex flex-col">
                   <Label htmlFor={`start-${index}`} className="text-xs mb-1 block">Start</Label>
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => {
-                      // Force immediate synchronization of start time values only
-                      setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
-                      setCurrentTimeValue(block.start || '09:00')
-                      setStartTimeDialogKey(prev => prev + 1) // Increment start time dialog key
-                      setTimePickerOpen(true)
-                    }}
-                  >
+                  <div className="relative">
+                    <div 
+                      className="absolute inset-0 z-10 cursor-pointer"
+                      onClick={() => {
+                        // Force immediate synchronization of start time values only
+                        setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
+                        setCurrentTimeValue(block.start || '09:00')
+                        setStartTimeDialogKey(prev => prev + 1) // Increment start time dialog key
+                        setTimePickerOpen(true)
+                      }}
+                    ></div>
                     <TimeInput
                       id={`start-${index}`}
                       value={block.start || ''}
@@ -546,16 +547,17 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                 </div>
                 <div className="flex flex-col">
                   <Label htmlFor={`end-${index}`} className="text-xs mb-1 block">End</Label>
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => {
-                      // Force immediate synchronization of end time values only
-                      setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
-                      setCurrentTimeValue(block.end || '17:00')
-                      setEndTimeDialogKey(prev => prev + 1) // Increment end time dialog key
-                      setTimePickerOpen(true)
-                    }}
-                  >
+                  <div className="relative">
+                    <div 
+                      className="absolute inset-0 z-10 cursor-pointer"
+                      onClick={() => {
+                        // Force immediate synchronization of end time values only
+                        setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
+                        setCurrentTimeValue(block.end || '17:00')
+                        setEndTimeDialogKey(prev => prev + 1) // Increment end time dialog key
+                        setTimePickerOpen(true)
+                      }}
+                    ></div>
                     <TimeInput
                       id={`end-${index}`}
                       value={block.end || ''}
