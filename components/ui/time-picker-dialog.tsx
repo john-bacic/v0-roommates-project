@@ -319,7 +319,10 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
       
       <div 
         className="h-32 overflow-hidden bg-[#242424] border border-[#333333] rounded-md relative select-none w-full touch-none"
-        style={{ WebkitTapHighlightColor: 'transparent' }}
+        style={{ 
+          WebkitTapHighlightColor: 'transparent',
+          perspective: '500px'
+        }}
         ref={containerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -334,17 +337,36 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
         <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-[#242424] to-transparent pointer-events-none z-10"></div>
         <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#242424] to-transparent pointer-events-none z-10"></div>
         
-        {/* 3D perspective effect for the roller */}
-        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 bg-[#333333] opacity-70 pointer-events-none z-0" style={{ transform: 'perspective(500px) rotateX(5deg)' }}></div>
-        
-        {/* Selection indicator - highlight box around selected number with dynamic color */}
-        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 border-t border-b pointer-events-none z-1" 
-          style={{ borderColor: isDragging ? userColor : '#555555' }}
-        ></div>
-        <div className="absolute top-1/2 left-4 right-4 h-10 -mt-5 border-2 rounded-md pointer-events-none z-1" 
+        {/* 3D cylindrical effect with curved surfaces */}
+        <div className="absolute top-0 left-0 right-0 h-1/4 bg-gradient-to-b from-[#1a1a1a] to-transparent pointer-events-none z-0" 
           style={{ 
-            borderColor: isDragging ? userColor : '#666666', 
-            opacity: isDragging ? 0.5 : 0.3
+            borderRadius: '50% 50% 0 0 / 20%',
+            opacity: 0.7,
+            transform: 'translateY(-5px)'
+          }}
+        ></div>
+        <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-gradient-to-t from-[#1a1a1a] to-transparent pointer-events-none z-0" 
+          style={{ 
+            borderRadius: '0 0 50% 50% / 20%',
+            opacity: 0.7,
+            transform: 'translateY(5px)'
+          }}
+        ></div>
+        
+        {/* Center highlight with cylindrical appearance */}
+        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 bg-[#333333] opacity-70 pointer-events-none z-1" 
+          style={{ 
+            transform: 'perspective(500px) rotateX(5deg)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2), 0 -2px 8px rgba(0,0,0,0.2)'
+          }}
+        ></div>
+        
+        {/* Selection indicator with highlight glow */}
+        <div className="absolute top-1/2 left-0 right-0 h-10 -mt-5 pointer-events-none z-2 border-t border-b" 
+          style={{ 
+            borderColor: isDragging ? userColor : '#555555',
+            boxShadow: isDragging ? `0 0 8px ${userColor}40` : 'none',
+            transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
           }}
         ></div>
         
@@ -365,12 +387,13 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
                 key={`${num}-${index}`}
                 className={`flex items-center justify-center h-10 cursor-pointer select-none touch-none ${isCurrent ? 'font-medium' : Math.abs(position) === 1 ? 'text-lg' : 'text-base'}`}
                 style={{
-                  transform: `translateY(${position * 40}px) ${Math.abs(position) <= 1 ? '' : `perspective(500px) rotateX(${position * 5}deg)`}`,
-                  opacity: isCurrent ? 1 : Math.max(0.65, 1 - Math.abs(position) * 0.1),
+                  transform: `translateY(${position * 40}px) ${`perspective(500px) rotateX(${position * 8}deg) translateZ(${Math.abs(position) * 5}px)`}`,
+                  opacity: isCurrent ? 1 : Math.max(0.55, 1 - Math.abs(position) * 0.15),
                   WebkitTapHighlightColor: 'transparent',
                   color: isCurrent ? userColor : Math.abs(position) === 1 ? '#BBBBBB' : '#888888',
                   fontFamily: 'inherit',
-                  transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease'
+                  transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.25s ease',
+                  textShadow: isCurrent ? `0 0 6px ${userColor}40` : 'none'
                 }}
                 data-component-name={isCurrent ? "RollingNumber" : "_c"}
                 onClick={() => handleNumberClick(num)}
