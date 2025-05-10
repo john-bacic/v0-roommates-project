@@ -68,6 +68,7 @@ function isValidUser(obj: unknown): obj is User {
 }
 
 export default function Dashboard() {
+  // Always initialize currentWeek to today's date
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
   const [users, setUsers] = useState<User[]>(initialUsers)
@@ -81,6 +82,11 @@ export default function Dashboard() {
     }
     return false
   })
+  
+  // Force currentWeek to be today's date on initial load
+  useEffect(() => {
+    setCurrentWeek(new Date())
+  }, [])
   
   // Check for refresh flags and refresh the dashboard when needed
   useEffect(() => {
