@@ -33,6 +33,8 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   const [lastMoveTime, setLastMoveTime] = useState(0)
   const [lastMoveY, setLastMoveY] = useState(0)
   const [animating, setAnimating] = useState(false)
+  const [touchSensitivity, setTouchSensitivity] = useState(1) // For mobile sensitivity
+  const [lastSwipeDirection, setLastSwipeDirection] = useState<number | null>(null) // Track swipe direction
   
   // Handle wheel events for desktop
   const handleWheel = (e: WheelEvent) => {
@@ -86,6 +88,11 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
       
       // Add touch-action: none to prevent browser handling of touch events
       container.style.touchAction = 'none'
+      
+      // Detect if we're on mobile and set higher sensitivity
+      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        setTouchSensitivity(1.8) // More responsive on mobile devices
+      }
       
       return () => {
         container.removeEventListener('wheel', handleWheel)
@@ -141,33 +148,44 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   }
   
   const handleMoveDrag = (clientY: number) => {
-    if (!isDragging) return
-    
-    // Calculate smoother velocity with weighted averaging
-    const now = Date.now()
-    const elapsed = now - lastMoveTime
-    if (elapsed > 0) {
-      // Calculate new velocity with smoothing
-      const newVelocity = (lastMoveY - clientY) / elapsed * 15 // Scale factor
+    try {
+      if (!isDragging) return
       
-      // Apply weighted average (80% previous, 20% new) for smoother feel
-      setVelocity(velocity => velocity * 0.8 + newVelocity * 0.2)
+      setDragCurrentY(clientY)
       
-      setLastMoveTime(now)
+      // Calculate distance moved
+      const deltaY = clientY - dragStartY
+      
+      // Apply sensitivity multiplier (higher for mobile)
+      const effectiveDelta = deltaY * touchSensitivity
+      
+      // Calculate exact value change based on drag distance
+      // Each "step" is 40px, so we divide by 40 to get the number of steps
+      const valueChange = effectiveDelta / 40
+      
+      // Calculate velocity (pixels per millisecond)
+      const currentTime = Date.now()
+      const timeDelta = currentTime - lastMoveTime
+      if (timeDelta > 0) {
+        const distanceDelta = clientY - lastMoveY
+        const newVelocity = distanceDelta / timeDelta
+        // Apply smoothing to velocity updates
+        setVelocity(prev => prev * 0.7 + newVelocity * 0.3)
+      }
+      
+      // Update tracking variables
+      setLastMoveTime(currentTime)
       setLastMoveY(clientY)
-    }
-    
-    // Update current position
-    setDragCurrentY(clientY)
-    
-    // Smoother value updates with fractional changes
-    const deltaY = dragCurrentY - dragStartY
-    const sensitivity = 20 // Pixels per value change
-    
-    // Use a smaller threshold for more responsive updates
-    if (Math.abs(deltaY) >= 5) {
-      const fractionalChange = deltaY / sensitivity
-      updateValue(currentValue - fractionalChange)
+      
+      // Update value based on drag distance - invert for more intuitive control
+      // Dragging up should increase the value, down should decrease
+      updateValue(currentValue - (valueChange * step))
+      
+      // Reset start position to avoid jumps, but keep some memory
+      // of the movement for better momentum feel
+      setDragStartY(prev => prev * 0.3 + clientY * 0.7)
+    } catch (error) {
+      console.error('Error in handleMoveDrag:', error)
       setDragStartY(clientY)
     }
   }
@@ -264,14 +282,35 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
     handleEndDrag()
   }
   
-  // Touch event handlers
+  // Enhanced touch event handlers for mobile swipe gestures with better vertical detection
   const handleTouchStart = (e: React.TouchEvent) => {
     try {
       // Prevent any potential browser handling that might interfere
       if (e.cancelable) {
         e.preventDefault()
       }
+      
+      // Start the drag operation
       handleStartDrag(e.touches[0].clientY)
+      
+      // Visual feedback - highlight the border
+      if (containerRef.current) {
+        containerRef.current.style.borderColor = userColor
+        containerRef.current.style.boxShadow = `0 0 8px ${userColor}40`
+      }
+      
+      // Reset swipe direction tracking on new touch
+      setLastSwipeDirection(null)
+      
+      // Set a higher touch sensitivity specifically for mobile swipes
+      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        setTouchSensitivity(2.2) // Even more responsive on mobile for quick swipes
+      }
+      
+      // Provide haptic feedback if available
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(5) // Subtle vibration
+      }
     } catch (error) {
       console.error('Error in handleTouchStart:', error)
     }
@@ -279,18 +318,100 @@ function RollingNumber({ value, min, max, step, onChange, userColor = "#FFFFFF" 
   
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isDragging) {
-      // Only prevent default if we're actually dragging to avoid conflicts
-      // with other touch events on the page
-      if (Math.abs(e.touches[0].clientY - dragStartY) > 5) {
-        e.preventDefault()
+      // Always prevent default during drag to stop page scrolling
+      e.preventDefault()
+      
+      // Get current touch position
+      const touchY = e.touches[0].clientY
+      
+      // Calculate distance moved
+      const distance = touchY - dragStartY
+      const absDistance = Math.abs(distance)
+      
+      // Determine direction (positive = down, negative = up)
+      const direction = Math.sign(distance)
+      
+      // Check if direction changed during this drag
+      const directionChanged = lastSwipeDirection !== null && direction !== lastSwipeDirection
+      
+      // Update the last swipe direction
+      setLastSwipeDirection(direction)
+      
+      // Apply acceleration for faster response with touchSensitivity
+      // Shorter movements get higher acceleration for responsiveness
+      const accelerationFactor = Math.min(3.0, 1 + (absDistance / 50)) * touchSensitivity
+      
+      // Apply the accelerated movement
+      handleMoveDrag(dragStartY + (distance * accelerationFactor))
+      
+      // Determine if we should provide haptic feedback
+      // Based on crossing number thresholds
+      const valueChange = Math.floor(absDistance / 40)
+      if (valueChange > 0 && valueChange % 1 === 0) {
+        // Provide subtle haptic feedback when crossing number boundaries
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(2)
+        }
       }
-      handleMoveDrag(e.touches[0].clientY)
     }
   }
   
   const handleTouchEnd = (e: React.TouchEvent) => {
     try {
-      handleEndDrag()
+      // Reset the visual feedback when touch ends
+      if (containerRef.current) {
+        containerRef.current.style.borderColor = '#333333'
+        containerRef.current.style.boxShadow = 'none'
+      }
+      
+      if (isDragging) {
+        // Calculate the time and distance of the swipe
+        const endTime = Date.now()
+        const swipeTime = endTime - lastMoveTime
+        const swipeDistance = Math.abs(lastMoveY - dragStartY)
+        const direction = Math.sign(dragStartY - lastMoveY) // Reverse for intuitive direction
+        
+        // Handle different types of swipes
+        if (swipeTime < 100 && swipeDistance > 5) {
+          // Very quick flick - immediately jump one or more steps
+          const jumpSteps = Math.min(3, Math.floor(swipeDistance / 20))
+          
+          // Update value directly for immediate feedback
+          updateValue(currentValue + (direction * jumpSteps * step))
+          
+          // Add haptic feedback for the jump
+          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate([5, 10, 5]) // Pulsed haptic feedback for jumps
+          }
+          
+          // Skip momentum scrolling for very short, fast swipes
+          if (swipeDistance < 30) {
+            setIsDragging(false)
+            return
+          }
+          
+          // For longer swipes, add extra velocity for momentum
+          const boostFactor = 5.0 * touchSensitivity * (jumpSteps / 2)
+          setVelocity(velocity => velocity + (direction * boostFactor))
+        } 
+        else if (swipeTime < 300 && swipeDistance > 10) {
+          // Medium-speed swipe - boost momentum
+          const boostFactor = 3.0 * touchSensitivity
+          setVelocity(velocity => velocity + (direction * boostFactor))
+        }
+        
+        // Apply momentum scrolling
+        handleEndDrag()
+        
+        // Provide haptic confirmation based on swipe intensity
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          if (swipeDistance > 50) {
+            navigator.vibrate(15) // Stronger feedback for bigger swipes
+          } else {
+            navigator.vibrate(8) // Subtle feedback for smaller swipes
+          }
+        }
+      }
     } catch (error) {
       console.error('Error in handleTouchEnd:', error)
     }
