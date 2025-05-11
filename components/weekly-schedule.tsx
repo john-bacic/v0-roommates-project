@@ -1135,7 +1135,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - stays sticky below the WeeklySchedule header */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
+            className={`sticky top-[57px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
             data-component-name="WeeklySchedule"
             onClick={() => handleDayHeaderClick(day)}
             onDoubleClick={() => handleDayHeaderDoubleClick(day)}
