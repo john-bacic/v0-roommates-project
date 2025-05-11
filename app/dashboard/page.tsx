@@ -680,7 +680,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#282828] text-white overflow-x-hidden">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white overflow-x-hidden" style={{ overscrollBehavior: 'none' }}>
       {/* Main header - fixed at the top */}
       <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]" data-component-name="Dashboard">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">

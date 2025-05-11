@@ -1050,8 +1050,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
         data-component-name="WeeklySchedule"
+        style={{ overscrollBehavior: 'none' }}
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
@@ -1135,7 +1136,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - stays sticky below the WeeklySchedule header */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky top-0 z-[80] ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
+            className={`sticky top-0 z-[80] ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`}
+            style={{ overscrollBehavior: 'none' }} 
             data-component-name="WeeklySchedule"
             onClick={() => handleDayHeaderClick(day)}
             onDoubleClick={() => handleDayHeaderDoubleClick(day)}

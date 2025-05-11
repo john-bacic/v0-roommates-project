@@ -58,6 +58,7 @@ input[type="time"] {
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+  overscroll-behavior-y: none;
   /* Prevent horizontal swipe navigation but allow vertical scrolling */
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
