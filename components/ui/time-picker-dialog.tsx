@@ -740,8 +740,9 @@ export function TimePickerDialog({
     handleTimeChange(midnightTime)
   }
 
+  // Don't render anything if not open
   if (!isOpen) return null
-
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
       <div className="bg-[#282828] rounded-lg w-full max-w-sm mx-4">

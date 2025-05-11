@@ -1,21 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TimeInput } from "@/components/ui/time-input"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Trash2, Check, Palette } from "lucide-react"
+import { Trash2, Check, Palette, X } from "lucide-react"
 
 // Update the TimeBlock interface to include allDay property
 interface TimeBlock {
@@ -199,10 +191,23 @@ export function QuickScheduleModal({
     return "#000" // Always use dark text against colored backgrounds
   }
 
+  // Don't render if not open
+  if (!isOpen) return null;
+  
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-[#333333] text-white border-[#333333] sm:max-w-[425px]">
-        <DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="bg-[#333333] text-white border-[#333333] sm:max-w-[425px] w-full max-w-md mx-4 rounded-lg shadow-lg overflow-hidden">
+        {/* Close button */}
+        <button 
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </button>
+        
+        {/* Header */}
+        <div className="flex flex-col space-y-1.5 text-center sm:text-left p-6">
           <div className="flex items-center gap-3">
             <div
               className="flex justify-center items-center h-8 w-8 rounded-full text-sm relative"
@@ -213,14 +218,14 @@ export function QuickScheduleModal({
             >
               {userName.charAt(0).toUpperCase()}
             </div>
-            <DialogTitle className="text-xl">{userName}'s {isColorPickerOnly ? 'Color' : 'Schedule'}</DialogTitle>
+            <h2 className="text-xl font-semibold leading-none tracking-tight">{userName}'s {isColorPickerOnly ? 'Color' : 'Schedule'}</h2>
           </div>
-          <DialogDescription className="text-gray-400">
+          <p className="text-sm text-gray-400">
             {isColorPickerOnly 
               ? 'Select your color preference below.'
               : 'Quickly add to your schedule for the selected day.'}
-          </DialogDescription>
-        </DialogHeader>
+          </p>
+        </div>
 
         {/* Show colors when showColorPicker OR isColorPickerOnly is true */}
         {(showColorPicker || isColorPickerOnly) && (
@@ -327,7 +332,8 @@ export function QuickScheduleModal({
             />
           </div>
         )}
-        <DialogFooter className="flex flex-row items-center justify-between sm:justify-between">
+        {/* Footer */}
+        <div className="flex flex-row items-center justify-between sm:justify-between p-6 pt-0">
           {/* Different footer based on mode */}
           {isColorPickerOnly ? (
             <div className="w-full flex justify-center mt-4">
@@ -366,8 +372,8 @@ export function QuickScheduleModal({
               </div>
             </>
           )}
-        </DialogFooter>
-      </DialogContent>
+        </div>
+      </div>
       <style jsx global>{`
         [data-state="checked"] {
           background-color: ${currentColor};
@@ -385,6 +391,6 @@ export function QuickScheduleModal({
           ring-color: var(--focus-ring-color);
         }
       `}</style>
-    </Dialog>
+    </div>
   )
 }
