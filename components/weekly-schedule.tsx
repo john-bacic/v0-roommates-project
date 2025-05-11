@@ -224,6 +224,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     };
   }, []);
 
+  // Handle UI setup, event listeners, and cleanup
   useEffect(() => {
     // Check if mobile view
     const checkMobile = () => {
@@ -259,29 +260,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     
     window.addEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
     
-    // Add scroll event listener for header animation
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      
-      if (currentScrollY < 10) {
-        // Always show header at the top of the page
-        setHeaderVisible(true)
-      } else if (currentScrollY > lastScrollY) {
-        // Scrolling down - hide header
-        setHeaderVisible(false)
-      } else {
-        // Scrolling up - show header
-        setHeaderVisible(true)
-      }
-      
-      setLastScrollY(currentScrollY)
-    }
-    
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    
     return () => {
       window.removeEventListener('resize', checkMobile)
-      window.removeEventListener('scroll', handleScroll)
       window.removeEventListener("openColorPicker", handleOpenColorPickerModal as EventListener)
       // Clean up dashboard controls if they exist
       const dashboardControls = document.getElementById('weekly-schedule-controls')
@@ -289,7 +269,44 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         dashboardControls.innerHTML = ''
       }
     }
-  }, [users, lastScrollY])
+  }, [users]) // Only re-run this effect if users change
+  
+  // Separate useEffect for scroll handling to prevent infinite loops
+  useEffect(() => {
+    // Add scroll event listener for header animation
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      
+      // Only update state if there's an actual change in visibility needed
+      if (currentScrollY < 10) {
+        // Always show header at the top of the page
+        if (!headerVisible) {
+          setHeaderVisible(true)
+        }
+      } else if (currentScrollY > lastScrollY) {
+        // Scrolling down - hide header
+        if (headerVisible) {
+          setHeaderVisible(false)
+        }
+      } else {
+        // Scrolling up - show header
+        if (!headerVisible) {
+          setHeaderVisible(true)
+        }
+      }
+      
+      // Only update lastScrollY if it's actually different
+      if (currentScrollY !== lastScrollY) {
+        setLastScrollY(currentScrollY)
+      }
+    }
+    
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [headerVisible, lastScrollY]) // Only re-run if these dependencies change
 
   // Update users when initialUsers changes
   useEffect(() => {
