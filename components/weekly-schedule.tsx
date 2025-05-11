@@ -280,23 +280,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       // Only update state if there's an actual change in visibility needed
       if (currentScrollY < 10) {
         // Always show header at the top of the page
-        if (!headerVisible) {
-          setHeaderVisible(true)
-        }
-      } else if (currentScrollY > lastScrollY) {
+        setHeaderVisible(true)
+      } else if (currentScrollY > lastScrollY + 5) { // Add threshold to prevent jitter
         // Scrolling down - hide header
-        if (headerVisible) {
-          setHeaderVisible(false)
-        }
-      } else {
+        setHeaderVisible(false)
+      } else if (currentScrollY < lastScrollY - 5) { // Add threshold to prevent jitter
         // Scrolling up - show header
-        if (!headerVisible) {
-          setHeaderVisible(true)
-        }
+        setHeaderVisible(true)
       }
       
       // Only update lastScrollY if it's actually different
-      if (currentScrollY !== lastScrollY) {
+      if (Math.abs(currentScrollY - lastScrollY) > 2) { // Small threshold to prevent micro-updates
         setLastScrollY(currentScrollY)
       }
     }
@@ -1050,14 +1044,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-all duration-300 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
         data-component-name="WeeklySchedule"
-        style={{ 
-          WebkitOverflowScrolling: 'touch',
-          WebkitTransform: 'translateZ(0)',
-          transform: 'translateZ(0)',
-          willChange: 'transform'
-        }}
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
