@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { TimeInput } from "@/components/ui/time-input"
 import { TimePickerDialog } from "@/components/ui/time-picker-dialog"
 import { Separator } from "@/components/ui/separator"
-import { Trash2 } from "lucide-react"
+import { Trash2, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useSwipe } from "@/hooks/use-swipe"
 
@@ -39,6 +39,9 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   const [currentTimeValue, setCurrentTimeValue] = useState('')
   const [startTimeDialogKey, setStartTimeDialogKey] = useState(0)
   const [endTimeDialogKey, setEndTimeDialogKey] = useState(0)
+  
+  // Track which input is focused to show the clear button
+  const [focusedLabelIndex, setFocusedLabelIndex] = useState<number | null>(null)
 
   const [focusRingColor, setFocusRingColor] = useState(userColor)
 
@@ -567,15 +570,45 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     id={`label-${index}`}
                     type="text"
                     defaultValue={block.label !== undefined ? block.label : ''}
+                    onFocus={() => setFocusedLabelIndex(index)}
                     onBlur={(e) => {
+                      setTimeout(() => setFocusedLabelIndex(null), 200);
                       const newValue = e.target.value;
                       updateTimeBlock(activeDay, index, "label", newValue);
                     }}
-                    className={`${block.allDay === true ? 'bg-[#333333] border-[#333333] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]`}
+                    className={`${block.allDay === true ? 'bg-[#333333] border-[#333333] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)] pr-8`}
                     placeholder={block.allDay ? "Day Off, Busy, etc." : "Work, Class, etc."}
                     data-component-name="_c"
                     data-label-index={index}
                   />
+                  {focusedLabelIndex === index && (
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] hover:text-white transition-colors p-1 rounded-full hover:bg-[#333333]"
+                      onClick={() => {
+                        const input = document.getElementById(`label-${index}`) as HTMLInputElement;
+                        if (input) {
+                          input.value = '';
+                          input.focus();
+                          // Update the state
+                          const newSchedule = JSON.parse(JSON.stringify(schedule));
+                          if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
+                          if (!newSchedule[activeDay][index]) newSchedule[activeDay][index] = {};
+                          newSchedule[activeDay][index] = {
+                            ...newSchedule[activeDay][index],
+                            label: ''
+                          };
+                          onChange(newSchedule);
+                          setTimeout(() => {
+                            updateTimeBlock(activeDay, index, "label", '');
+                          }, 0);
+                        }
+                      }}
+                      aria-label="Clear text"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                   {block.allDay === true && (
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium px-1 py-1 " 
                       style={{ color: userColor }}
