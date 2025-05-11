@@ -189,19 +189,32 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   }
 
   const updateTimeBlock = async (dayName: string, index: number, field: keyof TimeBlock, value: any) => {
-    const newSchedule = { ...schedule }
-    newSchedule[dayName] = [...(newSchedule[dayName] || [])]
+    // Create a deep copy to avoid reference issues
+    const newSchedule = JSON.parse(JSON.stringify(schedule))
+    
+    // Ensure the day array exists
+    if (!newSchedule[dayName]) {
+      newSchedule[dayName] = []
+    }
+    
+    // Ensure the specific index exists
+    if (!newSchedule[dayName][index]) {
+      newSchedule[dayName][index] = {}
+    }
     
     // Ensure allDay is properly stored as a boolean
     if (field === 'allDay') {
       value = Boolean(value)
     }
     
+    // Only update the specific field for the specific index
     newSchedule[dayName][index] = {
       ...newSchedule[dayName][index],
       [field]: value,
     }
-    onChange(newSchedule)
+    
+    // Always call onChange to update the UI
+    onChange(newSchedule);
     
     // Save to Supabase immediately if we have a userName
     if (userName) {
@@ -475,7 +488,26 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     <TimeInput
                       id={`start-${index}`}
                       value={block.start || ''}
-                      onChange={(value) => updateTimeBlock(activeDay, index, "start", value)}
+                      onChange={(value) => {
+                        // Create a deep copy to avoid reference issues
+                        const newSchedule = JSON.parse(JSON.stringify(schedule));
+                        if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
+                        if (!newSchedule[activeDay][index]) newSchedule[activeDay][index] = {};
+                        
+                        // Update only this specific time input
+                        newSchedule[activeDay][index] = {
+                          ...newSchedule[activeDay][index],
+                          start: value
+                        };
+                        
+                        // Update UI immediately
+                        onChange(newSchedule);
+                        
+                        // Then call updateTimeBlock for the backend sync
+                        setTimeout(() => {
+                          updateTimeBlock(activeDay, index, "start", value);
+                        }, 0);
+                      }}
                       use24HourFormat={use24HourFormat}
                       userColor={userColor}
                     />
@@ -496,7 +528,26 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     <TimeInput
                       id={`end-${index}`}
                       value={block.end || ''}
-                      onChange={(value) => updateTimeBlock(activeDay, index, "end", value)}
+                      onChange={(value) => {
+                        // Create a deep copy to avoid reference issues
+                        const newSchedule = JSON.parse(JSON.stringify(schedule));
+                        if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
+                        if (!newSchedule[activeDay][index]) newSchedule[activeDay][index] = {};
+                        
+                        // Update only this specific time input
+                        newSchedule[activeDay][index] = {
+                          ...newSchedule[activeDay][index],
+                          end: value
+                        };
+                        
+                        // Update UI immediately
+                        onChange(newSchedule);
+                        
+                        // Then call updateTimeBlock for the backend sync
+                        setTimeout(() => {
+                          updateTimeBlock(activeDay, index, "end", value);
+                        }, 0);
+                      }}
                       use24HourFormat={use24HourFormat}
                       userColor={userColor}
                     />
@@ -515,8 +566,11 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                   <Input
                     id={`label-${index}`}
                     type="text"
-                    value={block.label !== undefined ? block.label : ''}
-                    onChange={(e) => updateTimeBlock(activeDay, index, "label", e.target.value)}
+                    defaultValue={block.label !== undefined ? block.label : ''}
+                    onBlur={(e) => {
+                      const newValue = e.target.value;
+                      updateTimeBlock(activeDay, index, "label", newValue);
+                    }}
                     className={`${block.allDay === true ? 'bg-[#333333] border-[#333333] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)]`}
                     placeholder={block.allDay ? "Day Off, Busy, etc." : "Work, Class, etc."}
                     data-component-name="_c"
@@ -576,13 +630,32 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
 
       {/* Time Picker Dialog */}
       <TimePickerDialog
-        key={currentTimeField?.field === 'start' ? `start-time-${startTimeDialogKey}` : `end-time-${endTimeDialogKey}`}
+        key={`${currentTimeField?.field || 'time'}-${currentTimeField?.index || 0}-${startTimeDialogKey}-${endTimeDialogKey}`}
         isOpen={timePickerOpen}
         onClose={() => setTimePickerOpen(false)}
         initialTime={currentTimeValue}
         onTimeSelect={(newTime) => {
           if (currentTimeField) {
-            updateTimeBlock(currentTimeField.dayName, currentTimeField.index, currentTimeField.field, newTime)
+            // Create a deep copy to avoid reference issues
+            const newSchedule = JSON.parse(JSON.stringify(schedule));
+            if (!newSchedule[currentTimeField.dayName]) newSchedule[currentTimeField.dayName] = [];
+            if (!newSchedule[currentTimeField.dayName][currentTimeField.index]) {
+              newSchedule[currentTimeField.dayName][currentTimeField.index] = {};
+            }
+            
+            // Only update the specific field for the specific time input
+            newSchedule[currentTimeField.dayName][currentTimeField.index] = {
+              ...newSchedule[currentTimeField.dayName][currentTimeField.index],
+              [currentTimeField.field]: newTime
+            };
+            
+            // Update UI immediately
+            onChange(newSchedule);
+            
+            // Then call updateTimeBlock for the backend sync
+            setTimeout(() => {
+              updateTimeBlock(currentTimeField.dayName, currentTimeField.index, currentTimeField.field, newTime);
+            }, 0);
           }
         }}
         use24HourFormat={use24HourFormat}
