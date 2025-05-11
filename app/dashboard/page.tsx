@@ -762,7 +762,7 @@ export default function Dashboard() {
           )}
           
           {/* Git commit hash display */}
-          <div className="w-full text-center mt-8 mb-2">
+          <div className="w-full text-center mt-8 mb-4">
             <p className="text-xs text-[#666666]">
               <GitCommitHash />
             </p>
