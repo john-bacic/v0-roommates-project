@@ -207,8 +207,8 @@ export function QuickScheduleModal({
         </button>
         
         {/* Header */}
-        <div className="flex flex-col space-y-1.5 text-center sm:text-left p-6">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col space-y-1.5 text-center p-6">
+          <div className="flex items-center gap-3 justify-center w-full">
             <div
               className="flex justify-center items-center h-8 w-8 rounded-full text-sm relative"
               style={{ 
@@ -220,7 +220,7 @@ export function QuickScheduleModal({
             </div>
             <h2 className="text-xl font-semibold leading-none tracking-tight">{userName}'s {isColorPickerOnly ? 'Color' : 'Schedule'}</h2>
           </div>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-400 text-center">
             {isColorPickerOnly 
               ? 'Select your color preference below.'
               : 'Quickly add to your schedule for the selected day.'}
@@ -230,7 +230,7 @@ export function QuickScheduleModal({
         {/* Show colors when showColorPicker OR isColorPickerOnly is true */}
         {(showColorPicker || isColorPickerOnly) && (
           <div className="mb-4 p-3 bg-[#242424] rounded-md">
-            <Label className="mb-2 block text-sm">Select Your Color</Label>
+
             <div className="grid grid-cols-3 gap-4 mt-2">
               {COLORS.map((color) => (
                 <button
@@ -242,7 +242,7 @@ export function QuickScheduleModal({
                 />
               ))}
             </div>
-            <p className="text-xs text-[#A0A0A0] mt-5">This color will be applied to all your schedule items.</p>
+
           </div>
         )}
 
