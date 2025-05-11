@@ -1132,81 +1132,82 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-4">
+          {/* Day header - stays sticky below the WeeklySchedule header */}
+          <div 
+            id={`day-header-${day}`}
+            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
+            data-component-name="WeeklySchedule"
+            onClick={() => handleDayHeaderClick(day)}
+            onDoubleClick={() => handleDayHeaderDoubleClick(day)}
+            onTouchStart={(e) => {
+              // Track touch for potential double-tap
+              const touchTarget = e.currentTarget;
+              const lastTouch = touchTarget.getAttribute('data-last-touch') || '0';
+              const now = new Date().getTime();
+              const timeSince = now - parseInt(lastTouch);
+              
+              if (timeSince < 300 && timeSince > 0) {
+                // Double tap detected
+                e.preventDefault();
+                handleDayHeaderDoubleClick(day);
+              }
+              
+              touchTarget.setAttribute('data-last-touch', now.toString());
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label={`${day} - Click to go to next day, double-click to go to previous day`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleDayHeaderClick(day);
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                handleDayHeaderClick(day);
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                handleDayHeaderDoubleClick(day);
+              }
+            }}
+          >
+            <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
+              {day}
+              {/* Check if this is the current day and add the date */}
+              {(() => {
+                // Get the day index (0-6, Monday-Sunday)
+                const dayIndex = days.indexOf(day);
+                
+                // Get the date for this day based on the current week
+                const date = new Date(currentWeek);
+                // With Sunday as first day (index 0), we can directly use dayIndex
+                date.setDate(date.getDate() - date.getDay() + dayIndex);
+                
+                // Check if this date is today
+                const today = new Date();
+                const isToday = date.getDate() === today.getDate() && 
+                                date.getMonth() === today.getMonth() && 
+                                date.getFullYear() === today.getFullYear();
+                
+                if (isToday) {
+                  // Format the date as "Month Day"
+                  const month = date.toLocaleString('default', { month: 'long' });
+                  const dayOfMonth = date.getDate();
+                  
+                  return (
+                    <span className="ml-1 font-bold text-xs">
+                      {` • ${month} ${dayOfMonth}`}
+                    </span>
+                  );
+                }
+                
+                return null;
+              })()}
+            </h4>
+          </div>
+          
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 pr-1 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
-              {/* Day header first - moved from above */}
-              <div 
-                id={`day-header-${day}`}
-                className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
-                data-component-name="WeeklySchedule"
-                onClick={() => handleDayHeaderClick(day)}
-                onDoubleClick={() => handleDayHeaderDoubleClick(day)}
-                onTouchStart={(e) => {
-                  // Track touch for potential double-tap
-                  const touchTarget = e.currentTarget;
-                  const lastTouch = touchTarget.getAttribute('data-last-touch') || '0';
-                  const now = new Date().getTime();
-                  const timeSince = now - parseInt(lastTouch);
-                  
-                  if (timeSince < 300 && timeSince > 0) {
-                    // Double tap detected
-                    e.preventDefault();
-                    handleDayHeaderDoubleClick(day);
-                  }
-                  
-                  touchTarget.setAttribute('data-last-touch', now.toString());
-                }}
-                role="button"
-                tabIndex={0}
-                aria-label={`${day} - Click to go to next day, double-click to go to previous day`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleDayHeaderClick(day);
-                  } else if (e.key === 'ArrowRight') {
-                    e.preventDefault();
-                    handleDayHeaderClick(day);
-                  } else if (e.key === 'ArrowLeft') {
-                    e.preventDefault();
-                    handleDayHeaderDoubleClick(day);
-                  }
-                }}
-              >
-                <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-                  {day}
-                  {/* Check if this is the current day and add the date */}
-                  {(() => {
-                    // Get the day index (0-6, Monday-Sunday)
-                    const dayIndex = days.indexOf(day);
-                    
-                    // Get the date for this day based on the current week
-                    const date = new Date(currentWeek);
-                    // With Sunday as first day (index 0), we can directly use dayIndex
-                    date.setDate(date.getDate() - date.getDay() + dayIndex);
-                    
-                    // Check if this date is today
-                    const today = new Date();
-                    const isToday = date.getDate() === today.getDate() && 
-                                    date.getMonth() === today.getMonth() && 
-                                    date.getFullYear() === today.getFullYear();
-                    
-                    if (isToday) {
-                      // Format the date as "Month Day"
-                      const month = date.toLocaleString('default', { month: 'long' });
-                      const dayOfMonth = date.getDate();
-                      
-                      return (
-                        <span className="ml-1 font-bold text-xs">
-                          {` • ${month} ${dayOfMonth}`}
-                        </span>
-                      );
-                    }
-                    
-                    return null;
-                  })()}
-                </h4>
-              </div>
               
               {/* Time header - add padding-top to prevent overlapping */}
               <div className="bg-[#282828] mb-2 pt-1">
