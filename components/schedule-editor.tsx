@@ -284,10 +284,26 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   }
 
   const removeTimeBlock = async (dayName: string, index: number) => {
-    const block = schedule[dayName][index];
+    const block = schedule[dayName][index]
     const newSchedule = { ...schedule }
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
     newSchedule[dayName].splice(index, 1)
+    
+    // Reset time picker dialog state if the current time field was for this block
+    if (currentTimeField && currentTimeField.dayName === dayName && currentTimeField.index === index) {
+      setCurrentTimeField(null)
+      setCurrentTimeValue('')
+      setTimePickerOpen(false)
+    }
+    
+    // Update indices for any time fields that were after this one
+    if (currentTimeField && currentTimeField.dayName === dayName && currentTimeField.index > index) {
+      setCurrentTimeField({
+        ...currentTimeField,
+        index: currentTimeField.index - 1
+      })
+    }
+    
     onChange(newSchedule)
     
     // Delete from Supabase if we have an ID and userName
