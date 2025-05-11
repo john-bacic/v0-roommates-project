@@ -1050,7 +1050,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-50 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
         data-component-name="WeeklySchedule"
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
@@ -1135,7 +1135,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - stays sticky below the WeeklySchedule header */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky top-0 z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
+            className={`sticky top-0 z-40 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`} 
             data-component-name="WeeklySchedule"
             onClick={() => handleDayHeaderClick(day)}
             onDoubleClick={() => handleDayHeaderDoubleClick(day)}
@@ -1210,9 +1210,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             <div className={`min-w-[800px] md:min-w-0 pl-2 pr-1 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
               
               {/* Time header - add padding-top to prevent overlapping */}
-              <div className="bg-[#282828] mb-2 pt-1">
+              <div className="bg-[#282828] mb-2 pt-1 relative">
                 <div className="relative h-6 overflow-visible">
-                  <div className="absolute inset-0 flex overflow-visible" data-component-name="WeeklySchedule">
+                  <div className="absolute inset-0 flex overflow-visible bg-[#282828] z-20" data-component-name="WeeklySchedule">
                     {/* Current time indicator - always show on the current day */}
                     {/* Force the indicator to show on Saturday for May 10, 2025 */}
                     {(getCurrentTimeDay() === day || (day === "Saturday" && new Date().getDate() === 10 && new Date().getMonth() === 4 && new Date().getFullYear() === 2025)) && (
