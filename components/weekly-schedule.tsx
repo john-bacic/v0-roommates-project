@@ -1044,8 +1044,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-all duration-300 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-transform duration-200 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-[100%]'}`} 
         data-component-name="WeeklySchedule"
+        style={{ willChange: 'transform' }}
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
