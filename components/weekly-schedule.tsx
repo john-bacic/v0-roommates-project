@@ -1170,9 +1170,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
             }}
           >
             <div className="flex justify-between items-center pr-1">
-              <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-                {day}
-                {/* Check if this is the current day and add the date */}
+              <h4 
+                className={`text-sm font-medium h-[36px] flex items-center ${getCurrentTimeDay() === day ? 'text-red-500 pl-4 border-l-4 border-red-500' : 'pl-4'}`} 
+                data-component-name="WeeklySchedule"
+              >
+                {day.substring(0, 3)}
+                {/* Check if this is the current day and add the date, otherwise add day number */}
                 {(() => {
                   // Get the day index (0-6, Monday-Sunday)
                   const dayIndex = days.indexOf(day);
@@ -1182,6 +1185,9 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                   // With Sunday as first day (index 0), we can directly use dayIndex
                   date.setDate(date.getDate() - date.getDay() + dayIndex);
                   
+                  // Get the day of month
+                  const dayOfMonth = date.getDate();
+                  
                   // Check if this date is today
                   const today = new Date();
                   const isToday = date.getDate() === today.getDate() && 
@@ -1189,13 +1195,17 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                   date.getFullYear() === today.getFullYear();
                   
                   if (isToday) {
-                    // Format the date as "Month Day"
-                    const month = date.toLocaleString('default', { month: 'long' });
-                    const dayOfMonth = date.getDate();
-                    
+                    // Just show the day number with a bullet point
                     return (
-                      <span className="ml-1 font-bold text-xs">
-                        {` • ${month} ${dayOfMonth}`}
+                      <span className="ml-1 font-bold text-xs text-red-500" data-component-name="WeeklySchedule">
+                        {` • ${dayOfMonth}`}
+                      </span>
+                    );
+                  } else {
+                    // For non-current days, add the day number with a hyphen
+                    return (
+                      <span className="ml-1 font-bold text-xs" data-component-name="WeeklySchedule">
+                        {` - ${dayOfMonth}`}
                       </span>
                     );
                   }
