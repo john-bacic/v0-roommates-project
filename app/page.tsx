@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 import { caveat } from "./fonts"
+import GitCommitHash from "@/components/git-commit-hash"
 
 export default function Home() {
   const [name, setName] = useState("")
@@ -81,7 +82,9 @@ export default function Home() {
           </Button>
         </form>
 
-
+        <footer className="text-center text-sm text-gray-400 mt-8 pb-4" data-component-name="Footer">
+          <GitCommitHash />
+        </footer>
       </div>
     </main>
   )

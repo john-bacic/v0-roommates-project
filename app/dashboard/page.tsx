@@ -94,39 +94,8 @@ function getCurrentDay() {
   return dayMap[dayIndex];
 }
 
-// Component to fetch and display the latest git commit hash
-function GitCommitHash() {
-  const [commitHash, setCommitHash] = useState<string>('')
-
-  useEffect(() => {
-    // Function to fetch the latest commit hash
-    async function fetchLatestCommitHash() {
-      try {
-        const response = await fetch('https://api.github.com/repos/john-bacic/v0-roommates-project/commits/main')
-        if (response.ok) {
-          const data = await response.json()
-          // Get the short version of the commit hash (first 7 characters)
-          const shortHash = data.sha.substring(0, 7)
-          setCommitHash(shortHash)
-        }
-      } catch (error) {
-        console.error('Error fetching commit hash:', error)
-        // If there's an error, we can use a fallback value
-        setCommitHash('8745596') // Latest known commit hash
-      }
-    }
-
-    fetchLatestCommitHash()
-
-    // Set up an interval to refresh the commit hash every hour
-    const intervalId = setInterval(fetchLatestCommitHash, 60 * 60 * 1000)
-    
-    // Clean up the interval when the component unmounts
-    return () => clearInterval(intervalId)
-  }, [])
-
-  return <span>build: {commitHash}</span>
-}
+// Import the shared GitCommitHash component
+import GitCommitHash from "@/components/git-commit-hash";
 
 export default function Dashboard() {
   // Always initialize currentWeek to today's date
@@ -789,11 +758,9 @@ export default function Dashboard() {
           )}
           
           {/* Git commit hash display */}
-          <div className="w-full text-center mt-8 mb-2">
-            <p className="text-xs text-[#666666]">
-              <GitCommitHash />
-            </p>
-          </div>
+          <footer className="text-center text-sm text-gray-400 mt-8 pb-4" data-component-name="Footer">
+            <GitCommitHash />
+          </footer>
         </div>
       </main>
 

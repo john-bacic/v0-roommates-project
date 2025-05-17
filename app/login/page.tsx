@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { caveat } from "../fonts"
+import GitCommitHash from "@/components/git-commit-hash"
 
 export default function Login() {
   const [email, setEmail] = useState("")
@@ -96,6 +97,10 @@ export default function Login() {
           </div>
         </div>
       </div>
+      
+      <footer className="text-center text-sm text-gray-400 mt-8 pb-4" data-component-name="Footer">
+        <GitCommitHash />
+      </footer>
     </main>
   )
 }
