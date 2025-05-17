@@ -476,7 +476,7 @@ export default function Overview() {
               borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
-            <Link href="/schedule/edit?from=%2Foverview">
+            <Link href={`/schedule/edit?day=${encodeURIComponent(selectedDay)}&from=%2Foverview`}>
               <Edit2 className="h-6 w-6" />
               <span className="sr-only">Edit schedule</span>
             </Link>

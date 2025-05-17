@@ -28,15 +28,37 @@ export default function EditSchedule() {
   const [use24HourFormat, setUse24HourFormat] = useState(false) // Default to false for server rendering
   const router = useRouter()
   // Using a combined state object that includes activeDay
-  const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>({  
-    activeDay: "Monday", // Default to Monday for server rendering, will be updated in useEffect
-    Monday: [],
-    Tuesday: [],
-    Wednesday: [],
-    Thursday: [],
-    Friday: [],
-    Saturday: [],
-    Sunday: [],
+  const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>(() => {
+    // Get the initial day from the URL parameters
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const dayParam = urlParams.get('day');
+      const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : "Monday";
+      
+      return {
+        activeDay,
+        Monday: [],
+        Tuesday: [],
+        Wednesday: [],
+        Thursday: [],
+        Friday: [],
+        Saturday: [],
+        Sunday: [],
+      };
+    }
+    
+    // Default return for server-side rendering
+    return {
+      activeDay: "Monday",
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: [],
+      Saturday: [],
+      Sunday: [],
+    };
   })
 
   // Function to load user data and schedules from Supabase
@@ -71,9 +93,16 @@ export default function EditSchedule() {
       // Get the day parameter from URL to ensure we maintain the selected day
       const urlParams = new URLSearchParams(window.location.search);
       const dayParam = urlParams.get('day');
-      const activeDay = dayParam && ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].includes(dayParam) 
-        ? dayParam 
-        : schedule.activeDay;
+      const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : schedule.activeDay;
+      
+      // Update the active day in state if it's different from URL
+      if (activeDay !== schedule.activeDay) {
+        setSchedule(prev => ({
+          ...prev,
+          activeDay
+        }));
+      }
       
       // Transform schedules data to the format needed by the editor
       const formattedSchedule: {activeDay: string, [key: string]: any} = {
