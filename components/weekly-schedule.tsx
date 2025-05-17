@@ -1171,7 +1171,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           >
             <div className="flex justify-between items-center pr-1">
               <h4 
-                className={`text-sm font-medium h-[36px] flex items-center ${getCurrentTimeDay() === day ? 'text-red-500 pl-4 border-l-4 border-red-500' : 'pl-4'}`} 
+                className={`text-sm font-medium h-[36px] flex items-center ${getCurrentTimeDay() === day ? 'text-red-500 pl-4 border-l-4 border-red-500 animate-pulse-subtle' : 'pl-4'}`} 
                 data-component-name="WeeklySchedule"
               >
                 {day.substring(0, 3)}
@@ -1230,7 +1230,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                     {/* Force the indicator to show on Saturday for May 10, 2025 */}
                     {(getCurrentTimeDay() === day || (day === "Saturday" && new Date().getDate() === 10 && new Date().getMonth() === 4 && new Date().getFullYear() === 2025)) && (
                       <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-50 overflow-visible" 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-50 overflow-visible animate-pulse-subtle" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
                           height: isCollapsed ? 'calc(100% + 7.5rem)' : 'calc(100% + 16rem)', // Tall enough to reach the 3rd user's row in collapsed mode
@@ -1241,7 +1241,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       >
                         {/* Red dot always at the top of the line, regardless of mobile or desktop */}
                         <div 
-                          className="absolute w-[10px] h-[10px] rounded-full bg-red-500"
+                          className="absolute w-[10px] h-[10px] rounded-full bg-red-500 animate-pulse-subtle"
                           style={{
                             top: '-4px',
                             left: '-4px',
