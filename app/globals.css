@@ -19,9 +19,12 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
+  height: 100%;
   min-height: 100vh;
   min-height: -webkit-fill-available;
+  -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
+  overscroll-behavior-y: none;
 }
 
 /* Add padding to account for safe areas */
@@ -30,14 +33,60 @@ body {
   padding-right: var(--safe-area-inset-right);
   padding-top: var(--safe-area-inset-top);
   padding-bottom: var(--safe-area-inset-bottom);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure full viewport height on iOS */
 @supports (-webkit-touch-callout: none) {
-  body {
+  html, body {
     /* The hack for Safari */
-    height: -webkit-fill-available;
+    height: 100%;
+    min-height: -webkit-fill-available;
   }
+}
+
+/* Fix for mobile viewport units */
+@supports (-webkit-touch-callout: none) {
+  /* Fix for iOS viewport units */
+  @media screen and (orientation: landscape) {
+    body {
+      height: 100%;
+      min-height: 100vh;
+      max-height: 100vh;
+    }
+  }
+  
+  @media screen and (orientation: portrait) {
+    body {
+      min-height: -webkit-fill-available;
+    }
+  }
+}
+
+/* Improve scrolling behavior */
+#__next {
+  height: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix for fixed headers */
+.fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+/* Add padding to main content to account for fixed header */
+.main-content {
+  padding-top: 57px; /* Height of the fixed header */
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure buttons with colored backgrounds always have dark text */
