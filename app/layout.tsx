@@ -35,6 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={caveat.variable}>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Roomeez" />
@@ -56,8 +57,10 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 834px) and (max-device-width: 834px) and (-webkit-device-pixel-ratio: 2)" />
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 1024px) and (max-device-width: 1024px) and (-webkit-device-pixel-ratio: 2)" />
       </head>
-      <body className="overflow-y-auto">
-        {children}
+      <body className="overflow-y-hidden">
+        <div id="app-container">
+          {children}
+        </div>
         <ClientOnlyScripts />
       </body>
     </html>

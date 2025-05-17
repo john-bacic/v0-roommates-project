@@ -680,7 +680,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white overflow-x-hidden" style={{ overscrollBehavior: 'none' }}>
       {/* Main header - fixed at the top */}
       <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]" data-component-name="Dashboard">
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
@@ -743,9 +743,9 @@ export default function Dashboard() {
       {/* Main content */}
       {/* Spacer to account for fixed header */}
       <div className="h-[57px]"></div>
-      <main className="flex-1 px-4 pb-20 pt-10 max-w-7xl mx-auto w-full relative" data-component-name="Dashboard">
+      <main className="flex-1 px-4 pb-20 pt-10 max-w-7xl mx-auto w-full relative overflow-x-hidden" data-component-name="Dashboard">
         {/* Schedule content */}
-        <div className="flex flex-col">
+        <div className="flex flex-col overflow-x-hidden">
           {loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>
@@ -762,7 +762,7 @@ export default function Dashboard() {
           )}
           
           {/* Git commit hash display */}
-          <div className="w-full text-center mt-8 mb-2">
+          <div className="w-full text-center mt-8 mb-4">
             <p className="text-xs text-[#666666]">
               <GitCommitHash />
             </p>
