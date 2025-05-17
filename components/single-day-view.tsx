@@ -331,7 +331,7 @@ export function SingleDayView({
                       )}
                       
                       <div 
-                        className="p-1 pt-4 pl-2 h-full flex flex-col overflow-hidden cursor-pointer" 
+                        className="p-1 pt-4 pl-3 h-full flex flex-col overflow-hidden cursor-pointer" 
                         style={{ zIndex: 10 }} 
                         data-component-name="SingleDayView"
                         onClick={(e) => {
@@ -405,12 +405,12 @@ export function SingleDayView({
                           </div>
                         )}
                         
-                        <div className={`p-1 ${isFirstBlock ? 'pt-4' : 'pt-2'} pl-3 h-full flex flex-col overflow-hidden`} style={{ zIndex: 10 }} data-component-name="SingleDayView">
+                        <div className={`p-1 ${isFirstBlock ? 'pt-4' : 'pt-2'} pl-3 pr-2 h-full flex flex-col overflow-hidden`} style={{ zIndex: 10 }} data-component-name="SingleDayView">
                           <div className="flex flex-col items-start justify-start w-full overflow-hidden" data-component-name="SingleDayView">
                             <span className="text-[13px] opacity-80 mb-0 mt-1 font-semibold leading-tight whitespace-nowrap" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                               {formatTime(block.start)} - {formatTime(block.end)}
                             </span>
-                            <div className="flex flex-wrap items-start max-w-full">
+                            <div className="flex flex-wrap items-start max-w-full pl-.5">
                               <span className="text-[13px] font-semibold leading-tight break-words" style={{ color: getTextColor(user.color) }} data-component-name="SingleDayView">
                                 {block.label}
                               </span>

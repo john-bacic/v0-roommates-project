@@ -1174,7 +1174,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                 className={`text-sm font-medium h-[36px] flex items-center ${getCurrentTimeDay() === day ? 'text-red-500 pl-4 border-l-4 border-red-500' : 'pl-4'}`} 
                 data-component-name="WeeklySchedule"
               >
-                {day.substring(0, 3)}
+                {getCurrentTimeDay() === day ? day : day.substring(0, 3)}
                 {/* Check if this is the current day and add the date, otherwise add day number */}
                 {(() => {
                   // Get the day index (0-6, Monday-Sunday)
