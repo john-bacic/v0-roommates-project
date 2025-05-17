@@ -280,17 +280,23 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
       // Only update state if there's an actual change in visibility needed
       if (currentScrollY < 10) {
         // Always show header at the top of the page
-        setHeaderVisible(true)
-      } else if (currentScrollY > lastScrollY + 5) { // Add threshold to prevent jitter
+        if (!headerVisible) {
+          setHeaderVisible(true)
+        }
+      } else if (currentScrollY > lastScrollY) {
         // Scrolling down - hide header
-        setHeaderVisible(false)
-      } else if (currentScrollY < lastScrollY - 5) { // Add threshold to prevent jitter
+        if (headerVisible) {
+          setHeaderVisible(false)
+        }
+      } else {
         // Scrolling up - show header
-        setHeaderVisible(true)
+        if (!headerVisible) {
+          setHeaderVisible(true)
+        }
       }
       
       // Only update lastScrollY if it's actually different
-      if (Math.abs(currentScrollY - lastScrollY) > 2) { // Small threshold to prevent micro-updates
+      if (currentScrollY !== lastScrollY) {
         setLastScrollY(currentScrollY)
       }
     }
@@ -1044,9 +1050,8 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-transform duration-200 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-[100%]'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-40 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
         data-component-name="WeeklySchedule"
-        style={{ willChange: 'transform' }}
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
@@ -1127,18 +1132,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
       {days.map((day, dayIndex) => (
         <div key={day} className="mb-4">
-          {/* Day header - stays sticky below the WeeklySchedule header */}
+          {/* Day header - stays sticky below the WeeklySchedule header - use same position for mobile and desktop */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky top-0 z-[80] ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`}
-            style={{ 
-              overscrollBehavior: 'none',
-              WebkitOverflowScrolling: 'touch',
-              WebkitTransform: 'translateZ(0)',
-              transform: 'translateZ(0)',
-              willChange: 'transform'
-            }} 
-            data-component-name="WeeklySchedule"
+            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80 mb-2 shadow-sm`}
             onClick={() => handleDayHeaderClick(day)}
             onDoubleClick={() => handleDayHeaderDoubleClick(day)}
             onTouchStart={(e) => {
@@ -1172,54 +1169,68 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               }
             }}
           >
-            <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-              {day}
-              {/* Check if this is the current day and add the date */}
-              {(() => {
-                // Get the day index (0-6, Monday-Sunday)
-                const dayIndex = days.indexOf(day);
-                
-                // Get the date for this day based on the current week
-                const date = new Date(currentWeek);
-                // With Sunday as first day (index 0), we can directly use dayIndex
-                date.setDate(date.getDate() - date.getDay() + dayIndex);
-                
-                // Check if this date is today
-                const today = new Date();
-                const isToday = date.getDate() === today.getDate() && 
-                                date.getMonth() === today.getMonth() && 
-                                date.getFullYear() === today.getFullYear();
-                
-                if (isToday) {
-                  // Format the date as "Month Day"
-                  const month = date.toLocaleString('default', { month: 'long' });
+            <div className="flex justify-between items-center pr-1">
+              <h4 
+                className={`text-sm font-medium h-[36px] flex items-center ${getCurrentTimeDay() === day ? 'text-red-500 pl-4 border-l-4 border-red-500' : 'pl-4'}`} 
+                data-component-name="WeeklySchedule"
+              >
+                {day.substring(0, 3)}
+                {/* Check if this is the current day and add the date, otherwise add day number */}
+                {(() => {
+                  // Get the day index (0-6, Monday-Sunday)
+                  const dayIndex = days.indexOf(day);
+                  
+                  // Get the date for this day based on the current week
+                  const date = new Date(currentWeek);
+                  // With Sunday as first day (index 0), we can directly use dayIndex
+                  date.setDate(date.getDate() - date.getDay() + dayIndex);
+                  
+                  // Get the day of month
                   const dayOfMonth = date.getDate();
                   
-                  return (
-                    <span className="ml-1 font-bold text-xs">
-                      {` • ${month} ${dayOfMonth}`}
-                    </span>
-                  );
-                }
-                
-                return null;
-              })()}
-            </h4>
+                  // Check if this date is today
+                  const today = new Date();
+                  const isToday = date.getDate() === today.getDate() && 
+                                  date.getMonth() === today.getMonth() && 
+                                  date.getFullYear() === today.getFullYear();
+                  
+                  if (isToday) {
+                    // Just show the day number with a bullet point
+                    return (
+                      <span className="ml-1 font-bold text-xs text-red-500" data-component-name="WeeklySchedule">
+                        {` • ${dayOfMonth}`}
+                      </span>
+                    );
+                  } else {
+                    // For non-current days, add the day number with a hyphen
+                    return (
+                      <span className="ml-1 font-bold text-xs" data-component-name="WeeklySchedule">
+                        {` - ${dayOfMonth}`}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
+              </h4>
+              
+              {/* No toggle buttons in desktop view as requested */}
+            </div>
           </div>
-          
+
+          {/* No duplicate day header needed */}
+
           {/* Scrollable container for both time header and user content */}
           <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
             <div className={`min-w-[800px] md:min-w-0 pl-2 pr-1 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
-              
               {/* Time header - add padding-top to prevent overlapping */}
-              <div className="bg-[#282828] mb-2 pt-1 relative">
+              <div className="bg-[#282828] mb-2 pt-1">
                 <div className="relative h-6 overflow-visible">
-                  <div className="absolute inset-0 flex overflow-visible bg-[#282828] z-[70]" data-component-name="WeeklySchedule">
+                  <div className="absolute inset-0 flex overflow-visible">
                     {/* Current time indicator - always show on the current day */}
                     {/* Force the indicator to show on Saturday for May 10, 2025 */}
                     {(getCurrentTimeDay() === day || (day === "Saturday" && new Date().getDate() === 10 && new Date().getMonth() === 4 && new Date().getFullYear() === 2025)) && (
                       <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-[75] overflow-visible" 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-50 overflow-visible" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
                           height: isCollapsed ? 'calc(100% + 7.5rem)' : 'calc(100% + 16rem)', // Tall enough to reach the 3rd user's row in collapsed mode
