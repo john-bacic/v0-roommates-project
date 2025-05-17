@@ -25,6 +25,23 @@ export default function Overview() {
   const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>>>({})
   const [loading, setLoading] = useState(true)
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  
+  // Get the current date and calculate dates for each day of the week
+  const getWeekDates = () => {
+    const today = new Date()
+    const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const currentDate = today.getDate()
+    
+    // Calculate the date for each day of the week
+    return days.map((_, index) => {
+      const diff = index - currentDay
+      const date = new Date(today)
+      date.setDate(currentDate + diff)
+      return date.getDate()
+    })
+  }
+  
+  const dayNumbers = getWeekDates()
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#FF7DB1") // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
@@ -62,6 +79,9 @@ export default function Overview() {
     
     return dayMap[dayIndex as keyof typeof dayMap];
   }
+  
+  // Get the current day name
+  const currentDayName = getCurrentDay();
   
   // State for day view
   const [selectedDay, setSelectedDay] = useState<string>(getCurrentDay())
@@ -391,11 +411,19 @@ export default function Overview() {
                     }
                   }}
                 >
-                  {day.substring(0, 3)}
+                  <div className="flex items-center justify-center space-x-1">
+                    <span className={day === currentDayName ? 'text-red-500 font-bold' : ''}>
+                      {day.substring(0, 3)}
+                    </span>
+                    <span className={day === currentDayName ? 'text-red-500' : ''}>-</span>
+                    <span className={day === currentDayName ? 'text-red-500 font-bold' : ''}>
+                      {dayNumbers[days.indexOf(day)]}
+                    </span>
+                  </div>
                   {isActive && (
                     <span 
-                      className="absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm" 
-                      style={{ backgroundColor: userColor }}
+                      className={`absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm ${day === currentDayName ? 'bg-red-500' : ''}`}
+                      style={day !== currentDayName ? { backgroundColor: userColor } : {}}
                     />
                   )}
                 </button>

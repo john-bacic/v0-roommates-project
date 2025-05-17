@@ -162,7 +162,7 @@ export default function EditSchedule() {
       setSchedule(prev => ({ ...prev, activeDay: dayParam }))
     }
     
-    // Get the return path from URL if available
+      // Get the return path from URL if available
     const from = urlParams.get('from')
     if (from) {
       setReturnPath(decodeURIComponent(from))
@@ -220,80 +220,87 @@ export default function EditSchedule() {
     }
   }, [use24HourFormat])
 
+  // Handle saving schedules
   const handleSave = async () => {
-    if (!userName) return;
-    
     try {
-      // Get user ID from Supabase
+      // Get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('No user logged in');
+        return;
+      }
+      
+      // Get the user's ID from the users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
-        .eq('name', userName)
+        .eq('auth_id', user.id)
         .single();
-      
+        
       if (userError) {
-        console.error('Error fetching user ID:', userError);
+        console.error('Error fetching user data:', userError);
         return;
       }
       
       const userId = userData.id;
       
-      // Delete existing schedules for this user
+      // Delete all existing schedules for this user
       const { error: deleteError } = await supabase
         .from('schedules')
         .delete()
         .eq('user_id', userId);
       
       if (deleteError) {
-        console.error('Error deleting schedules:', deleteError);
+        console.error('Error deleting existing schedules:', deleteError);
+        return;
       }
       
-      // Insert new schedules
-      interface ScheduleRecord {
-        user_id: number;
+      // Prepare schedules for insertion
+      const schedulesToInsert: Array<{
+        user_id: string;
         day: string;
         start_time: string;
         end_time: string;
         label: string;
         all_day: boolean;
-      }
+      }> = [];
       
-      const schedulesToInsert: ScheduleRecord[] = [];
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       
-      // Loop through each day and create records for each time block
-      for (const day in schedule) {
-        // Skip the activeDay property
-        if (day === 'activeDay') continue;
-        
-        if (Array.isArray(schedule[day])) {
-          schedule[day].forEach((block: TimeBlock) => {
-            schedulesToInsert.push({
-              user_id: userId,
-              day,
-              start_time: block.start,
-              end_time: block.end,
-              label: block.label,
-              all_day: block.allDay || false,
-            });
-          });
+      for (const day of days) {
+        if (schedule[day] && Array.isArray(schedule[day])) {
+          for (const block of schedule[day]) {
+            if (block && typeof block === 'object') {
+              schedulesToInsert.push({
+                user_id: userId,
+                day: day,
+                start_time: block.start || '',
+                end_time: block.end || '',
+                label: block.label || '',
+                all_day: Boolean(block.allDay)
+              });
+            }
+          }
         }
       }
-      // Insert all schedules at once
+      
       if (schedulesToInsert.length > 0) {
         const { error: insertError } = await supabase
           .from('schedules')
           .insert(schedulesToInsert);
-        
+          
         if (insertError) {
-          console.error('Error inserting schedules:', insertError);
+          throw insertError;
         }
       }
       
       // Save to localStorage as a fallback
-      localStorage.setItem(`schedule_${userName}`, JSON.stringify(schedule));
+      if (userName) {
+        localStorage.setItem(`schedule_${userName}`, JSON.stringify(schedule));
+      }
       
       // Dispatch a custom event to notify components that we're returning to the view
-      // This will trigger a data refresh in the Overview page
       const returnEvent = new CustomEvent('returnToScheduleView', {
         detail: { updatedAt: new Date().toISOString() }
       });
@@ -306,119 +313,152 @@ export default function EditSchedule() {
     }
   }
 
+
+
   const handleScheduleChange = (newSchedule: {activeDay: string, [key: string]: any}) => {
-    setSchedule(newSchedule)
+    setSchedule(newSchedule);
   }
 
-  // Get current week date range
-  const formatWeekRange = () => {
+  // Get current week date range and day numbers
+  const getWeekDates = () => {
     const today = new Date()
-    const start = new Date(today)
-    start.setDate(today.getDate() - today.getDay()) // Start of week (Sunday)
-
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6) // End of week (Saturday)
-
-    // Format with month name
-    const formatDate = (d: Date) => {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      return `${monthNames[d.getMonth()]} ${d.getDate()}`
-    }
-
-    return `${formatDate(start)} - ${formatDate(end)}`
+    const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
+    const currentDate = today.getDate()
+    
+    // Calculate the date for each day of the week
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    return days.map((_, index) => {
+      const diff = index - currentDay
+      const date = new Date(today)
+      date.setDate(currentDate + diff)
+      return date.getDate()
+    })
   }
+  
+  const dayNumbers = getWeekDates()
+  
+  // Get the current day name
+  const getCurrentDay = () => {
+    const now = new Date()
+    const hours = now.getHours()
+    
+    // If it's before 6am, consider it the previous day
+    let adjustedDate = new Date(now)
+    if (hours < 6) {
+      adjustedDate.setDate(now.getDate() - 1)
+    }
+    
+    const dayIndex = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
+    
+    // Convert to our day format
+    const dayMap = [
+      "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+    ]
+    
+    return dayMap[dayIndex]
+  }
+  
+  const currentDayName = getCurrentDay()
 
-  return (
-    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
-      {/* Header - Fixed to top */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-0 shadow-md" data-component-name="EditSchedule">
-        <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="EditSchedule">
-          <div className="flex items-center justify-between w-full mb-3" data-component-name="EditSchedule">
-            <div className="flex items-center group w-[72px]">
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  
-                  // Use a more direct approach to ensure dashboard refreshes
-                  // Set a flag that will be checked by the dashboard
-                  sessionStorage.setItem('dashboardNeedsRefresh', 'true');
-                  
-                  // Store timestamp to ensure we can detect this is a new refresh request
-                  sessionStorage.setItem('refreshTimestamp', Date.now().toString());
-                  
-                  // Dispatch events for any components that might be listening
-                  document.dispatchEvent(new CustomEvent('returnToScheduleView', {
-                    detail: { updatedAt: new Date().toISOString() }
-                  }));
-                  
-                  document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
-                  
-                  // Navigate to dashboard with a forced reload to ensure fresh data
-                  if (returnPath.includes('dashboard')) {
-                    // If returning to dashboard, force a complete page reload
-                    window.location.href = '/dashboard?refresh=' + Date.now();
+return (
+  <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+    {/* Header - Fixed to top */}
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-0 shadow-md" data-component-name="EditSchedule">
+      <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="EditSchedule">
+        <div className="flex items-center justify-between w-full mb-3" data-component-name="EditSchedule">
+          <div className="flex items-center group w-[72px]">
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                
+                // Use a more direct approach to ensure dashboard refreshes
+                // Set a flag that will be checked by the dashboard
+                sessionStorage.setItem('dashboardNeedsRefresh', 'true');
+                
+                // Store timestamp to ensure we can detect this is a new refresh request
+                sessionStorage.setItem('refreshTimestamp', Date.now().toString());
+                
+                // Dispatch events for any components that might be listening
+                document.dispatchEvent(new CustomEvent('returnToScheduleView', {
+                  detail: { updatedAt: new Date().toISOString() }
+                }));
+                
+                document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
+                
+                // Navigate to dashboard with a forced reload to ensure fresh data
+                if (returnPath.includes('dashboard')) {
+                  // If returning to dashboard, force a complete page reload
+                  window.location.href = '/dashboard?refresh=' + Date.now();
+                } else {
+                  // For other pages, try history navigation first
+                  if (window.history.length > 1) {
+                    window.history.back();
                   } else {
-                    // For other pages, try history navigation first
-                    if (window.history.length > 1) {
-                      window.history.back();
-                    } else {
-                      window.location.href = returnPath;
-                    }
+                    window.location.href = returnPath;
                   }
-                }} 
-                className="flex items-center text-white hover:opacity-80 cursor-pointer"
-                data-component-name="BackButton"
-                title="Back"
-              >
-                <ArrowLeft className="h-6 w-6" />
-                <span className="sr-only">Back</span>
-              </button>
-            </div>
-            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">
-              Edit
-            </h1>
-            {/* Spacer element to balance layout with ml-auto */}
-            <div className="w-8 h-8 ml-auto" aria-hidden="true"></div>
+                }
+              }} 
+              className="flex items-center text-white hover:opacity-80 cursor-pointer"
+              data-component-name="BackButton"
+              title="Back"
+            >
+              <ArrowLeft className="h-6 w-6" />
+              <span className="sr-only">Back</span>
+            </button>
           </div>
-          
-          {/* Day selector tabs moved to header */}
-          <div className="flex w-full" role="tablist" aria-label="Day selector" data-component-name="EditSchedule">
-            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => {
-              const isActive = schedule.activeDay === day;
-              return (
-                <button
-                  key={day}
-                  onClick={() => {
-                    const newSchedule = { ...schedule, activeDay: day };
-                    setSchedule(newSchedule);
-                  }}
-                  className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none touch-none select-none ${isActive 
-                    ? 'text-white' 
-                    : 'text-[#999999] hover:text-white'}`}
-                  style={{
-                    WebkitTapHighlightColor: 'transparent',
-                    ...(isActive ? { color: userColor } : {})
-                  }}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls={`${day.toLowerCase()}-panel`}
-                  tabIndex={0}
-                  aria-label={`${day} tab${isActive ? ', selected' : ''}`}
-                  data-component-name="_c"
-                >
-                  {day.substring(0, 3)}
-                  {isActive && (
-                    <span 
-                      className="absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm" 
-                      style={{ backgroundColor: userColor }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">
+            Edit
+          </h1>
+          {/* Spacer element to balance layout with ml-auto */}
+          <div className="w-8 h-8 ml-auto" aria-hidden="true"></div>
         </div>
-      </header>
+        
+        {/* Day selector tabs moved to header */}
+        <div className="flex w-full" role="tablist" aria-label="Day selector" data-component-name="EditSchedule">
+          {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, dayIndex) => {
+            const isActive = schedule.activeDay === day;
+            return (
+              <button
+                key={day}
+                onClick={() => {
+                  const newSchedule = { ...schedule, activeDay: day };
+                  setSchedule(newSchedule);
+                }}
+                className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none touch-none select-none ${isActive 
+                  ? 'text-white' 
+                  : 'text-[#999999] hover:text-white'}`}
+                style={{
+                  WebkitTapHighlightColor: 'transparent',
+                  ...(isActive ? { color: userColor } : {})
+                }}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`${day.toLowerCase()}-panel`}
+                tabIndex={0}
+                aria-label={`${day} tab${isActive ? ', selected' : ''}`}
+                data-component-name="_c"
+              >
+                <div className="flex items-center justify-center space-x-1">
+                  <span className={day === currentDayName ? 'text-red-500 font-bold' : ''}>
+                    {day.substring(0, 3)}
+                  </span>
+                  <span className={day === currentDayName ? 'text-red-500' : ''}>-</span>
+                  <span className={day === currentDayName ? 'text-red-500 font-bold' : ''}>
+                    {dayNumbers[dayIndex]}
+                  </span>
+                </div>
+                {isActive && (
+                  <span 
+                    className={`absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm ${day === currentDayName ? 'bg-red-500' : ''}`}
+                    style={day !== currentDayName ? { backgroundColor: userColor } : {}}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </header>
 
       {/* Main content - Added top padding to account for fixed header with tabs */}
       <main className="flex-1 p-4 pt-28 max-w-7xl mx-auto w-full">

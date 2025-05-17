@@ -1195,10 +1195,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                   date.getFullYear() === today.getFullYear();
                   
                   if (isToday) {
-                    // Just show the day number with a bullet point
+                    // Show the day number with a hyphen, but keep the red color
                     return (
                       <span className="ml-1 font-bold text-xs text-red-500" data-component-name="WeeklySchedule">
-                        {` • ${dayOfMonth}`}
+                        {` - ${dayOfMonth}`}
                       </span>
                     );
                   } else {

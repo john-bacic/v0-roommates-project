@@ -25,3 +25,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files with API keys
+test-supabase-connection.js
+test-supabase.js
+test-connection.js
+test-new-connection.js
