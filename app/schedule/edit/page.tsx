@@ -21,45 +21,87 @@ interface TimeBlock {
   allDay?: boolean
 }
 
+interface ScheduleState {
+  activeDay: string;
+  Monday: TimeBlock[];
+  Tuesday: TimeBlock[];
+  Wednesday: TimeBlock[];
+  Thursday: TimeBlock[];
+  Friday: TimeBlock[];
+  Saturday: TimeBlock[];
+  Sunday: TimeBlock[];
+  [key: string]: any; // For dynamic access
+}
+
 // Update the component to include userColor state
 export default function EditSchedule() {
-  const [userName, setUserName] = useState("")
-  const [userColor, setUserColor] = useState("#FF7DB1") // Default color
-  const [use24HourFormat, setUse24HourFormat] = useState(false) // Default to false for server rendering
-  const router = useRouter()
-  // Using a combined state object that includes activeDay
-  const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>(() => {
-    // Get the initial day from the URL parameters
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const dayParam = urlParams.get('day');
-      const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-      const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : "Monday";
-      
-      return {
-        activeDay,
-        Monday: [],
-        Tuesday: [],
-        Wednesday: [],
-        Thursday: [],
-        Friday: [],
-        Saturday: [],
-        Sunday: [],
-      };
+  const [mounted, setMounted] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userColor, setUserColor] = useState("#FF7DB1"); // Default color
+  const [use24HourFormat, setUse24HourFormat] = useState(false); // Default to false for server rendering
+  const [returnPath, setReturnPath] = useState("/dashboard"); // Default to dashboard
+  const router = useRouter();
+  
+  // Initialize schedule state with proper typing
+  const [schedule, setSchedule] = useState<ScheduleState>({
+    activeDay: "Monday",
+    Monday: [],
+    Tuesday: [],
+    Wednesday: [],
+    Thursday: [],
+    Friday: [],
+    Saturday: [],
+    Sunday: [],
+  });
+  
+  // Set up initial state after component mounts
+  useEffect(() => {
+    setMounted(true);
+    
+    // Initialize time format preference from localStorage
+    const savedFormat = localStorage.getItem('use24HourFormat');
+    if (savedFormat !== null) {
+      setUse24HourFormat(savedFormat === 'true');
     }
     
-    // Default return for server-side rendering
-    return {
-      activeDay: "Monday",
-      Monday: [],
-      Tuesday: [],
-      Wednesday: [],
-      Thursday: [],
-      Friday: [],
-      Saturday: [],
-      Sunday: [],
-    };
-  })
+    // Get the user's name from localStorage or URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const userParam = urlParams.get('user');
+    const storedName = localStorage.getItem("userName");
+    
+    // Get the day parameter and update active day if needed
+    const dayParam = urlParams.get('day');
+    const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : "Monday";
+    
+    // Update the active day in state
+    setSchedule(prev => ({
+      ...prev,
+      activeDay
+    }));
+    
+    // Get the return path from URL if available
+    const from = urlParams.get('from');
+    if (from) {
+      setReturnPath(decodeURIComponent(from));
+    }
+    
+    // Prioritize the user parameter from URL if available
+    const userToLoad = userParam || storedName;
+    if (userToLoad) {
+      // Check if the name is one of the roommates
+      if (["Riko", "Narumi", "John"].includes(userToLoad)) {
+        setUserName(userToLoad);
+        loadUserData(userToLoad);
+      } else {
+        // If not a roommate, redirect to home page
+        router.push("/");
+      }
+    } else {
+      // If no name is set, redirect to home page
+      router.push("/");
+    }
+  }, [router]);
 
   // Function to load user data and schedules from Supabase
   const loadUserData = async (name: string) => {
@@ -133,7 +175,18 @@ export default function EditSchedule() {
       }
       
       // Set the formatted schedule
-      setSchedule(formattedSchedule);
+      setSchedule(prev => ({
+        ...prev,
+        ...formattedSchedule,
+        activeDay: formattedSchedule.activeDay || prev.activeDay,
+        Monday: formattedSchedule.Monday || [],
+        Tuesday: formattedSchedule.Tuesday || [],
+        Wednesday: formattedSchedule.Wednesday || [],
+        Thursday: formattedSchedule.Thursday || [],
+        Friday: formattedSchedule.Friday || [],
+        Saturday: formattedSchedule.Saturday || [],
+        Sunday: formattedSchedule.Sunday || []
+      }));
     } catch (error) {
       console.error('Error loading user data:', error);
     }
@@ -167,9 +220,6 @@ export default function EditSchedule() {
     };
   }, [userName]);
 
-  // State to track the return path
-  const [returnPath, setReturnPath] = useState("/dashboard") // Default to dashboard
-
   // Effect for initialization and routing - runs only on client-side
   useEffect(() => {
     // Initialize time format preference from localStorage
@@ -191,7 +241,7 @@ export default function EditSchedule() {
       setSchedule(prev => ({ ...prev, activeDay: dayParam }))
     }
     
-      // Get the return path from URL if available
+    // Get the return path from URL if available
     const from = urlParams.get('from')
     if (from) {
       setReturnPath(decodeURIComponent(from))
@@ -345,7 +395,18 @@ export default function EditSchedule() {
 
 
   const handleScheduleChange = (newSchedule: {activeDay: string, [key: string]: any}) => {
-    setSchedule(newSchedule);
+    setSchedule(prev => ({
+      ...prev,
+      ...newSchedule,
+      activeDay: newSchedule.activeDay || prev.activeDay,
+      Monday: newSchedule.Monday || prev.Monday || [],
+      Tuesday: newSchedule.Tuesday || prev.Tuesday || [],
+      Wednesday: newSchedule.Wednesday || prev.Wednesday || [],
+      Thursday: newSchedule.Thursday || prev.Thursday || [],
+      Friday: newSchedule.Friday || prev.Friday || [],
+      Saturday: newSchedule.Saturday || prev.Saturday || [],
+      Sunday: newSchedule.Sunday || prev.Sunday || []
+    }));
   }
 
   // Get current week date range and day numbers
@@ -467,11 +528,12 @@ return (
                 aria-label={`${day} tab${isActive ? ', selected' : ''}`}
                 data-component-name="_c"
               >
-                <div className="w-full flex flex-col items-center justify-center h-full md:flex-row md:space-x-1">
+                <div className="w-full flex flex-col md:flex-row items-center justify-center h-full md:space-x-1">
                   <span className={`${day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
-                    {day.substring(0, 3)}
+                    <span className="md:hidden">{day.substring(0, 1)}</span>
+                    <span className="hidden md:inline">{day.substring(0, 3)}</span>
                   </span>
-                  <span className={`${day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
+                  <span className={`${day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
                     {dayNumbers[dayIndex]}
                   </span>
                 </div>

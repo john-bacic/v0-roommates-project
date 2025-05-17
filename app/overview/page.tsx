@@ -411,11 +411,12 @@ export default function Overview() {
                     }
                   }}
                 >
-                  <div className="w-full flex flex-col items-center justify-center h-full md:flex-row md:space-x-1">
+                  <div className="w-full flex flex-col md:flex-row items-center justify-center h-full md:space-x-1">
                     <span className={`${day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
-                      {day.substring(0, 3)}
+                      <span className="md:hidden">{day.substring(0, 1)}</span>
+                      <span className="hidden md:inline">{day.substring(0, 3)}</span>
                     </span>
-                    <span className={`${day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
+                    <span className={`${day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
                       {dayNumbers[days.indexOf(day)]}
                     </span>
                   </div>
