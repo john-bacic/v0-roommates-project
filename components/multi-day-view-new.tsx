@@ -503,8 +503,9 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           onClose={() => setModalOpen(false)}
           onSave={handleSaveSchedule}
           onDelete={handleDeleteTimeBlock}
-          user={selectedUser}
-          day={selectedDay}
+          userName={selectedUser.name}
+          userColor={selectedUser.color}
+          initialDay={selectedDay}
           editMode={editMode}
           timeBlock={selectedTimeBlock}
           usedColors={usedColors}
