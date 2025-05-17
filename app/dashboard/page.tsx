@@ -67,6 +67,33 @@ function isValidUser(obj: unknown): obj is User {
          'initial' in obj;
 }
 
+// Function to get the current day (considers times before 6am as previous day)
+function getCurrentDay() {
+  const now = new Date();
+  const hours = now.getHours();
+  
+  // If it's before 6am, consider it the previous day
+  let adjustedDate = new Date(now);
+  if (hours < 6) {
+    adjustedDate.setDate(now.getDate() - 1);
+  }
+  
+  const dayIndex = adjustedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+  
+  // Convert to our day format (we use full day names)
+  const dayMap = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+  ] as const;
+  
+  return dayMap[dayIndex];
+}
+
 // Component to fetch and display the latest git commit hash
 function GitCommitHash() {
   const [commitHash, setCommitHash] = useState<string>('')
@@ -788,7 +815,10 @@ export default function Dashboard() {
               borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
-            <Link href="/schedule/edit?from=%2Fdashboard" data-component-name="LinkComponent">
+            <Link 
+              href={`/schedule/edit?from=%2Fdashboard&day=${encodeURIComponent(getCurrentDay())}`} 
+              data-component-name="LinkComponent"
+            >
               <Edit2 className="h-6 w-6" />
               <span className="sr-only">Edit schedule</span>
             </Link>
