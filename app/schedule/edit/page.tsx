@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScheduleEditor } from "@/components/schedule-editor"
@@ -26,7 +27,48 @@ export default function EditSchedule() {
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#FF7DB1") // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(false) // Default to false for server rendering
+  const [currentWeek, setCurrentWeek] = useState<Date>(new Date()) // Add currentWeek state
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Parse week parameter from URL if present
+  useEffect(() => {
+    const weekParam = searchParams?.get('week');
+    if (weekParam) {
+      try {
+        const [startDateStr] = weekParam.split('_');
+        const startDate = new Date(startDateStr);
+        if (!isNaN(startDate.getTime())) {
+          setCurrentWeek(startDate);
+        }
+      } catch (error) {
+        console.error('Error parsing week parameter:', error);
+      }
+    }
+  }, [searchParams]);
+
+  // Function to get the date for a specific day of the current week
+  const getDayOfWeekDate = (dayName: string, referenceDate: Date) => {
+    const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayName);
+    const result = new Date(referenceDate);
+    result.setDate(referenceDate.getDate() - referenceDate.getDay() + dayIndex);
+    return result.getDate();
+  };
+
+  // Function to format the week range for the header (e.g., "May 12 - 18")
+  const formatWeekRangeForHeader = (date: Date) => {
+    const start = new Date(date);
+    start.setDate(date.getDate() - date.getDay()); // Start of week (Sunday)
+    
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6); // End of week (Saturday)
+    
+    const formatOptions: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+    const startStr = start.toLocaleDateString(undefined, formatOptions);
+    const endStr = end.toLocaleDateString(undefined, formatOptions);
+    
+    return `${startStr} - ${endStr}`;
+  };
   // Using a combined state object that includes activeDay
   const [schedule, setSchedule] = useState<{activeDay: string, [key: string]: any}>({  
     activeDay: "Monday", // Default to Monday for server rendering, will be updated in useEffect
@@ -374,9 +416,10 @@ export default function EditSchedule() {
                 <span className="sr-only">Back</span>
               </button>
             </div>
-            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="EditSchedule">
-              Edit
-            </h1>
+            <div className="flex items-center absolute left-1/2 transform -translate-x-1/2 space-x-2" data-component-name="EditSchedule">
+              <h1 className="text-xl font-bold">Edit</h1>
+              <span className="text-xl font-bold">{formatWeekRangeForHeader(currentWeek)}</span>
+            </div>
             {/* Spacer element to balance layout with ml-auto */}
             <div className="w-8 h-8 ml-auto" aria-hidden="true"></div>
           </div>
@@ -406,7 +449,7 @@ export default function EditSchedule() {
                   aria-label={`${day} tab${isActive ? ', selected' : ''}`}
                   data-component-name="_c"
                 >
-                  {day.substring(0, 3)}
+                  {`${day.substring(0, 3)} ${getDayOfWeekDate(day, currentWeek)}`}
                   {isActive && (
                     <span 
                       className="absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm" 

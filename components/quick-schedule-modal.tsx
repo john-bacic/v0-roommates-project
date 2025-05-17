@@ -95,7 +95,7 @@ export function QuickScheduleModal({
     return {
       id: crypto.randomUUID(),
       start: "09:00",
-      end: "17:00",
+      end: "05:00",
       label: "Work",
       allDay: false,
     }
@@ -118,7 +118,7 @@ export function QuickScheduleModal({
         setTimeBlock({
           id: crypto.randomUUID(),
           start: "09:00",
-          end: "17:00",
+          end: "05:00",
           label: "Work",
           allDay: false,
         })

@@ -1,0 +1,13 @@
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollContainer::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollContainer {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  padding-right: 1rem;  /* Add right padding to prevent cutoff */
+  margin-right: -1rem;   /* Counteract the padding for proper alignment */
+  width: calc(100% + 1rem); /* Extend width to accommodate the negative margin */
+}

@@ -7,6 +7,23 @@ import { SingleDayView } from "@/components/single-day-view"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 
+// Format week range with month names (e.g., "May 11 - May 17")
+const formatWeekRange = (date: Date) => {
+  const start = new Date(date)
+  start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6) // End of week (Saturday)
+
+  // Format with month name
+  const formatDate = (d: Date) => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    return `${monthNames[d.getMonth()]} ${d.getDate()}`
+  }
+
+  return `${formatDate(start)} - ${formatDate(end)}`
+}
+
 // Initial users data as fallback
 const initialUsers = [
   { id: 1, name: "Riko", color: "#FF7DB1", initial: "R" },
@@ -333,8 +350,8 @@ export default function Overview() {
                 <span className="sr-only">Back</span>
               </Link>
             </div>
-            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="Overview">
-              Days
+            <h1 className="text-sm font-medium absolute left-1/2 transform -translate-x-1/2 text-center" data-component-name="Overview">
+              {formatWeekRange(new Date())}
             </h1>
             {/* Time format toggle button */}
             <Button
@@ -368,9 +385,11 @@ export default function Overview() {
                 <button
                   key={day}
                   onClick={() => selectDay(day)}
-                  className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none touch-none select-none ${isActive 
-                    ? 'text-white' 
-                    : 'text-[#999999] hover:text-white'}`}
+                  className={`relative flex-1 h-10 px-1 text-xs font-medium transition-all focus:outline-none touch-none select-none ${
+                    isActive 
+                      ? 'text-white' 
+                      : 'text-[#999999] hover:text-white'
+                  }`}
                   style={{
                     WebkitTapHighlightColor: 'transparent',
                     ...(isActive ? { color: userColor } : {})
@@ -394,7 +413,7 @@ export default function Overview() {
                   {day.substring(0, 3)}
                   {isActive && (
                     <span 
-                      className="absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm" 
+                      className="absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm transition-colors duration-200" 
                       style={{ backgroundColor: userColor }}
                     />
                   )}

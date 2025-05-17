@@ -7,30 +7,29 @@ import { createClient } from '@supabase/supabase-js';
 const defaultUrl = `https://lzfsuovymvkkqdegiurk.supabase.co`;
 const defaultKey = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6ZnN1b3Z5bXZra3FkZWdpdXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MzIzNzAsImV4cCI6MjA2MDMwODM3MH0.fpfKpIRbXAQLjaJ7Bz7QYphrUYbwJ8BtfkFrmdq-a6E`;
 
-// For production with second Supabase instance
-const prodUrl = `https://nwgzujsxzdprivookljo.supabase.co`;
-const prodKey = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53Z3p1anN4emRwcml2b29rbGpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDA3NjEsImV4cCI6MjA2MDMxNjc2MX0.et6S7Lt-5PCx7YEQusfy--MZKT7s1yP3AfFoACbQurM`;
+// Directly use the environment variables to minimize issues
+// Direct access to ensure we're always using the most up-to-date values
+const getSupabaseUrl = () => {
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    console.log('Using environment URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+    return process.env.NEXT_PUBLIC_SUPABASE_URL;
+  }
+  console.log('Using default URL:', defaultUrl);
+  return defaultUrl;
+};
 
-// Determine which URL and key to use
-// Try to avoid any URL construction that might fail
-let supabaseUrl: string;
-let supabaseAnonKey: string;
+const getSupabaseKey = () => {
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.log('Using environment API key');
+    return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  }
+  console.log('Using default API key');
+  return defaultKey;
+};
 
-if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.trim() !== '') {
-  supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-} else if (prodUrl) {
-  supabaseUrl = prodUrl;
-} else {
-  supabaseUrl = defaultUrl;
-}
-
-if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim() !== '') {
-  supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-} else if (prodKey) {
-  supabaseAnonKey = prodKey;
-} else {
-  supabaseAnonKey = defaultKey;
-}
+// Set up the variables by calling the functions
+const supabaseUrl = getSupabaseUrl();
+const supabaseAnonKey = getSupabaseKey();
 
 // We'll completely avoid creating any URL objects during server-side rendering
 // Instead, we'll create a proper browser-only client with proper checks

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
 import { Plus, Edit2, Clock, ChevronUp, ChevronDown } from "lucide-react"
 import { getSupabase } from "@/lib/supabase"
+import styles from "./WeeklySchedule.module.css"
 
 interface User {
   id: number
@@ -28,6 +29,8 @@ interface WeeklyScheduleProps {
   schedules?: Record<number, Record<string, Array<TimeBlock>>>
   useAlternatingBg?: boolean
   onTimeFormatChange?: (use24Hour: boolean) => void
+  onNextWeek?: () => void
+  onPreviousWeek?: () => void
 }
 
 // Sample schedule data - in a real app, this would be loaded from localStorage or a database
@@ -64,7 +67,16 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
   },
 }
 
-export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false, onTimeFormatChange }: WeeklyScheduleProps) {
+export function WeeklySchedule({ 
+  users: initialUsers, 
+  currentWeek, 
+  onColorChange, 
+  schedules: initialSchedules, 
+  useAlternatingBg = false, 
+  onTimeFormatChange,
+  onNextWeek,
+  onPreviousWeek 
+}: WeeklyScheduleProps) {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -100,12 +112,40 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     }
     return false
   })
+  
+  // Sync with parent component
+  useEffect(() => {
+    if (onTimeFormatChange) {
+      onTimeFormatChange(use24HourFormat)
+    }
+  }, [use24HourFormat, onTimeFormatChange])
 
   // State for users (now mutable)
   const [users, setUsers] = useState<User[]>(initialUsers)
 
   // State for schedules - use provided schedules or fall back to sample data
   const [schedules, setSchedules] = useState(initialSchedules || sampleSchedules)
+  
+  // Sync schedules when initialSchedules prop changes
+  useEffect(() => {
+    console.log('WeeklySchedule received new initialSchedules:', initialSchedules);
+    console.log('initialSchedules type:', typeof initialSchedules);
+    console.log('initialSchedules keys:', initialSchedules ? Object.keys(initialSchedules) : 'none');
+    
+    if (initialSchedules && Object.keys(initialSchedules).length > 0) {
+      console.log('Setting schedules from initialSchedules');
+      setSchedules(initialSchedules);
+    } else {
+      console.log('No initialSchedules found, using sample data');
+      setSchedules(sampleSchedules);
+    }
+    
+    // Debug the structure to check format compatibility
+    setTimeout(() => {
+      console.log('Current schedules state:', schedules);
+      console.log('Sample schedules structure for reference:', sampleSchedules);
+    }, 0);
+  }, [initialSchedules])
 
   // State for quick schedule modal
   const [modalOpen, setModalOpen] = useState(false)
@@ -138,6 +178,22 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   
   // Add a force update state to ensure the component re-renders
   const [forceUpdate, setForceUpdate] = useState(0)
+
+  // Handle navigation to previous week
+  const handlePreviousWeek = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onPreviousWeek) {
+      onPreviousWeek();
+    }
+  };
+  
+  // Handle navigation to next week
+  const handleNextWeek = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNextWeek) {
+      onNextWeek();
+    }
+  };
 
   // Set up real-time subscriptions for schedule and user changes
   useEffect(() => {
@@ -312,6 +368,28 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const colors = users.map((user) => user.color)
     setUsedColors(colors)
   }, [users])
+
+  // Format week range with month names (e.g., "May 11 - May 17")
+  const formatWeekRange = (date: Date) => {
+    try {
+      const start = new Date(date)
+      start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
+      
+      const end = new Date(start)
+      end.setDate(start.getDate() + 6) // End of week (Saturday)
+      
+      // Format with month name
+      const formatDate = (d: Date) => {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        return `${monthNames[d.getMonth()]} ${d.getDate()}`
+      }
+      
+      return `${formatDate(start)} - ${formatDate(end)}`
+    } catch (error) {
+      console.error('Error formatting week range:', error)
+      return 'Week of...'
+    }
+  }
 
   // Helper function to convert a time string (HH:MM) to a position percentage
   // This is the core time calculation function used throughout the component
@@ -848,22 +926,6 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   // Handle deleting a time block
-  // Format week range with month names (similar to Overview component)
-  const formatWeekRange = (date: Date) => {
-    const start = new Date(date)
-    start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
-
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6) // End of week (Saturday)
-
-    // Format with month name
-    const formatDate = (d: Date) => {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      return `${monthNames[d.getMonth()]} ${d.getDate()}`
-    }
-
-    return `${formatDate(start)} - ${formatDate(end)}`
-  }
 
   const handleDeleteTimeBlock = async (day: string, timeBlockId: string) => {
     if (!selectedUser) return
@@ -980,8 +1042,10 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     }
   };
   
+  // Format week range with month names (e.g., "May 11 - May 17")
+
   // Helper function to check if the current day is in the visible week
-  // Returns the day to show the current time indicator on
+  // Returns the day to show the current time indicator on, or null if not in current week
   const getCurrentTimeDay = () => {
     const today = new Date()
     const hours = today.getHours()
@@ -995,10 +1059,6 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
     const dayName = days[dayOfWeek] // With Sunday as first day, we can use dayOfWeek directly
     
-    // For debugging - log today's date and the current day name
-    console.log('Current date:', today.toDateString(), 'Day name:', dayName)
-    console.log('Current time:', today.toTimeString())
-    
     // Check if the current week includes the adjusted date
     const weekStart = new Date(currentWeek)
     weekStart.setDate(currentWeek.getDate() - currentWeek.getDay()) // Start of week (Sunday)
@@ -1006,21 +1066,16 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of week (Saturday)
     
-    // For debugging - log the week range
-    console.log('Week start:', weekStart.toDateString())
-    console.log('Week end:', weekEnd.toDateString())
-    console.log('Current week prop:', currentWeek.toDateString())
+    // Reset hours for accurate date comparison
+    weekStart.setHours(0, 0, 0, 0)
+    weekEnd.setHours(23, 59, 59, 999)
+    adjustedDate.setHours(12, 0, 0, 0) // Set to noon to avoid timezone issues
     
-    // Check if today is in the current week range
-    const isInCurrentWeek = (
-      (adjustedDate >= weekStart && adjustedDate <= weekEnd) || 
-      (today >= weekStart && today <= weekEnd)
-    )
+    // Check if the adjusted date is in the current week range
+    const isInCurrentWeek = adjustedDate >= weekStart && adjustedDate <= weekEnd
     
-    console.log('Is in current week:', isInCurrentWeek)
-    
-    // Always return the current day name for debugging
-    return dayName
+    // Only return the day name if it's in the current week
+    return isInCurrentWeek ? dayName : null
   }
   
   // Helper function to get the current time position as a percentage
@@ -1040,17 +1095,44 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
   }
 
+  // These functions are now defined at the top of the component
+  // and have been removed from here to avoid duplication
+
   return (
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed top-[57px] left-0 right-0 z-[90] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-transform duration-200 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-[100%]'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-[40] bg-[#242424] border-b border-[#333333] w-full shadow-md opacity-90 transition-transform duration-200 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-[100%]'}`} 
         data-component-name="WeeklySchedule"
         style={{ willChange: 'transform' }}
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
-          <div>
-            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
+          <div className="flex items-center gap-1">
+            {/* Previous week button */}
+            <button 
+              onClick={handlePreviousWeek}
+              className="text-white hover:text-gray-300 p-1 -ml-1 flex items-center"
+              aria-label="Previous week"
+              title="Previous week"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            
+            <h3 className="text-sm font-medium px-1">{formatWeekRange(currentWeek)}</h3>
+            
+            {/* Next week button */}
+            <button 
+              onClick={handleNextWeek}
+              className="text-white hover:text-gray-300 p-1 -mr-1 flex items-center"
+              aria-label="Next week"
+              title="Next week"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -1130,7 +1212,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           {/* Day header - stays sticky below the WeeklySchedule header */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky top-0 z-[80] ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`}
+            className={`sticky top-0 z-[30] ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} flex justify-between items-center pr-1 mb-2 cursor-pointer hover:bg-opacity-80 shadow-sm`}
             style={{ 
               overscrollBehavior: 'none',
               WebkitOverflowScrolling: 'touch',
@@ -1172,10 +1254,26 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
               }
             }}
           >
-            <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">
-              {day}
-              {/* Check if this is the current day and add the date */}
-              {(() => {
+            <h4 className={`text-sm font-medium pl-2 h-9 flex items-center ${
+              (() => {
+                // Get the day index (0-6, Monday-Sunday)
+                const dayIndex = days.indexOf(day);
+                
+                // Get the date for this day based on the current week
+                const date = new Date(currentWeek);
+                // With Sunday as first day (index 0), we can directly use dayIndex
+                date.setDate(date.getDate() - date.getDay() + dayIndex);
+                
+                // Check if this date is today
+                const today = new Date();
+                const isToday = date.getDate() === today.getDate() && 
+                                date.getMonth() === today.getMonth() && 
+                                date.getFullYear() === today.getFullYear();
+                
+                return isToday ? 'bg-[#282828] text-[#EF4444] px-4 pl-3 border-l-2 border-[#EF4444]' : '';
+              })()
+            }`}>
+              {day} - {(() => {
                 // Get the day index (0-6, Monday-Sunday)
                 const dayIndex = days.indexOf(day);
                 
@@ -1191,35 +1289,30 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                 date.getFullYear() === today.getFullYear();
                 
                 if (isToday) {
-                  // Format the date as "Month Day"
-                  const month = date.toLocaleString('default', { month: 'long' });
-                  const dayOfMonth = date.getDate();
-                  
-                  return (
-                    <span className="ml-1 font-bold text-xs">
-                      {` • ${month} ${dayOfMonth}`}
-                    </span>
-                  );
+                  // For today, show month and date
+                  const month = date.toLocaleString('default', { month: 'short' });
+                  return `${month} ${date.getDate()}`;
+                } else {
+                  // For other days, just show the date number
+                  return date.getDate();
                 }
-                
-                return null;
               })()}
             </h4>
           </div>
           
           {/* Scrollable container for both time header and user content */}
-          <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
-            <div className={`min-w-[800px] md:min-w-0 pl-2 pr-1 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`}>
+          <div className={`md:overflow-visible overflow-x-auto w-full ${styles.scrollContainer}`}>
+            {/* This comment ensures the closing div is on a new line */}
+            <div className={`min-w-[800px] md:min-w-0 pl-2 pr-4 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : ''}`} style={{ width: 'calc(100% - 1rem)' }}>
               
               {/* Time header - add padding-top to prevent overlapping */}
               <div className="bg-[#282828] mb-2 pt-1 relative">
                 <div className="relative h-6 overflow-visible">
-                  <div className="absolute inset-0 flex overflow-visible bg-[#282828] z-[70]" data-component-name="WeeklySchedule">
-                    {/* Current time indicator - always show on the current day */}
-                    {/* Force the indicator to show on Saturday for May 10, 2025 */}
-                    {(getCurrentTimeDay() === day || (day === "Saturday" && new Date().getDate() === 10 && new Date().getMonth() === 4 && new Date().getFullYear() === 2025)) && (
+                  <div className="absolute inset-0 flex overflow-visible bg-[#282828] z-[20]" data-component-name="WeeklySchedule">
+                    {/* Current time indicator - only show on the current day */}
+                    {getCurrentTimeDay() === day && (
                       <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-[75] overflow-visible" 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-[60] overflow-visible" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
                           height: isCollapsed ? 'calc(100% + 7.5rem)' : 'calc(100% + 16rem)', // Tall enough to reach the 3rd user's row in collapsed mode
@@ -1235,7 +1328,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                             top: '-4px',
                             left: '-4px',
                             position: 'absolute',
-                            zIndex: 55, // Ensure it's above the line and time labels
+                            zIndex: 65, // Increased to ensure it's above the line and time labels
                             pointerEvents: 'none' // Prevent it from blocking interactions
                           }}
                           data-component-name="WeeklySchedule"
@@ -1270,7 +1363,19 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
               {/* User schedules */}
               {users.map((user) => {
-                const userSchedule = schedules[user.id][day] || []
+                console.log(`Rendering user ${user.name} (ID: ${user.id}) for day ${day}`);
+                console.log(`schedules object has user?`, schedules && !!schedules[user.id]);
+                if (schedules && schedules[user.id]) {
+                  console.log(`Schedule days for user ${user.id}:`, Object.keys(schedules[user.id]));
+                  console.log(`Has ${day} schedule?`, !!schedules[user.id][day]);
+                  if (schedules[user.id][day]) {
+                    console.log(`${day} entries:`, schedules[user.id][day].length);
+                  }
+                }
+                
+                // Safely access user's schedule with proper null checks
+                const userSchedule = (schedules && schedules[user.id] && schedules[user.id][day]) || [];
+                console.log(`userSchedule for ${user.name} on ${day}:`, userSchedule);
                 const isCurrentUser = user.name === currentUserName
 
                 return (
