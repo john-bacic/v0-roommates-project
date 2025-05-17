@@ -41,7 +41,10 @@ export default function GitCommitHash() {
   }, []);
 
   return (
-    <span data-component-name="GitCommitHash">
+    <span 
+      data-component-name="GitCommitHash"
+      className="text-[10px] text-[#666666] whitespace-nowrap"
+    >
       build: {commitHash} {isLocal ? '(local)' : '(update available)'}
     </span>
   );
