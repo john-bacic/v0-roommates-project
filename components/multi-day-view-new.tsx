@@ -511,7 +511,9 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           usedColors={usedColors}
           showColorPicker={showColorPicker}
           setShowColorPicker={setShowColorPicker}
-          onUserColorChange={updateUserColor}
+          onUserColorChange={(color: string) => {
+            updateUserColor(selectedUser, color);
+          }}
         />
       )}
     </div>

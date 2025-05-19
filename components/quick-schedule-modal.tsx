@@ -31,7 +31,7 @@ interface QuickScheduleModalProps {
   usedColors?: string[]
   showColorPicker?: boolean
   setShowColorPicker?: (show: boolean) => void
-  onUserColorChange?: (user: any, color: string, saveToStorage?: boolean) => void
+  onUserColorChange?: (color: string) => void
   isColorPickerOnly?: boolean // New prop to show only color picker
   use24HourFormat?: boolean // New prop to control time format display
 }
@@ -166,7 +166,8 @@ export function QuickScheduleModal({
     setCurrentColor(newColor)
     // Only update the color, don't close the modal or affect schedules
     if (onUserColorChange) {
-      onUserColorChange({ name: userName }, newColor, true)
+      // Just pass the color directly - the parent component will handle the user object
+      onUserColorChange(newColor)
     }
     // In color-only mode, we want to keep the picker open
     // In regular mode, auto-close the color picker after selection

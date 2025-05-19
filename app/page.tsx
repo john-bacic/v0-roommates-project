@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,15 +11,25 @@ import { caveat } from "./fonts"
 import GitCommitHash from "@/components/git-commit-hash"
 
 export default function Home() {
+  // Add isClient state to track client-side rendering
+  const [isClient, setIsClient] = useState(false)
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const router = useRouter()
+  
+  // Set isClient to true when component mounts on client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (name.trim() && password === "Tokyo") {
-      // In a real app, we'd store this in localStorage or a cookie
-      localStorage.setItem("userName", name)
+      // Only access localStorage on the client side
+      if (typeof window !== 'undefined') {
+        // In a real app, we'd store this in localStorage or a cookie
+        localStorage.setItem("userName", name)
+      }
       router.push("/dashboard")
     } else if (password !== "Tokyo") {
       // Show an error for incorrect password
@@ -83,7 +93,8 @@ export default function Home() {
         </form>
 
         <footer className="text-center text-sm text-gray-400 mt-8 pb-4" data-component-name="Footer">
-          <GitCommitHash />
+          {/* Only render GitCommitHash on client side to prevent hydration mismatch */}
+          {isClient ? <GitCommitHash /> : <span className="text-[10px] text-[#666666] whitespace-nowrap">build: dev</span>}
         </footer>
       </div>
     </main>

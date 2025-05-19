@@ -69,6 +69,11 @@ function isValidUser(obj: unknown): obj is User {
 
 // Function to get the current day (considers times before 6am as previous day)
 function getCurrentDay() {
+  // Return a default day during server-side rendering to prevent hydration mismatch
+  if (typeof window === 'undefined') {
+    return "Monday"; // Default static day for SSR
+  }
+  
   const now = new Date();
   const hours = now.getHours();
   
@@ -98,25 +103,43 @@ function getCurrentDay() {
 import GitCommitHash from "@/components/git-commit-hash";
 
 export default function Dashboard() {
+  // Use a state to track if we're on the client side
+  const [isClient, setIsClient] = useState(false)
+  
   // Always initialize currentWeek to today's date
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [userName, setUserName] = useState("")
   const [users, setUsers] = useState<User[]>(initialUsers)
   const [userColor, setUserColor] = useState("#B388F5") // Default color
   const { toast } = useToast()
-  const [use24HourFormat, setUse24HourFormat] = useState(() => {
-    // Only run in client-side
-    if (typeof window !== 'undefined') {
-      const savedFormat = localStorage.getItem('use24HourFormat')
-      return savedFormat !== null ? savedFormat === 'true' : false
-    }
-    return false
-  })
   
-  // Force currentWeek to be today's date on initial load
+  // Initialize with a default value to avoid hydration mismatch
+  const [use24HourFormat, setUse24HourFormat] = useState(false)
+  
+  // Update client-side state after hydration
   useEffect(() => {
-    setCurrentWeek(new Date())
+    setIsClient(true)
+    
+    // Now that we're on the client side, we can safely access localStorage
+    const savedFormat = localStorage.getItem('use24HourFormat')
+    if (savedFormat !== null) {
+      setUse24HourFormat(savedFormat === 'true')
+    }
+    
+    // Get the user name from localStorage immediately after hydration
+    const storedName = localStorage.getItem("userName")
+    console.log('Initial hydration - username from localStorage:', storedName)
+    if (storedName) {
+      setUserName(storedName)
+    }
   }, [])
+  
+  // Force currentWeek to be today's date on initial load, but only on client side
+  useEffect(() => {
+    if (isClient) {
+      setCurrentWeek(new Date())
+    }
+  }, [isClient])
   
   // Check for refresh flags and refresh the dashboard when needed
   useEffect(() => {
@@ -187,8 +210,11 @@ export default function Dashboard() {
     };
   }, []);
   
-  // Apply the time format class to the document
+  // Apply the time format class to the document - only run on client side
   useEffect(() => {
+    // Skip this effect during server-side rendering
+    if (!isClient) return;
+    
     // Update document class
     if (use24HourFormat) {
       document.documentElement.classList.add('use-24h-time')
@@ -369,25 +395,39 @@ export default function Dashboard() {
     }
   }, [userName])
 
+  // Load user data after component mounts (client-side only)
   useEffect(() => {
-    // Check if window is defined (client-side only)
-    if (typeof window !== 'undefined') {
+    if (isClient) {
       // Get the user's name from localStorage (we'll keep this for user preference)
       const storedName = localStorage.getItem("userName")
+      console.log('Retrieved username from localStorage:', storedName)
+      
+      // Always set the username, even if it's empty
+      setUserName(storedName || '')
+      
+      // Only check for user color if we have a username
       if (storedName) {
-        setUserName(storedName)
-        
         // Immediately check for the user's color in Supabase
         const fetchUserColor = async () => {
           try {
+            // Fetch both name and color from the database
             const { data, error } = await getSupabase()
               .from('users')
-              .select('color')
+              .select('name, color')
               .eq('name', storedName) // Use storedName directly since it's guaranteed to exist here
               .single()
             
-            if (!error && data && typeof data === 'object' && 'color' in data) {
-              setUserColor(String(data.color))
+            if (!error && data && typeof data === 'object') {
+              // Update color if available
+              if ('color' in data) {
+                setUserColor(String(data.color))
+              }
+              
+              // Update name from database if available - this ensures we're using the database name
+              if ('name' in data && data.name) {
+                setUserName(String(data.name))
+                console.log('Updated username from database:', data.name)
+              }
             }
           } catch (error) {
             console.error('Error fetching user color:', error)
@@ -399,11 +439,18 @@ export default function Dashboard() {
       }
     }
     
-    // Initial data load
+    // Initial data load - moved inside the useEffect proper scope
     loadData()
-
-    // Client-side only code
-    if (typeof window !== 'undefined') {
+    
+    // Return cleanup function
+    return () => {
+      // Any cleanup if needed
+    }
+  }, [isClient]) // Add isClient as dependency
+  
+  // Only set up event listeners on the client side in a separate useEffect
+  useEffect(() => {
+    if (isClient) {
       // Get stored name for event handlers
       const storedName = localStorage.getItem("userName")
       
@@ -438,9 +485,16 @@ export default function Dashboard() {
     
     // Return empty cleanup function for server-side rendering
     return () => {}
-  }, [])
+  }, [isClient]) // Add isClient as dependency
 
+  // Format week range using a static string for server-side rendering or dynamic date for client-side
   const formatWeekRange = (date: Date) => {
+    // During server-side rendering, return a fixed string
+    if (!isClient) {
+      return "Current Week" // This ensures consistent server/client rendering
+    }
+    
+    // Only do date calculations on the client side
     const start = new Date(date)
     start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
 
@@ -633,40 +687,153 @@ export default function Dashboard() {
   
   // Function to handle color updates from the WeeklySchedule component
   const handleColorUpdate = async (name: string, color: string) => {
+    console.log(`Updating color for ${name} to ${color}`);
+    
+    // Find the user before updating state to ensure we have the correct ID
+    const userToUpdate = users.find(user => user.name === name);
+    if (!userToUpdate) {
+      console.error(`User ${name} not found`);
+      toast({
+        title: "Error updating color",
+        description: `Could not find user ${name}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const userId = userToUpdate.id;
+    const originalColor = userToUpdate.color;
+    
+    // Update the users array in state first for immediate UI feedback
+    setUsers(prevUsers => {
+      return prevUsers.map(user => 
+        user.name === name ? { ...user, color } : user
+      );
+    });
+    
     // Always update userColor if it's the current user
     if (name === userName) {
-      setUserColor(color)
+      setUserColor(color);
       
-      // Client-side only code
-      if (typeof window !== 'undefined') {
+      // Client-side only code - only run if we're on the client
+      if (isClient) {
         // Also update localStorage for backup
-        localStorage.setItem(`userColor_${name}`, color)
+        localStorage.setItem(`userColor_${name}`, color);
         
         // Dispatch a custom event to notify other components
         window.dispatchEvent(
           new CustomEvent("userColorChange", {
             detail: { userName: name, color },
           })
-        )
+        );
       }
     }
-
-    // Update only the color in the users array without affecting schedules
-    setUsers((prev) => prev.map((user) => (user.name === name ? { ...user, color } : user)))
     
-    // Update color in Supabase
-    const userToUpdate = users.find(user => user.name === name)
-    if (userToUpdate) {
-      const { error } = await getSupabase()
+    // Update color in Supabase - using a completely direct approach
+    try {
+      console.log(`Updating Supabase for user ID ${userId} with color ${color}`);
+      
+      // Direct approach - no variables or complex objects, just inline values
+      // This avoids any potential transformation issues
+      const supabase = getSupabase();
+      
+      // First check the structure of the user in the database
+      const { data: userData, error: fetchError } = await supabase
         .from('users')
-        .update({ color })
-        .eq('id', userToUpdate.id)
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      console.log('Current user data in Supabase:', userData);
+      
+      if (fetchError) {
+        console.error('Error fetching user data:', fetchError);
+        throw new Error('Failed to fetch user data before update');
+      }
+      
+      // Special handling for John's color update to ensure the data format is correct
+      let data, error;
+      
+      // Debug log to see exactly what's being sent to Supabase
+      console.log(`Updating user in Supabase:`);
+      console.log(` - User ID: ${userId}`);
+      console.log(` - Name: ${name}`);
+      console.log(` - Color: ${color}`);
+      
+      if (name === "John") {
+        console.log('Using special handling for John to ensure correct data format');
+        
+        // Create a properly typed update object for John's color
+        // This avoids any potential type coercion or object structure issues
+        const updateData: Record<string, string> = {
+          color: color
+        };
+        
+        console.log('Update data for John:', JSON.stringify(updateData));
+        
+        const result = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', userId)
+          .select();
+        
+        data = result.data;
+        error = result.error;
+      } else {
+        // Normal approach for other users
+        const result = await supabase
+          .from('users')
+          .update({
+            color: color  // Direct value, no variables
+          })
+          .eq('id', userId)
+          .select();
+        
+        data = result.data;
+        error = result.error;
+      }
+      
+      console.log('Supabase update response:', data, error);
       
       if (error) {
-        console.error('Error updating user color in Supabase:', error)
+        console.error('Error updating user color in Supabase:', error);
+        // Revert the color change if Supabase update fails
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user.name === name ? { ...user, color: originalColor } : user
+          )
+        );
+        if (name === userName) {
+          setUserColor(originalColor);
+        }
+        toast({
+          title: "Error updating color",
+          description: "Failed to save color to the server. Please try again.",
+          variant: "destructive",
+        });
       } else {
-        console.log(`Successfully updated color for ${name} to ${color}`)
+        console.log(`Successfully updated color for ${name} to ${color}`);
+        toast({
+          title: "Color updated",
+          description: `Updated ${name}'s color to ${color}`,
+        });
       }
+    } catch (error) {
+      console.error('Error updating user color:', error);
+      // Revert the color change on error
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.name === name ? { ...user, color: originalColor } : user
+        )
+      );
+      if (name === userName) {
+        setUserColor(originalColor);
+      }
+      toast({
+        title: "Error updating color",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   }
 
@@ -701,7 +868,10 @@ export default function Dashboard() {
 
           {/* Add a link to the overview page in the header section */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-[#A0A0A0] mr-2">Hi, {userName || "Friend"}</span>
+            {/* Show greeting with user name from database */}
+            <span className="text-sm text-[#A0A0A0] mr-2" data-component-name="Dashboard">
+              {isClient ? `Hi, ${userName || "Friend"}` : "Hi, Friend"}
+            </span>
             <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
               {/* This div will be used by the WeeklySchedule component */}
             </div>
@@ -742,7 +912,8 @@ export default function Dashboard() {
       <main className="flex-1 px-4 pb-20 pt-10 max-w-7xl mx-auto w-full relative" data-component-name="Dashboard">
         {/* Schedule content */}
         <div className="flex flex-col">
-          {loading ? (
+          {/* During server-side rendering, always show the loading state */}
+          {!isClient || loading ? (
             <div className="flex justify-center items-center py-10">
               <p className="text-[#A0A0A0]">Loading schedules...</p>
             </div>
@@ -759,13 +930,14 @@ export default function Dashboard() {
           
           {/* Git commit hash display */}
           <footer className="text-center text-sm text-gray-400 mt-8 pb-4" data-component-name="Footer">
-            <GitCommitHash />
+            {/* Only render GitCommitHash on client side to prevent hydration mismatch */}
+            {isClient ? <GitCommitHash /> : <span className="text-[10px] text-[#666666] whitespace-nowrap">build: dev</span>}
           </footer>
         </div>
       </main>
 
-      {/* Floating action button - only visible when logged in */}
-      {userName && (
+      {/* Floating action button - only visible when logged in and on client side */}
+      {isClient && userName && (
         <div 
           className="fixed bottom-6 right-6 z-[9999] transition-all duration-200 ease-in-out overflow-visible"
           data-component-name="LinkComponent"

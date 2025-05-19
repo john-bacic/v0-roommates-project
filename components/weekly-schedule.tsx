@@ -917,31 +917,18 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, color } : u)))
 
     // Notify the parent component of the color change
+    // The parent component will handle the Supabase update
     if (onColorChange) {
-      onColorChange(user.name, color)
-    }
-
-    // Save the color to Supabase
-    try {
-      const { error } = await getSupabase()
-        .from('users')
-        .update({ color })
-        .eq('id', user.id);
-      
-      if (error) {
-        console.error('Error updating user color in Supabase:', error);
+      onColorChange(user.name, color);
+    } else {
+      // Fallback: If no parent handler, update localStorage directly
+      if (saveToStorage) {
+        localStorage.setItem(`userColor_${user.name}`, color);
+        const event = new CustomEvent("userColorChange", {
+          detail: { userName: user.name, color },
+        });
+        window.dispatchEvent(event);
       }
-    } catch (error) {
-      console.error('Error updating user color:', error);
-    }
-
-    // Save the color to localStorage as a fallback
-    if (saveToStorage) {
-      localStorage.setItem(`userColor_${user.name}`, color)
-      const event = new CustomEvent("userColorChange", {
-        detail: { userName: user.name, color },
-      })
-      window.dispatchEvent(event)
     }
 
     // Don't close the modal when changing colors
@@ -1197,14 +1184,14 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                   if (isToday) {
                     // Show the day number with a hyphen, but keep the red color
                     return (
-                      <span className="ml-1 font-bold text-xs text-red-500" data-component-name="WeeklySchedule">
+                      <span className="ml-1 font-medium text-sm text-white" data-component-name="WeeklySchedule">
                         {` - ${dayOfMonth}`}
                       </span>
                     );
                   } else {
                     // For non-current days, add the day number with a hyphen
                     return (
-                      <span className="ml-1 font-bold text-xs" data-component-name="WeeklySchedule">
+                      <span className="ml-1 font-medium text-sm" data-component-name="WeeklySchedule">
                         {` - ${dayOfMonth}`}
                       </span>
                     );
@@ -1230,7 +1217,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                     {/* Force the indicator to show on Saturday for May 10, 2025 */}
                     {(getCurrentTimeDay() === day || (day === "Saturday" && new Date().getDate() === 10 && new Date().getMonth() === 4 && new Date().getFullYear() === 2025)) && (
                       <div 
-                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-50 overflow-visible" 
+                        className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-40 overflow-visible" 
                         style={{ 
                           left: `${getCurrentTimePosition()}%`,
                           height: isCollapsed ? 'calc(100% + 7.5rem)' : 'calc(100% + 16rem)', // Tall enough to reach the 3rd user's row in collapsed mode
@@ -1238,6 +1225,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                           position: 'absolute',
                           top: 0
                         }}
+                        data-component-name="WeeklySchedule"
                       >
                         {/* Red dot always at the top of the line, regardless of mobile or desktop */}
                         <div 
