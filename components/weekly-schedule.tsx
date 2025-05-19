@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
 import { Plus, Edit2, Clock, ChevronUp, ChevronDown } from "lucide-react"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabase, updateUserColor as updateUserColorInDb } from "@/lib/supabase"
 
 interface User {
   id: number
@@ -913,23 +913,29 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
   // Handle changing a user's color
   const updateUserColor = async (user: User, color: string, saveToStorage = true) => {
-    // Update the user's color in the local state WITHOUT affecting schedules
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, color } : u)))
+    // Update the user's color in the local state
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, color } : u)));
 
     // Notify the parent component of the color change
     if (onColorChange) {
-      onColorChange(user.name, color)
+      onColorChange(user.name, color);
     }
 
-    // Save the color to Supabase
+    // Save the color to Supabase using the dedicated function
     try {
-      const { error } = await getSupabase()
-        .from('users')
-        .update({ color })
-        .eq('id', user.id);
+      console.log('Updating user color in Supabase:', { 
+        userId: user.id, 
+        userName: user.name,
+        color,
+        timestamp: new Date().toISOString()
+      });
+
+      const success = await updateUserColorInDb(user.id, color);
       
-      if (error) {
-        console.error('Error updating user color in Supabase:', error);
+      if (!success) {
+        console.error('Failed to update user color in Supabase');
+      } else {
+        console.log('Successfully updated user color in Supabase');
       }
     } catch (error) {
       console.error('Error updating user color:', error);
@@ -937,15 +943,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
 
     // Save the color to localStorage as a fallback
     if (saveToStorage) {
-      localStorage.setItem(`userColor_${user.name}`, color)
+      localStorage.setItem(`userColor_${user.name}`, color);
       const event = new CustomEvent("userColorChange", {
         detail: { userName: user.name, color },
-      })
-      window.dispatchEvent(event)
+      });
+      window.dispatchEvent(event);
     }
-
-    // Don't close the modal when changing colors
-    // This allows users to try multiple colors before closing
   }
 
   // Navigate to the previous day
@@ -1047,24 +1050,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
       <div 
-        className={`fixed-header bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
+        className={`fixed top-[57px] left-0 right-0 z-50 bg-[#242424] border-b border-[#333333] w-full overflow-hidden shadow-md opacity-90 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`} 
         data-component-name="WeeklySchedule"
-        style={{
-          top: 'var(--safe-area-inset-top, 0px)',
-          left: 'var(--safe-area-inset-left, 0px)',
-          right: 'var(--safe-area-inset-right, 0px)',
-          paddingLeft: 'var(--safe-area-inset-left, 0px)',
-          paddingRight: 'var(--safe-area-inset-right, 0px)',
-          height: '57px',
-          display: 'flex',
-          alignItems: 'center',
-          zIndex: 50
-        }}
       >
-        <div className="flex justify-between items-center w-full max-w-7xl mx-auto px-4">
+        <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
           <div>
             <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
           </div>
@@ -1076,9 +1068,11 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                 const newFormat = !use24HourFormat
                 setUse24HourFormat(newFormat)
                 localStorage.setItem('use24HourFormat', newFormat.toString())
+                // Notify parent components about the time format change
                 if (onTimeFormatChange) {
                   onTimeFormatChange(newFormat)
                 }
+                // Dispatch an event for other components to listen to
                 window.dispatchEvent(new CustomEvent('timeFormatChange', { detail: { use24Hour: newFormat } }))
               }}
               className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
@@ -1138,35 +1132,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           </div>
         </div>
       </div>
-      
-      {/* Main content area with safe area handling */}
-      <div 
-        className="w-full flex-1 overflow-y-auto"
-        style={{
-          paddingTop: 'calc(57px + var(--safe-area-inset-top, 0px))',
-          marginTop: '-57px',
-          height: '100%',
-          WebkitOverflowScrolling: 'touch',
-          scrollBehavior: 'smooth'
-        }}
-      >
-        <div 
-          className="w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-2"
-          style={{
-            paddingBottom: 'calc(16px + var(--safe-area-inset-bottom, 0px))'
-          }}
-        >
-          {days.map((day, dayIndex) => (
+
+      {days.map((day, dayIndex) => (
         <div key={day} className="mb-4">
-          {/* Day header - stays sticky below the WeeklySchedule header */}
+          {/* Day header - stays sticky below the WeeklySchedule header - use same position for mobile and desktop */}
           <div 
             id={`day-header-${day}`}
-            className={`sticky z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80 mb-2 shadow-sm`}
-            style={{
-              top: 'calc(57px + var(--safe-area-inset-top, 0px))',
-              position: 'sticky',
-              width: '100%'
-            }}
+            className={`sticky top-[93px] z-30 ${useAlternatingBg && dayIndex % 2 === 1 ? 'bg-[#1A1A1A]' : 'bg-[#282828]'} cursor-pointer hover:bg-opacity-80 mb-2 shadow-sm`}
             onClick={() => handleDayHeaderClick(day)}
             onDoubleClick={() => handleDayHeaderDoubleClick(day)}
             onTouchStart={(e) => {
@@ -1511,14 +1483,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           use24HourFormat={use24HourFormat} // Pass the time format preference
           onUserColorChange={(color) => {
             if (selectedUser) {
-              updateUserColor(selectedUser, color)
+              updateUserColor(selectedUser, color, true);
             }
           }}
         />
       )}
 
-      </div>
-      
       {/* Add CSS to hide scrollbars */}
       <style jsx global>{`
         .scrollbar-hide {
