@@ -1181,21 +1181,16 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                                   date.getMonth() === today.getMonth() && 
                                   date.getFullYear() === today.getFullYear();
                   
-                  if (isToday) {
-                    // Show the day number with a hyphen, but keep the red color
-                    return (
-                      <span className="ml-1 font-medium text-sm text-white" data-component-name="WeeklySchedule">
-                        {` - ${dayOfMonth}`}
-                      </span>
-                    );
-                  } else {
-                    // For non-current days, add the day number with a hyphen
-                    return (
-                      <span className="ml-1 font-medium text-sm" data-component-name="WeeklySchedule">
-                        {` - ${dayOfMonth}`}
-                      </span>
-                    );
-                  }
+                  // Use the same color as the h4 element for the day number span
+                  return (
+                    <span 
+                      className={`ml-1 font-medium text-sm ${getCurrentTimeDay() === day ? 'text-red-500' : ''}`} 
+                      style={{ color: 'inherit' }}  /* This ensures the span inherits the color from its parent h4 */
+                      data-component-name="WeeklySchedule"
+                    >
+                      {` - ${dayOfMonth}`}
+                    </span>
+                  );
                   return null;
                 })()}
               </h4>
@@ -1255,7 +1250,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       return (
                         <div 
                           key={`hour-timeline-${hour}-${hourIndex}`} 
-                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap z-40"
+                          className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap z-30"
                           style={{ left: `${position}%` }}
                           data-component-name="WeeklySchedule"
                         >
