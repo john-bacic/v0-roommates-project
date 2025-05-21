@@ -28,7 +28,7 @@ const nextConfig = {
     
     // Exclude temp directory and backup files from the build
     config.watchOptions = {
-      ...config.watchOptions,
+      poll: 1000,  // Check for changes every 1 second
       ignored: ['**/temp/**', '**/*.bak', '**/node_modules/**']
     };
     
