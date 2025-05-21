@@ -31,3 +31,7 @@ test-supabase-connection.js
 test-supabase.js
 test-connection.js
 test-new-connection.js
+
+# temporary files and backups
+/temp/
+*.bak
