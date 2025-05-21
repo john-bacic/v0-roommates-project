@@ -29,7 +29,7 @@ const nextConfig = {
     // Exclude temp directory and backup files from the build
     config.watchOptions = {
       ...config.watchOptions,
-      ignored: [...(config.watchOptions?.ignored || []), '**/temp/**', '**/*.bak']
+      ignored: ['**/temp/**', '**/*.bak', '**/node_modules/**']
     };
     
     return config;
