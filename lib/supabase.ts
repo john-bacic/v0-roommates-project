@@ -108,3 +108,75 @@ export function getSupabase(options?: { enableRealtime?: boolean }) {
 // Export a simple supabase instance for direct import
 // Only for components that don't need realtime features
 export const supabase = getSupabase();
+
+// Define TimeBlock interface to match what's used in the app
+export interface TimeBlock {
+  id?: string;
+  user_id: number;
+  day: string;
+  start_time: string;
+  end_time: string;
+  label: string;
+  all_day: boolean;
+  created_at?: string;
+  date?: string;
+}
+
+// Define User interface
+export interface User {
+  id: number;
+  name: string;
+  color: string;
+  initial: string;
+  created_at?: string;
+}
+
+/**
+ * Fetch a user's schedule from Supabase
+ * @param userId The ID of the user whose schedule to fetch
+ * @returns A record of day names to arrays of time blocks
+ */
+export async function fetchUserSchedule(userId: number): Promise<Record<string, Array<TimeBlock>>> {
+  try {
+    const { data, error } = await supabase
+      .from('schedules')
+      .select('*')
+      .eq('user_id', userId);
+      
+    if (error) {
+      throw error;
+    }
+    
+    // Group by day
+    const scheduleByDay: Record<string, Array<TimeBlock>> = {};
+    
+    // Initialize days of the week
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    days.forEach(day => {
+      scheduleByDay[day] = [];
+    });
+    
+    // Populate with data
+    if (data) {
+      data.forEach((block: TimeBlock) => {
+        if (scheduleByDay[block.day]) {
+          scheduleByDay[block.day].push(block);
+        }
+      });
+    }
+    
+    return scheduleByDay;
+  } catch (error) {
+    console.error('Error fetching user schedule:', error);
+    // Return empty schedule on error
+    return {
+      "Sunday": [],
+      "Monday": [],
+      "Tuesday": [],
+      "Wednesday": [],
+      "Thursday": [],
+      "Friday": [],
+      "Saturday": []
+    };
+  }
+}
