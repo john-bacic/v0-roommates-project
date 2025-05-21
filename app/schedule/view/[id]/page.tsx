@@ -446,16 +446,16 @@ export default function ViewSchedule() {
                   {schedule && schedule[day]?.map((block, index) => {
                     let startPos, endPos, width;
                     
-                    if (block.allDay) {
+                    if (block.all_day) {
                       startPos = 0;
                       endPos = 100;
                       width = 100;
                     } else {
                       // Calculate the position and width of the time block
-                      const startHour = parseInt(block.start.split(":")[0])
-                      const startMinute = parseInt(block.start.split(":")[1])
-                      const endHour = parseInt(block.end.split(":")[0])
-                      const endMinute = parseInt(block.end.split(":")[1])
+                       const startHour = parseInt(block.start_time.split(":")[0])
+                       const startMinute = parseInt(block.start_time.split(":")[1])
+                       const endHour = parseInt(block.end_time.split(":")[0])
+                       const endMinute = parseInt(block.end_time.split(":")[1])
                       
                       // Use the improved calculation for more accurate positioning
                       let startDecimalHours = startHour + (startMinute / 60)
@@ -484,18 +484,18 @@ export default function ViewSchedule() {
                         style={{
                           left: `${startPos}%`,
                           width: `${width}%`,
-                          backgroundColor: block.allDay ? 'transparent' : roommate?.color,
-                          color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
+                          backgroundColor: block.all_day ? 'transparent' : roommate?.color,
+                          color: block.all_day ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
                           top: isCollapsed ? "0" : undefined,
-                          border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
-                          backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                          border: block.all_day ? `2px solid ${roommate?.color}` : 'none',
+                          backgroundImage: block.all_day ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
                         }}
-                        title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
+                        title={`Edit: ${block.label}${block.all_day ? " (All Day)" : `: ${block.start_time} - ${block.end_time}`}`}
                       >
                         {!isCollapsed && width > 15 ? (
                           <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
                             <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
-                              {!block.allDay ? (
+                              {!block.all_day ? (
                                 width < 20 ? (
                                   // For very narrow blocks, show only the label
                                   <div className="flex items-center max-w-full overflow-hidden">
@@ -523,7 +523,7 @@ export default function ViewSchedule() {
                                   // For wider blocks, show time and label
                                   <>
                                     <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
-                                      {formatTime(block.start)} - {formatTime(block.end)}
+                                      {formatTime(block.start_time)} - {formatTime(block.end_time)}
                                     </span>
                                     <span className="text-xs opacity-60 mr-1">|</span>
                                     <div className="flex items-center max-w-full overflow-hidden">
