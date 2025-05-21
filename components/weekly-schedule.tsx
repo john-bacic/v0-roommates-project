@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
-import { Plus, Edit2, Clock, ChevronUp, ChevronDown } from "lucide-react"
+import { Plus, Edit2, Clock, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { getSupabase } from "@/lib/supabase"
+import { useRealtime } from "@/lib/use-realtime"
 
 interface User {
   id: number
@@ -28,6 +29,7 @@ interface WeeklyScheduleProps {
   schedules?: Record<number, Record<string, Array<TimeBlock>>>
   useAlternatingBg?: boolean
   onTimeFormatChange?: (use24Hour: boolean) => void
+  onWeekChange?: (newWeek: Date) => void
 }
 
 // Sample schedule data - in a real app, this would be loaded from localStorage or a database
@@ -64,7 +66,15 @@ const sampleSchedules: Record<number, Record<string, Array<TimeBlock>>> = {
   },
 }
 
-export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange, schedules: initialSchedules, useAlternatingBg = false, onTimeFormatChange }: WeeklyScheduleProps) {
+export function WeeklySchedule({ 
+  users: initialUsers, 
+  currentWeek, 
+  onColorChange, 
+  schedules: initialSchedules, 
+  useAlternatingBg = false, 
+  onTimeFormatChange,
+  onWeekChange 
+}: WeeklyScheduleProps) {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
   const [currentTime, setCurrentTime] = useState(new Date())
@@ -80,6 +90,12 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   // State for header visibility based on scroll
   const [headerVisible, setHeaderVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
+  
+  // State for users, schedules, and UI interactions
+  const [users, setUsers] = useState<User[]>(initialUsers || [])
+  const [schedules, setSchedules] = useState<Record<number, Record<string, Array<TimeBlock>>>>(initialSchedules || {})
+  const [usedColors, setUsedColors] = useState<string[]>([])
+  const [currentUserName, setCurrentUserName] = useState<string>('')
 
   // Add a toggle state for the collapsed view, initialized from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -101,25 +117,13 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return false
   })
 
-  // State for users (now mutable)
-  const [users, setUsers] = useState<User[]>(initialUsers)
-
-  // State for schedules - use provided schedules or fall back to sample data
-  const [schedules, setSchedules] = useState(initialSchedules || sampleSchedules)
-
   // State for quick schedule modal
   const [modalOpen, setModalOpen] = useState(false)
-  const [isColorPickerOnly, setIsColorPickerOnly] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [selectedDay, setSelectedDay] = useState<string>("Monday")
   const [editMode, setEditMode] = useState(false)
-  const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlock | undefined>(undefined)
-
-  // Get current user name from localStorage
-  const [currentUserName, setCurrentUserName] = useState("")
-
-  // Track used colors
-  const [usedColors, setUsedColors] = useState<string[]>([])
+  const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlock | null>(null)
+  const [isColorPickerOnly, setIsColorPickerOnly] = useState(false)
 
   // Set up a timer to update current time every minute
   useEffect(() => {
@@ -136,117 +140,162 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return () => clearInterval(interval)
   }, [])
   
-  // Add a force update state to ensure the component re-renders
+  // State for managing data loading and UI
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [forceUpdate, setForceUpdate] = useState(0)
-
-  // Set up real-time subscriptions for schedule and user changes
-  useEffect(() => {
-    // Set up subscription for schedule changes
-    const scheduleSubscription = getSupabase()
-      .channel('schedules-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, (payload) => {
-        // Get the updated schedule data directly from Supabase
-        // This ensures we have the latest data without a full reload
-        const fetchLatestData = async () => {
-          try {
-            // Get the user_id from the payload with proper type checking
-            const newData = payload.new as Record<string, any> | null;
-            const oldData = payload.old as Record<string, any> | null;
-            const userId = newData?.user_id || oldData?.user_id;
-            
-            if (userId) {
-              // Fetch all schedules for this user
-              const { data: schedulesData, error } = await getSupabase()
-                .from('schedules')
-                .select('*')
-                .eq('user_id', userId);
-              
-              if (!error && schedulesData) {
-                // Transform the data into the format expected by the component
-                const formattedSchedules: Record<string, Array<TimeBlock>> = {};
-                
-                schedulesData.forEach(schedule => {
-                  // Ensure schedule is typed correctly
-                  const typedSchedule = schedule as Record<string, any>;
-                  const day = typedSchedule.day as string;
-                  
-                  if (!formattedSchedules[day]) {
-                    formattedSchedules[day] = [];
-                  }
-                  
-                  formattedSchedules[day].push({
-                    id: typedSchedule.id as string,
-                    start: typedSchedule.start_time as string,
-                    end: typedSchedule.end_time as string,
-                    label: typedSchedule.label as string,
-                    allDay: typedSchedule.all_day as boolean
-                  });
-                });
-                
-                // Update only the affected user's schedule
-                setSchedules(prev => ({
-                  ...prev,
-                  [userId as number]: formattedSchedules
-                }));
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching updated schedule data:', error);
-          }
-        };
+  
+  // Function to load schedules from Supabase
+  const loadSchedules = useCallback(async () => {
+    try {
+      console.log('[WeeklySchedule] Loading schedules...')
+      const supabase = getSupabase()
+      const { data: schedulesData, error } = await supabase
+        .from('schedules')
+        .select('*')
+      
+      if (error) {
+        console.error('[WeeklySchedule] Error loading schedules:', error)
+        return
+      }
+      
+      if (schedulesData) {
+        // Process the schedules data to match the expected format
+        const formattedSchedules: Record<number, Record<string, Array<TimeBlock>>> = {}
         
-        fetchLatestData();
-      })
-      .subscribe();
-
-    // Set up subscription for user changes
-    const usersSubscription = getSupabase()
-      .channel('users-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        // Update the user data when it changes with proper type checking
-        if (payload.new) {
-          // Cast to a typed record for safety
-          const updatedUser = payload.new as Record<string, any>;
+        schedulesData.forEach((schedule: any) => {
+          const userId = schedule.user_id
+          const day = schedule.day
           
-          // Only update if we have a valid ID to compare against
-          if (typeof updatedUser.id === 'number') {
-            setUsers(prev => prev.map(user => 
-              user.id === updatedUser.id ? { ...user, ...updatedUser } : user
-            ));
+          if (!formattedSchedules[userId]) {
+            formattedSchedules[userId] = {}
           }
-        }
-      })
-      .subscribe();
-
-    return () => {
-      getSupabase().removeChannel(scheduleSubscription);
-      getSupabase().removeChannel(usersSubscription);
-    };
-  }, []);
-
+          
+          if (!formattedSchedules[userId][day]) {
+            formattedSchedules[userId][day] = []
+          }
+          
+          formattedSchedules[userId][day].push({
+            id: schedule.id,
+            start: schedule.start_time,
+            end: schedule.end_time,
+            label: schedule.label,
+            allDay: schedule.all_day
+          })
+        })
+        
+        setSchedules(formattedSchedules)
+        console.log('[WeeklySchedule] Schedules loaded successfully')
+      }
+    } catch (err) {
+      console.error('[WeeklySchedule] Error in loadSchedules:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+  
+  // Function to load users from Supabase
+  const loadUsers = useCallback(async () => {
+    try {
+      const supabase = getSupabase()
+      const { data: usersData, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('name')
+      
+      if (error) {
+        console.error('[WeeklySchedule] Error loading users:', error)
+        return
+      }
+      
+      if (usersData) {
+        // Transform DB users to component format
+        const formattedUsers = usersData.map((user: any) => ({
+          id: user.id,
+          name: user.name,
+          color: user.color || '#888888',
+          initial: user.name.charAt(0).toUpperCase()
+        }))
+        
+        setUsers(formattedUsers)
+      }
+    } catch (err) {
+      console.error('[WeeklySchedule] Error in loadUsers:', err)
+    }
+  }, [])
+  
+  // Function for updating user color is implemented below with more complete functionality
+  
+  // Load initial data when component mounts
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    loadSchedules()
+    loadUsers()
+  }, [loadSchedules, loadUsers])
+  
+  // Function to handle closing the modal
+  const handleModalClose = useCallback(() => {
+    setModalOpen(false)
+    setSelectedUser(null)
+    setSelectedTimeBlock(null)
+    setEditMode(false)
+    setIsColorPickerOnly(false)
+  }, [])
+  
+  // Function for saving a schedule item is implemented below with the full functionality
+  
+  // Function for deleting a time block is implemented below with the full functionality
+  
+  // Function to check if we're in mobile view
+  const checkMobile = useCallback(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+  
+  // Memoize the callback handlers to prevent infinite loops
+  const handleScheduleChange = useCallback((payload: any) => {
+    console.log('[WeeklySchedule] Schedule change detected:', payload)
+    loadSchedules()
+  }, [loadSchedules])
+  
+  const handleUserChange = useCallback((payload: any) => {
+    console.log('[WeeklySchedule] User change detected:', payload)
+    loadUsers()
+  }, [loadUsers])
+  
+  // Use our custom hook for schedule changes with memoized callback
+  useRealtime({
+    table: 'schedules',
+    debug: true,
+    onChange: handleScheduleChange
+  })
+  
+  // Use our custom hook for user changes with memoized callback
+  useRealtime({
+    table: 'users',
+    debug: true,
+    onChange: handleUserChange
+  })
+  
   // Handle UI setup, event listeners, and cleanup
   useEffect(() => {
-    // Check if mobile view
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    
-    // Initial check
+    // Initial mobile check
     checkMobile()
     
     // Add resize listener
     window.addEventListener('resize', checkMobile)
     
-    // Get current user name
-    const storedName = localStorage.getItem('userName')
-    if (storedName) {
-      setCurrentUserName(storedName)
+    // Get current user name from localStorage
+    if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('userName')
+      if (storedName) {
+        setCurrentUserName(storedName)
+      }
     }
     
     // Get used colors
     setUsedColors(users.map(user => user.color))
     
-    // Add event listener for the custom color picker modal event
+    // Set up event listener for the custom color picker modal event
     const handleOpenColorPickerModal = (event: CustomEvent<{userName: string}>) => {
       // Find the user by name
       const user = users.find(u => u.name === event.detail.userName)
@@ -288,19 +337,18 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         if (headerVisible) {
           setHeaderVisible(false)
         }
-      } else {
+      } else if (currentScrollY < lastScrollY) {
         // Scrolling up - show header
         if (!headerVisible) {
           setHeaderVisible(true)
         }
       }
       
-      // Only update lastScrollY if it's actually different
-      if (currentScrollY !== lastScrollY) {
-        setLastScrollY(currentScrollY)
-      }
+      // Save current position
+      setLastScrollY(currentScrollY)
     }
     
+    // Add scroll listener with passive option for better performance
     window.addEventListener('scroll', handleScroll, { passive: true })
     
     return () => {
@@ -608,7 +656,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     setTimeout(() => {
       // Find the latest end time from existing blocks for this user and day
       let startTime = "09:00"; // Default start time if no previous blocks
-      let endTime = "13:00";   // Default end time (4 hours later)
+      let endTime = "17:00";   // Default end time (5:00 PM)
       
       // Check if we have existing time blocks for this day and user
       if (schedules[user.id] && schedules[user.id][day] && schedules[user.id][day].length > 0) {
@@ -674,16 +722,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
   }
 
   // Close the modal and reset state
-  const handleModalClose = () => {
-    console.log('Closing modal, current editMode:', editMode);
-    setModalOpen(false)
-    setIsColorPickerOnly(false) // Reset to regular mode when closing
-    // Reset all modal state with a delay to avoid UI flicker
-    setTimeout(() => {
-      setEditMode(false)
-      setSelectedTimeBlock(undefined)
-    }, 300)
-  }
+  // Note: Using the handleModalClose function defined earlier
 
   // Check if a time block overlaps with existing time blocks
   const checkOverlap = (day: string, timeBlock: TimeBlock, excludeId?: string): { hasOverlap: boolean, overlappingBlock?: TimeBlock } => {
@@ -1033,6 +1072,32 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
     return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
   }
 
+  // Handle navigation to previous week
+  const handlePreviousWeek = () => {
+    try {
+      const newDate = new Date(currentWeek)
+      newDate.setDate(currentWeek.getDate() - 7)
+      if (onWeekChange) {
+        onWeekChange(newDate)
+      }
+    } catch (error) {
+      console.error('Error navigating to previous week:', error)
+    }
+  }
+  
+  // Handle navigation to next week
+  const handleNextWeek = () => {
+    try {
+      const newDate = new Date(currentWeek)
+      newDate.setDate(currentWeek.getDate() + 7)
+      if (onWeekChange) {
+        onWeekChange(newDate)
+      }
+    } catch (error) {
+      console.error('Error navigating to next week:', error)
+    }
+  }
+
   return (
     <div className="w-full">
       {/* Make the Weekly Schedule header sticky - use same position for mobile and desktop */}
@@ -1041,9 +1106,52 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
         data-component-name="WeeklySchedule"
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
-          <div>
-            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-black/10"
+              onClick={() => {
+                // Show toast instead of changing week
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                toast.innerText = 'Multi-week support coming soon!';
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                  toast.remove();
+                }, 3000);
+              }}
+              aria-label="Previous week"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Previous week</span>
+            </Button>
+            
+            <h3 className="text-sm font-medium" data-component-name="WeeklySchedule">
+              {formatWeekRange(currentWeek)}
+            </h3>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-black/10"
+              onClick={() => {
+                // Show toast instead of changing week
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+                toast.innerText = 'Multi-week support coming soon!';
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                  toast.remove();
+                }, 3000);
+              }}
+              aria-label="Next week"
+            >
+              <ChevronRight className="h-4 w-4" />
+              <span className="sr-only">Next week</span>
+            </Button>
           </div>
+          
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -1244,7 +1352,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
                       
                       // Format hour as HH:00 for timeToPosition
                       const hourString = `${hour.toString().padStart(2, '0')}:00`
-                      // Calculate exact position using the same function as time indicator and grid lines
+                      // Calculate exact position using the same function as time indicator
                       const position = timeToPosition(hourString)
                       
                       return (
@@ -1457,7 +1565,7 @@ export function WeeklySchedule({ users: initialUsers, currentWeek, onColorChange
           userColor={selectedUser.color}
           initialDay={selectedDay}
           editMode={editMode} // This controls if Delete button appears
-          timeBlock={selectedTimeBlock}
+          timeBlock={selectedTimeBlock || undefined}
           usedColors={usedColors}
           isColorPickerOnly={isColorPickerOnly} // Use the new color-only mode
           use24HourFormat={use24HourFormat} // Pass the time format preference

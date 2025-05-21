@@ -337,14 +337,25 @@ interface TimePickerDialogProps {
   isOpen: boolean
   onClose: () => void
   initialTime: string
+  initialEndTime?: string
   onTimeSelect: (time: string) => void
+  onEndTimeSelect?: (time: string) => void
   use24HourFormat?: boolean
   userColor?: string
   title?: string
   label?: string
+  showBothTimes?: boolean
 }
 
-function MobileTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false }: { time: string, onTimeChange: (time: string) => void, userColor?: string, use24HourFormat?: boolean }) {
+interface MobileTimePickerProps {
+  time: string;
+  onTimeChange: (time: string) => void;
+  userColor?: string;
+  use24HourFormat?: boolean;
+  'aria-labelledby'?: string;
+}
+
+function MobileTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false, 'aria-labelledby': ariaLabelledby }: MobileTimePickerProps) {
   // Parse time string "HH:MM" or "H:MM" into separate hour and minute values
   const [timeParts, setTimeParts] = useState(() => {
     const [hoursStr, minutesStr] = time.split(":")
@@ -431,7 +442,7 @@ function MobileTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24Hour
   }, [timeParts.hours, timeParts.minutes, timeParts.period])
 
   return (
-    <div className="py-4">
+    <div className="py-4" aria-labelledby={ariaLabelledby}>
       <div className="flex justify-center items-center gap-2">
         {/* Hours roller */}
         <div className="w-1/3">
@@ -486,7 +497,15 @@ function MobileTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24Hour
   )
 }
 
-function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false }: { time: string, onTimeChange: (time: string) => void, userColor?: string, use24HourFormat?: boolean }) {
+interface DesktopTimePickerProps {
+  time: string;
+  onTimeChange: (time: string) => void;
+  userColor?: string;
+  use24HourFormat?: boolean;
+  'aria-labelledby'?: string;
+}
+
+function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false, 'aria-labelledby': ariaLabelledby }: DesktopTimePickerProps) {
   // Make userColor available throughout the component
   // Separate time and period state for better control
   const [timeValue, setTimeValue] = useState('')
@@ -603,7 +622,7 @@ function DesktopTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24Hou
   }
   
   return (
-    <div className="py-8 flex flex-col items-center">
+    <div className="py-8 flex flex-col items-center" aria-labelledby={ariaLabelledby}>
       <div className="relative w-full max-w-xs">
         <input
           type="text"
@@ -677,15 +696,21 @@ export function TimePickerDialog({
   isOpen,
   onClose,
   initialTime,
+  initialEndTime,
   onTimeSelect,
+  onEndTimeSelect,
   use24HourFormat = false,
   userColor = "#03DAC6",
   title = "Select Time",
-  label
+  label,
+  showBothTimes = false
 }: TimePickerDialogProps) {
   const [time, setTime] = useState(initialTime || "12:00")
-  const [isMobileView, setIsMobileView] = useState(isMobile())
+  const [endTime, setEndTime] = useState(initialEndTime || "17:00")
   const initialTimeRef = useRef(initialTime || "12:00")
+  const initialEndTimeRef = useRef(initialEndTime || "17:00")
+  const [isMobileView, setIsMobileView] = useState(isMobile())
+  const [activeTimeInput, setActiveTimeInput] = useState<'start' | 'end'>('start')
 
   // Track window size changes to update the view
   useEffect(() => {
@@ -705,6 +730,15 @@ export function TimePickerDialog({
       const timeValue = initialTime || "12:00"
       setTime(timeValue)
       initialTimeRef.current = timeValue
+      
+      // Set end time if provided
+      const endTimeValue = initialEndTime || "17:00"
+      setEndTime(endTimeValue)
+      initialEndTimeRef.current = endTimeValue
+      
+      // Reset to start time being active by default
+      setActiveTimeInput('start')
+      
       // Prevent scrolling on body when dialog is open
       preventBackgroundScrolling()
     } else {
@@ -715,29 +749,54 @@ export function TimePickerDialog({
       restoreBackgroundScrolling()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialTime])
+  }, [isOpen, initialTime, initialEndTime])
 
   const handleTimeChange = (newTime: string) => {
-    setTime(newTime)
-    // Automatically save the time change
-    onTimeSelect(newTime)
+    if (activeTimeInput === 'start') {
+      setTime(newTime)
+      // Automatically save the time change
+      onTimeSelect(newTime)
+    } else {
+      setEndTime(newTime)
+      // Automatically save the end time change if handler exists
+      if (onEndTimeSelect) {
+        onEndTimeSelect(newTime)
+      }
+    }
   }
 
   const handleConfirm = () => {
     onTimeSelect(time)
+    if (showBothTimes && onEndTimeSelect) {
+      onEndTimeSelect(endTime)
+    }
     onClose()
   }
   
   const handleNoonClick = () => {
     const noonTime = "12:00" // 12:00 PM in 24-hour format
-    setTime(noonTime)
-    handleTimeChange(noonTime)
+    if (activeTimeInput === 'start') {
+      setTime(noonTime)
+      onTimeSelect(noonTime)
+    } else {
+      setEndTime(noonTime)
+      if (onEndTimeSelect) {
+        onEndTimeSelect(noonTime)
+      }
+    }
   }
 
   const handleMidnightClick = () => {
     const midnightTime = "00:00" // 12:00 AM in 24-hour format
-    setTime(midnightTime)
-    handleTimeChange(midnightTime)
+    if (activeTimeInput === 'start') {
+      setTime(midnightTime)
+      onTimeSelect(midnightTime)
+    } else {
+      setEndTime(midnightTime)
+      if (onEndTimeSelect) {
+        onEndTimeSelect(midnightTime)
+      }
+    }
   }
 
   // Don't render anything if not open
@@ -748,15 +807,14 @@ export function TimePickerDialog({
       <div className="bg-[#282828] rounded-lg w-full max-w-sm mx-4">
         <div className="flex justify-between items-center px-6 py-4 border-b border-[#333333]" data-component-name="TimePickerDialog">
           <div>
-            <h3 className="text-xl font-semibold" data-component-name="TimePickerDialog">{title}</h3>
             {label && (
               <motion.p 
-                className="text-sm mt-1 font-medium" 
+                className="text-lg font-semibold" 
                 style={{ color: userColor }}
                 initial={{ opacity: 0.8 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
-                data-component-name="TimePickerDialog"
+                data-component-name="MotionComponent"
               >
                 {label}
               </motion.p>
@@ -770,47 +828,97 @@ export function TimePickerDialog({
           </button>
         </div>
         <div className="p-6 pb-2" data-component-name="TimePickerDialog">
-          {isMobileView ? (
-            <MobileTimePicker 
-              key={`mobile-picker-${initialTimeRef.current}`} 
-              time={time} 
-              onTimeChange={handleTimeChange} 
-              userColor={userColor}
-              use24HourFormat={use24HourFormat}
-            />
+          {showBothTimes ? (
+            <div className="space-y-6">
+              {/* Start Time Section */}
+              <div>
+                <h4 className="text-base font-medium mb-2 text-left ml-1 text-white" data-component-name="TimePickerDialog" id="start-time-label">Start Time</h4>
+                {isMobileView ? (
+                  <MobileTimePicker 
+                    key={`mobile-picker-start-${initialTimeRef.current}`} 
+                    time={time} 
+                    onTimeChange={(newTime) => {
+                      setTime(newTime);
+                      onTimeSelect(newTime);
+                    }} 
+                    userColor={userColor}
+                    use24HourFormat={use24HourFormat}
+                    aria-labelledby="start-time-label"
+                  />
+                ) : (
+                  <DesktopTimePicker 
+                    time={time} 
+                    onTimeChange={(newTime) => {
+                      setTime(newTime);
+                      onTimeSelect(newTime);
+                    }} 
+                    userColor={userColor}
+                    use24HourFormat={use24HourFormat}
+                    aria-labelledby="start-time-label"
+                  />
+                )}
+              </div>
+              
+              {/* End Time Section */}
+              <div>
+                <h4 className="text-base font-medium mb-2 text-left ml-1 text-white" data-component-name="TimePickerDialog" id="end-time-label">End Time</h4>
+                {isMobileView ? (
+                  <MobileTimePicker 
+                    key={`mobile-picker-end-${initialEndTimeRef.current}`} 
+                    time={endTime} 
+                    aria-labelledby="end-time-label"
+                    onTimeChange={(newTime) => {
+                      setEndTime(newTime);
+                      if (onEndTimeSelect) {
+                        onEndTimeSelect(newTime);
+                      }
+                    }} 
+                    userColor={userColor}
+                    use24HourFormat={use24HourFormat}
+                  />
+                ) : (
+                  <DesktopTimePicker 
+                    time={endTime} 
+                    aria-labelledby="end-time-label"
+                    onTimeChange={(newTime) => {
+                      setEndTime(newTime);
+                      if (onEndTimeSelect) {
+                        onEndTimeSelect(newTime);
+                      }
+                    }} 
+                    userColor={userColor}
+                    use24HourFormat={use24HourFormat}
+                  />
+                )}
+              </div>
+            </div>
           ) : (
-            <DesktopTimePicker 
-              time={time} 
-              onTimeChange={handleTimeChange} 
-              userColor={userColor}
-              use24HourFormat={use24HourFormat}
-            />
+            // Single time picker for non-dual mode
+            isMobileView ? (
+              <MobileTimePicker 
+                key={`mobile-picker-${initialTimeRef.current}`} 
+                time={time} 
+                onTimeChange={handleTimeChange} 
+                userColor={userColor}
+                use24HourFormat={use24HourFormat}
+              />
+            ) : (
+              <DesktopTimePicker 
+                time={time} 
+                onTimeChange={handleTimeChange} 
+                userColor={userColor}
+                use24HourFormat={use24HourFormat}
+              />
+            )
           )}
           
-          {/* Preset buttons */}
-          <div className="flex justify-center gap-4 mt-4 mb-4">
-            <button
-              type="button"
-              className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all flex items-center gap-2"
-              onClick={handleNoonClick}
-              data-component-name="TimePickerDialog"
-            >
-              <Sun className="h-4 w-4 text-yellow-300" /> Noon
-            </button>
-            <button
-              type="button"
-              className="px-6 py-2 rounded-md bg-[#222222] hover:bg-[#333333] text-white border border-[#444444] transition-all flex items-center gap-2"
-              onClick={handleMidnightClick}
-              data-component-name="TimePickerDialog"
-            >
-              <Moon className="h-4 w-4 text-blue-300" /> Midnight
-            </button>
-          </div>
+          {/* Noon and Midnight buttons removed */}
           
           <div className="flex justify-center">
             <button
-              onClick={onClose}
-              className="px-6 py-3 rounded bg-[#333333] hover:bg-[#444444] text-white font-medium w-full max-w-md"
+              onClick={handleConfirm}
+              className="px-6 py-3 rounded font-medium w-full max-w-md"
+              style={{ backgroundColor: userColor, color: '#222' }}
               data-component-name="TimePickerDialog"
             >
               Save

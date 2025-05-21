@@ -35,10 +35,10 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
 
   // Time picker dialog state
   const [timePickerOpen, setTimePickerOpen] = useState(false)
-  const [currentTimeField, setCurrentTimeField] = useState<{dayName: string, index: number, field: 'start' | 'end', label?: string} | null>(null)
-  const [currentTimeValue, setCurrentTimeValue] = useState('')
-  const [startTimeDialogKey, setStartTimeDialogKey] = useState(0)
-  const [endTimeDialogKey, setEndTimeDialogKey] = useState(0)
+  const [currentTimeBlock, setCurrentTimeBlock] = useState<{dayName: string, index: number, label?: string} | null>(null)
+  const [currentStartTime, setCurrentStartTime] = useState('')
+  const [currentEndTime, setCurrentEndTime] = useState('')
+  const [timeDialogKey, setTimeDialogKey] = useState(0)
   
   // Track which input is focused to show the clear button
   const [focusedLabelIndex, setFocusedLabelIndex] = useState<number | null>(null)
@@ -88,7 +88,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
   const addTimeBlock = async () => {
     // Find the last time block for the active day to use its end time as the start time for the new block
     let startTime = "09:00";
-    let endTime = "13:00"; // Default end time (4 hours after default start)
+    let endTime = "17:00"; // Default end time (5:00 PM in 24-hour format)
     
     const existingBlocks = schedule[activeDay] || [];
     
@@ -109,22 +109,29 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         // Use the latest end time as the start time for the new block
         startTime = latestEndTime;
         
-        // Calculate end time (4 hours later)
-        const [endHourStr, endMinuteStr] = latestEndTime.split(':');
-        let endHour = parseInt(endHourStr);
-        let endMinute = parseInt(endMinuteStr);
-        
-        // Add 4 hours
-        endHour = endHour + 4;
-        
-        // Handle overflow to next day
-        if (endHour >= 24) {
-          endHour = 23;
-          endMinute = 59;
+        // Calculate end time (8 hours after default start if using default start,
+        // or 4 hours after the latest end time if using that as start)
+        if (startTime === "09:00") {
+          // Using default start time, set end to 5:00 PM
+          endTime = "17:00";
+        } else {
+          // Using latest end time as start, add 4 hours
+          const [endHourStr, endMinuteStr] = latestEndTime.split(':');
+          let endHour = parseInt(endHourStr);
+          let endMinute = parseInt(endMinuteStr);
+          
+          // Add 4 hours
+          endHour = endHour + 4;
+          
+          // Handle overflow to next day
+          if (endHour >= 24) {
+            endHour = 23;
+            endMinute = 59;
+          }
+          
+          // Format the end time
+          endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
         }
-        
-        // Format the end time
-        endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       }
     }
     
@@ -289,18 +296,19 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
     newSchedule[dayName] = [...(newSchedule[dayName] || [])]
     newSchedule[dayName].splice(index, 1)
     
-    // Reset time picker dialog state if the current time field was for this block
-    if (currentTimeField && currentTimeField.dayName === dayName && currentTimeField.index === index) {
-      setCurrentTimeField(null)
-      setCurrentTimeValue('')
+    // Reset time picker dialog state if the current time block was for this block
+    if (currentTimeBlock && currentTimeBlock.dayName === dayName && currentTimeBlock.index === index) {
+      setCurrentTimeBlock(null)
+      setCurrentStartTime('')
+      setCurrentEndTime('')
       setTimePickerOpen(false)
     }
     
-    // Update indices for any time fields that were after this one
-    if (currentTimeField && currentTimeField.dayName === dayName && currentTimeField.index > index) {
-      setCurrentTimeField({
-        ...currentTimeField,
-        index: currentTimeField.index - 1
+    // Update indices for any time blocks that were after this one
+    if (currentTimeBlock && currentTimeBlock.dayName === dayName && currentTimeBlock.index > index) {
+      setCurrentTimeBlock({
+        ...currentTimeBlock,
+        index: currentTimeBlock.index - 1
       })
     }
     
@@ -497,10 +505,11 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                   <div 
                     className="cursor-pointer"
                     onClick={() => {
-                      // Force immediate synchronization of start time values only
-                      setCurrentTimeField({dayName: activeDay, index, field: 'start', label: block.label})
-                      setCurrentTimeValue(block.start || '09:00')
-                      setStartTimeDialogKey(prev => prev + 1) // Increment start time dialog key
+                      // Open the combined time picker dialog
+                      setCurrentTimeBlock({dayName: activeDay, index, label: block.label})
+                      setCurrentStartTime(block.start || '09:00')
+                      setCurrentEndTime(block.end || '17:00')
+                      setTimeDialogKey(prev => prev + 1) // Increment dialog key
                       setTimePickerOpen(true)
                     }}
                   >
@@ -537,10 +546,11 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                   <div 
                     className="cursor-pointer"
                     onClick={() => {
-                      // Force immediate synchronization of end time values only
-                      setCurrentTimeField({dayName: activeDay, index, field: 'end', label: block.label})
-                      setCurrentTimeValue(block.end || '17:00')
-                      setEndTimeDialogKey(prev => prev + 1) // Increment end time dialog key
+                      // Open the combined time picker dialog
+                      setCurrentTimeBlock({dayName: activeDay, index, label: block.label})
+                      setCurrentStartTime(block.start || '09:00')
+                      setCurrentEndTime(block.end || '17:00')
+                      setTimeDialogKey(prev => prev + 1) // Increment dialog key
                       setTimePickerOpen(true)
                     }}
                   >
@@ -596,6 +606,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     placeholder={block.allDay ? "Day Off, Busy, etc." : "Work, Class, etc."}
                     data-component-name="_c"
                     data-label-index={index}
+                    data-time-block-id={`${activeDay}-${index}`}
                   />
                   {focusedLabelIndex === index && (
                     <button
@@ -679,23 +690,24 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
 
       {/* Time Picker Dialog */}
       <TimePickerDialog
-        key={`${currentTimeField?.field || 'time'}-${currentTimeField?.index || 0}-${startTimeDialogKey}-${endTimeDialogKey}`}
+        key={`time-block-${currentTimeBlock?.index || 0}-${timeDialogKey}`}
         isOpen={timePickerOpen}
         onClose={() => setTimePickerOpen(false)}
-        initialTime={currentTimeValue}
+        initialTime={currentStartTime}
+        initialEndTime={currentEndTime}
         onTimeSelect={(newTime) => {
-          if (currentTimeField) {
+          if (currentTimeBlock) {
             // Create a deep copy to avoid reference issues
             const newSchedule = JSON.parse(JSON.stringify(schedule));
-            if (!newSchedule[currentTimeField.dayName]) newSchedule[currentTimeField.dayName] = [];
-            if (!newSchedule[currentTimeField.dayName][currentTimeField.index]) {
-              newSchedule[currentTimeField.dayName][currentTimeField.index] = {};
+            if (!newSchedule[currentTimeBlock.dayName]) newSchedule[currentTimeBlock.dayName] = [];
+            if (!newSchedule[currentTimeBlock.dayName][currentTimeBlock.index]) {
+              newSchedule[currentTimeBlock.dayName][currentTimeBlock.index] = {};
             }
             
-            // Only update the specific field for the specific time input
-            newSchedule[currentTimeField.dayName][currentTimeField.index] = {
-              ...newSchedule[currentTimeField.dayName][currentTimeField.index],
-              [currentTimeField.field]: newTime
+            // Update the start time
+            newSchedule[currentTimeBlock.dayName][currentTimeBlock.index] = {
+              ...newSchedule[currentTimeBlock.dayName][currentTimeBlock.index],
+              start: newTime
             };
             
             // Update UI immediately
@@ -703,14 +715,39 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
             
             // Then call updateTimeBlock for the backend sync
             setTimeout(() => {
-              updateTimeBlock(currentTimeField.dayName, currentTimeField.index, currentTimeField.field, newTime);
+              updateTimeBlock(currentTimeBlock.dayName, currentTimeBlock.index, 'start', newTime);
+            }, 0);
+          }
+        }}
+        onEndTimeSelect={(newTime) => {
+          if (currentTimeBlock) {
+            // Create a deep copy to avoid reference issues
+            const newSchedule = JSON.parse(JSON.stringify(schedule));
+            if (!newSchedule[currentTimeBlock.dayName]) newSchedule[currentTimeBlock.dayName] = [];
+            if (!newSchedule[currentTimeBlock.dayName][currentTimeBlock.index]) {
+              newSchedule[currentTimeBlock.dayName][currentTimeBlock.index] = {};
+            }
+            
+            // Update the end time
+            newSchedule[currentTimeBlock.dayName][currentTimeBlock.index] = {
+              ...newSchedule[currentTimeBlock.dayName][currentTimeBlock.index],
+              end: newTime
+            };
+            
+            // Update UI immediately
+            onChange(newSchedule);
+            
+            // Then call updateTimeBlock for the backend sync
+            setTimeout(() => {
+              updateTimeBlock(currentTimeBlock.dayName, currentTimeBlock.index, 'end', newTime);
             }, 0);
           }
         }}
         use24HourFormat={use24HourFormat}
         userColor={userColor}
-        title={currentTimeField?.field === 'start' ? 'Start Time' : 'End Time'}
-        label={currentTimeField?.label}
+        title="Edit Times"
+        label={currentTimeBlock?.label}
+        showBothTimes={true}
       />
     </div>
   )
