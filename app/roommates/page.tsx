@@ -125,10 +125,10 @@ export default function Roommates() {
       }
       
       // Create updated roommates array with data from Supabase
-      const updatedRoommates = usersData.map(user => {
+      const updatedRoommates = usersData.map((user: { id: number | string; name?: string; color?: string; initial?: string }) => {
         // Find matching user in initialUsers for fallback data
         const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id))
-        const initialUser = initialUsers.find(r => r.id === userId) || {
+        const initialUser = initialUsers.find((r: { id: number }) => r.id === userId) || {
           id: userId,
           name: user.name || 'User',
           color: '#BB86FC',
@@ -140,20 +140,20 @@ export default function Roommates() {
         // Create user with Supabase data, falling back to initial data when needed
         return {
           id: userId,
-          name: user.name || initialUser.name,
+          name: (user.name as string) || initialUser.name,
           // Use the color from Supabase
-          color: user.color || initialUser.color,
-          initial: user.initial || initialUser.initial,
+          color: (user.color as string) || initialUser.color,
+          initial: (user.initial as string) || initialUser.initial,
           description: initialUser.description,
           availableDays: [] as number[],
           allDayOffDays: [] as number[]
-        }
+        } as Roommate
       })
       
       // Process schedules for each user
       for (const user of usersData) {
         const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id))
-        const userIndex = updatedRoommates.findIndex(r => r.id === userId)
+        const userIndex = updatedRoommates.findIndex((r: { id: number }) => r.id === userId)
         
         if (userIndex === -1) continue
         
@@ -170,15 +170,17 @@ export default function Roommates() {
         const allDayOffDays: number[] = []
         
         // Process each schedule
-        userSchedules.forEach(schedule => {
+        userSchedules.forEach((schedule: { day: string; all_day: boolean; label: string }) => {
           // Convert day name to index (0 = Sunday, 1 = Monday, etc.)
           const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-          const dayIndex = dayNames.indexOf(schedule.day)
+          const day = schedule.day as string;
+          const dayIndex = dayNames.indexOf(day)
           
           if (dayIndex === -1) return
           
           // Check if this is an all-day schedule (any kind)
-          if (schedule.all_day) {
+          const isAllDay = schedule.all_day as boolean;
+          if (isAllDay) {
             allDayOffDays.push(dayIndex)
           } else {
             // This is a regular schedule
@@ -318,11 +320,17 @@ export default function Roommates() {
           console.error('Error fetching schedules:', schedulesError);
           // If we can't get schedules, at least show the users
           if (usersData && usersData.length > 0) {
-            setRoommates(usersData.map(user => ({
-              ...user,
+            // Need to map the usersData to properly match our Roommate interface
+            const formattedUsers = usersData.map((user: { id: number | string; name?: string; color?: string }) => ({
+              id: typeof user.id === 'number' ? user.id : parseInt(String(user.id)),
+              name: (user.name as string) || 'Unknown',
+              color: (user.color as string) || '#BBBBBB',
+              initial: ((user.name as string) || 'U').charAt(0).toUpperCase(),
               description: "Unable to load schedule data",
-              availableDays: []
-            })));
+              availableDays: [] as number[],
+              allDayOffDays: [] as number[]
+            } as Roommate));
+            setRoommates(formattedUsers);
           } else {
             setRoommates(initialUsers);
           }
@@ -336,33 +344,43 @@ export default function Roommates() {
         // Process schedules into the format we need
         const processedSchedules: Record<number, Record<string, Array<any>>> = {};
         
-        validSchedulesData.forEach(schedule => {
-          if (!processedSchedules[schedule.user_id]) {
-            processedSchedules[schedule.user_id] = {};
+        validSchedulesData.forEach((schedule: { user_id: number | string; day: string; id: string; start_time: string; end_time: string; label: string; all_day: boolean }) => {
+          const userId = (schedule.user_id as number);
+          const day = (schedule.day as string);
+          const id = (schedule.id as string);
+          const startTime = (schedule.start_time as string);
+          const endTime = (schedule.end_time as string);
+          const label = (schedule.label as string);
+          const allDay = (schedule.all_day as boolean);
+          
+          if (!processedSchedules[userId]) {
+            processedSchedules[userId] = {};
           }
           
-          if (!processedSchedules[schedule.user_id][schedule.day]) {
-            processedSchedules[schedule.user_id][schedule.day] = [];
+          if (!processedSchedules[userId][day]) {
+            processedSchedules[userId][day] = [];
           }
           
-          processedSchedules[schedule.user_id][schedule.day].push({
-            id: schedule.id,
-            start: schedule.start_time,
-            end: schedule.end_time,
-            label: schedule.label,
-            allDay: schedule.all_day
+          processedSchedules[userId][day].push({
+            id,
+            start: startTime,
+            end: endTime,
+            label,
+            allDay
           });
         });
         
         // Map users with their availability based on actual schedules
         if (usersData && usersData.length > 0) {
-          const mappedUsers = usersData.map(user => {
+          const mappedUsers = usersData.map((user: { id: number | string; name?: string; color?: string; initial?: string }) => {
             // Calculate available days based on schedules
             const availableDays: number[] = [];
             const allDayOffDays: number[] = [];
+            const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id));
             
             ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach((day, index) => {
-              const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(user.id, processedSchedules, index);
+              // Convert user.id to number to ensure proper typing
+              const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(userId, processedSchedules, index);
               
               // If it's an all-day off schedule, don't mark as available
               if (hasSchedules && !isAllDayOff) {
@@ -374,12 +392,16 @@ export default function Roommates() {
               }
             });
             
+            // Create properly typed Roommate object
             return {
-              ...user,
-              description: generateAvailabilityDescription(user.id, processedSchedules),
+              id: userId,
+              name: user.name as string,
+              color: user.color as string,
+              initial: (user.initial as string) || (user.name as string).charAt(0).toUpperCase(),
+              description: generateAvailabilityDescription(userId, processedSchedules),
               availableDays: availableDays,
               allDayOffDays: allDayOffDays
-            };
+            } as Roommate;
           });
           
           setRoommates(mappedUsers);
@@ -397,16 +419,21 @@ export default function Roommates() {
 
     fetchUsersAndSchedules();
 
-    // Set up real-time subscription
-    const usersSubscription = supabase
-      .channel('users-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        fetchUsersAndSchedules();
-      })
-      .subscribe();
-
+    // Set up polling mechanism instead of Realtime subscriptions
+    console.log('Setting up polling for Roommates component');
+    
+    // Initial data load
+    fetchUsersAndSchedules();
+    
+    // Set up polling interval (every 30 seconds)
+    const pollingInterval = setInterval(() => {
+      console.log('Polling for user updates in Roommates...');
+      fetchUsersAndSchedules();
+    }, 30000); // 30 seconds
+    
     return () => {
-      supabase.removeChannel(usersSubscription);
+      console.log('Cleaning up polling interval in Roommates');
+      clearInterval(pollingInterval);
     };
   }, [])
 

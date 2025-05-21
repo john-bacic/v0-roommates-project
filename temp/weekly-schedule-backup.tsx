@@ -256,7 +256,51 @@ export function WeeklySchedule({
       loadUsers()
     }
   })
-  
+        };
+        
+        fetchLatestData();
+      })
+      .subscribe();
+
+    // Set up subscription for user changes - use same supabase instance
+    const usersSubscription = supabase
+      .channel('users-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload: any) => {
+        // Update the user data when it changes with proper type checking
+        if (payload.new) {
+          // Cast to a typed record for safety
+          const updatedUser = payload.new as Record<string, any>;
+          
+          // Only update if we have a valid ID to compare against
+          if (typeof updatedUser.id === 'number') {
+            setUsers(prev => prev.map(user => 
+              user.id === updatedUser.id ? { ...user, ...updatedUser } : user
+            ));
+          }
+        }
+      })
+      .subscribe((status: string) => {
+        console.log(`User subscription status: ${status}`);
+      });
+      
+      console.log('[WeeklySchedule] Realtime subscriptions set up successfully');
+      
+      // Return cleanup function to remove channels
+      return () => {
+        try {
+          supabase.removeChannel(scheduleSubscription);
+          supabase.removeChannel(usersSubscription);
+          console.log('[WeeklySchedule] Cleaned up realtime subscriptions');
+        } catch (error) {
+          console.error('[WeeklySchedule] Error cleaning up subscriptions:', error);
+        }
+      };
+    } catch (error) {
+      console.error('[WeeklySchedule] Error setting up realtime subscriptions:', error);
+      return () => {}; // Empty cleanup function if setup failed
+    }
+  }, []);
+
   // Handle UI setup, event listeners, and cleanup
   useEffect(() => {
     // Check if mobile view

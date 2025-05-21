@@ -89,23 +89,24 @@ export function SingleDayView({
     document.dispatchEvent(dummyEvent)
   }, [])
 
-  // Set up Supabase real-time subscription
+  // Use visibility change instead of polling or Realtime subscription
   useEffect(() => {
-    // Subscribe to schedule changes
-    const scheduleSubscription = supabase
-      .channel('single-day-schedules-changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'schedules' 
-      }, () => {
-        onScheduleUpdate()
-      })
-      .subscribe()
+    console.log('[SingleDayView] Using visibility change for data refreshing')
     
-    // Clean up subscription on unmount
+    // Function to handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[SingleDayView] Page became visible, refreshing data')
+        onScheduleUpdate()
+      }
+    }
+    
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // Clean up listener on unmount
     return () => {
-      supabase.removeChannel(scheduleSubscription)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [onScheduleUpdate])
 

@@ -362,38 +362,58 @@ export default function Dashboard() {
     }
   }
 
-  // Set up real-time subscriptions to schedule and user changes
+  // Set up real-time subscriptions to schedule and user changes - CLIENT SIDE ONLY
   useEffect(() => {
-    const scheduleSubscription = getSupabase()
-      .channel('schedules-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
-        // Reload data when any schedule changes
-        loadData()
-      })
-      .subscribe()
+    // Skip entirely during server-side rendering or initial hydration
+    if (!isClient) return undefined;
+    
+    // Additional hydration safety - wait for complete document load
+    if (typeof document !== 'undefined' && document.readyState !== 'complete') {
+      console.log('Dashboard: Waiting for complete hydration before setting up WebSockets');
       
-    // Subscribe to user changes to update colors in real-time
-    const userSubscription = getSupabase()
-      .channel('users-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload: { new?: Record<string, any> }) => {
-        // When a user record changes, check if it's the current user and update color if needed
-        if (payload.new && typeof payload.new === 'object' && 'name' in payload.new && 'color' in payload.new) {
-          // Check if this is the current user
-          if (userName === String(payload.new.name)) {
-            setUserColor(String(payload.new.color))
-          }
-        }
-        
-        // Reload all user data to ensure everything is in sync
-        loadData()
-      })
-      .subscribe()
-
-    return () => {
-      getSupabase().removeChannel(scheduleSubscription)
-      getSupabase().removeChannel(userSubscription)
+      // Set up a one-time event listener for when the document is fully loaded
+      const handleLoad = () => {
+        console.log('Dashboard: Document fully loaded, now safe to set up WebSockets');
+        // Force a re-render to trigger this effect again after complete hydration
+        setIsClient(true);
+      };
+      
+      // Only add the listener if we're still not fully loaded
+      if (document.readyState === 'loading' || document.readyState === 'interactive') {
+        window.addEventListener('load', handleLoad, { once: true });
+        return () => window.removeEventListener('load', handleLoad);
+      }
     }
-  }, [userName])
+    
+    // Local variables to track subscription objects
+    let scheduleSubscription: any = null;
+    let userSubscription: any = null;
+    
+    console.log('Dashboard: Using page visibility for data refreshing');
+    
+    // No polling - we'll rely on the visibility change event instead
+    try {
+      // Initial data load
+      loadData();
+      
+      // The visibility change handler is already set up in another useEffect
+      console.log('Using page visibility changes for data refreshing');
+    } catch (error) {
+      console.error('Error with initial data load:', error);
+      toast({
+        title: "Data loading issue",
+        description: "There was a problem loading your schedule data.",
+        action: <ToastAction altText="Refresh">Refresh</ToastAction>,
+        duration: 5000,
+      });
+    }
+
+    // Clean up function - nothing to clean up since we're using visibility changes
+    return () => {
+      // No polling interval to clear
+      console.log('Component unmounting - no intervals to clear');
+    };
+  }, [isClient, userName, toast]); // Include isClient in dependencies
 
   // Load user data after component mounts (client-side only)
   useEffect(() => {

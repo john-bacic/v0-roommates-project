@@ -159,7 +159,7 @@ export default function EditSchedule() {
       };
       
       if (schedulesData && schedulesData.length > 0) {
-        schedulesData.forEach(item => {
+        schedulesData.forEach((item: { day: string; id: string; start_time: string; end_time: string; label: string; all_day: boolean }) => {
           if (!formattedSchedule[item.day]) {
             formattedSchedule[item.day] = [];
           }
@@ -192,31 +192,25 @@ export default function EditSchedule() {
     }
   };
 
-  // Set up real-time subscription to schedule changes
+  // Set up polling mechanism instead of Realtime subscriptions
   useEffect(() => {
     if (!userName) return;
-
-    // Set up subscription for schedule changes
-    const scheduleSubscription = supabase
-      .channel('schedules-changes-edit')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
-        // Reload data when any schedule changes
-        loadUserData(userName);
-      })
-      .subscribe();
-
-    // Set up subscription for user changes (like color updates)
-    const usersSubscription = supabase
-      .channel('users-changes-edit')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-        // Reload data when any user changes
-        loadUserData(userName);
-      })
-      .subscribe();
-
+    
+    console.log('Setting up polling for EditSchedule component');
+    
+    // Initial data load
+    loadUserData(userName);
+    
+    // Set up polling interval (every 30 seconds)
+    const pollingInterval = setInterval(() => {
+      console.log('Polling for schedule updates...');
+      loadUserData(userName);
+    }, 30000); // 30 seconds
+    
+    // Clean up interval on unmount
     return () => {
-      supabase.removeChannel(scheduleSubscription);
-      supabase.removeChannel(usersSubscription);
+      console.log('Cleaning up polling interval');
+      clearInterval(pollingInterval);
     };
   }, [userName]);
 

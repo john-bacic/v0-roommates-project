@@ -118,11 +118,18 @@ export default function Overview() {
         // Fall back to initial users if there's an error
         setUsersList(initialUsers)
       } else if (usersData && usersData.length > 0) {
-        setUsersList(usersData)
+        // Map the Supabase data to match our expected format
+        const formattedUsers = usersData.map((user: { id: number; name: string; color: string }) => ({
+          id: user.id as number,
+          name: user.name as string,
+          color: user.color as string,
+          initial: (user.name as string).charAt(0).toUpperCase()
+        }))
+        setUsersList(formattedUsers)
         
         // Set current user's color if they exist in the users list
         if (storedName) {
-          const currentUser = usersData.find(u => u.name === storedName)
+          const currentUser = formattedUsers.find((u: { name: string; color: string }) => u.name === storedName)
           if (currentUser) {
             setUserColor(currentUser.color)
           }
@@ -131,27 +138,33 @@ export default function Overview() {
         // Fetch schedules for each user
         const schedulesData: Record<number, Record<string, Array<any>>> = {}
         
-        for (const user of usersData) {
+        for (const user of formattedUsers) {
           const { data: userSchedules, error: schedulesError } = await supabase
             .from('schedules')
             .select('*')
-            .eq('user_id', user.id)
+            .eq('user_id', user.id as number)
           
           if (!schedulesError && userSchedules) {
             // Transform the data into the format expected by the app
-            const formattedSchedules: Record<string, Array<any>> = {}
+            const formattedSchedules: Record<string, Array<{id: string; start: string; end: string; label: string; allDay?: boolean}>> = {}
             
-            userSchedules.forEach(schedule => {
-              if (!formattedSchedules[schedule.day]) {
-                formattedSchedules[schedule.day] = []
+            userSchedules.forEach((schedule: { day: string; start_time: string; end_time: string; label: string; all_day: boolean; id: string }) => {
+              const day = schedule.day as string;
+              const startTime = schedule.start_time as string;
+              const endTime = schedule.end_time as string;
+              const label = schedule.label as string;
+              const allDay = schedule.all_day as boolean;
+              
+              if (!formattedSchedules[day]) {
+                formattedSchedules[day] = []
               }
               
-              formattedSchedules[schedule.day].push({
-                id: schedule.id,
-                start: schedule.start_time,
-                end: schedule.end_time,
-                label: schedule.label,
-                allDay: schedule.all_day
+              formattedSchedules[day].push({
+                id: schedule.id as string,
+                start: startTime,
+                end: endTime,
+                label: label,
+                allDay: allDay
               })
             })
             
@@ -207,23 +220,17 @@ export default function Overview() {
       refreshTimeDisplays();
     }
     
-    // Set up subscription for schedule changes
-    const scheduleSubscription = supabase
-      .channel('schedules-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules' }, () => {
-        // Reload data when any schedule changes
-        loadData()
-      })
-      .subscribe()
+    // Set up polling mechanism instead of Realtime subscriptions
+    console.log('Setting up polling for Overview component');
     
-    // Set up subscription for user changes
-    const usersSubscription = supabase
-      .channel('users-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-        // Reload data when any user changes
-        loadData()
-      })
-      .subscribe()
+    // Initial data load
+    loadData();
+    
+    // Set up polling interval (every 30 seconds)
+    const pollingInterval = setInterval(() => {
+      console.log('Polling for schedule and user updates in Overview...');
+      loadData();
+    }, 30000); // 30 seconds
     
     // Listen for custom scheduleDataUpdated events from SingleDayView component
     const handleScheduleUpdate = (event: Event) => {
@@ -266,10 +273,10 @@ export default function Overview() {
     window.addEventListener('focus', handleNavigation)
     document.addEventListener('returnToScheduleView', handleReturnToView)
     
-    // Clean up subscriptions and event listeners on unmount
+    // Clean up polling interval and event listeners on unmount
     return () => {
-      supabase.removeChannel(scheduleSubscription)
-      supabase.removeChannel(usersSubscription)
+      console.log('Cleaning up polling interval in Overview');
+      clearInterval(pollingInterval)
       document.removeEventListener('scheduleDataUpdated', handleScheduleUpdate)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       document.removeEventListener('refreshTimeDisplays', handleRefreshEvent)

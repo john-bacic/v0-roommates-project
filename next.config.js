@@ -13,7 +13,14 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_GIT_COMMIT_HASH: commitHash,
   },
-  // Your other Next.js config options go here
+  // Prevent 'ws' package from being included in client bundles
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Replace the 'ws' module with an empty module on the client side
+      config.resolve.alias.ws = false;
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
