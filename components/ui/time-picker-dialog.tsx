@@ -914,7 +914,7 @@ export function TimePickerDialog({
           
           {/* Noon and Midnight buttons removed */}
           
-          <div className="flex justify-center">
+          <div className="flex justify-center mb-6">
             <button
               onClick={handleConfirm}
               className="px-6 py-3 rounded font-medium w-full max-w-md"
