@@ -531,6 +531,12 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                         // Update UI immediately
                         onChange(newSchedule);
                         
+                        // Apply the same color to the label input
+                        const labelInput = document.getElementById(`label-${index}`) as HTMLInputElement;
+                        if (labelInput) {
+                          labelInput.style.color = userColor;
+                        }
+                        
                         // Then call updateTimeBlock for the backend sync
                         setTimeout(() => {
                           updateTimeBlock(activeDay, index, "start", value);
@@ -572,6 +578,12 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                         // Update UI immediately
                         onChange(newSchedule);
                         
+                        // Apply the same color to the label input
+                        const labelInput = document.getElementById(`label-${index}`) as HTMLInputElement;
+                        if (labelInput) {
+                          labelInput.style.color = userColor;
+                        }
+                        
                         // Then call updateTimeBlock for the backend sync
                         setTimeout(() => {
                           updateTimeBlock(activeDay, index, "end", value);
@@ -607,6 +619,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                     data-component-name="_c"
                     data-label-index={index}
                     data-time-block-id={`${activeDay}-${index}`}
+                    style={{ color: userColor }}
                   />
                   {focusedLabelIndex === index && (
                     <button
@@ -713,6 +726,12 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
             // Update UI immediately
             onChange(newSchedule);
             
+            // Apply the same color to the label input
+            const labelInput = document.getElementById(`label-${currentTimeBlock.index}`) as HTMLInputElement;
+            if (labelInput) {
+              labelInput.style.color = userColor;
+            }
+            
             // Then call updateTimeBlock for the backend sync
             setTimeout(() => {
               updateTimeBlock(currentTimeBlock.dayName, currentTimeBlock.index, 'start', newTime);
@@ -736,6 +755,12 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
             
             // Update UI immediately
             onChange(newSchedule);
+            
+            // Apply the same color to the label input
+            const labelInput = document.getElementById(`label-${currentTimeBlock.index}`) as HTMLInputElement;
+            if (labelInput) {
+              labelInput.style.color = userColor;
+            }
             
             // Then call updateTimeBlock for the backend sync
             setTimeout(() => {
