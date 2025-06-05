@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { CircularTimePicker } from "./circular-time-picker"
 import { X, ChevronUp, ChevronDown, Sun, Moon } from "lucide-react"
 import { Button } from "./button"
 import { motion, AnimatePresence } from "framer-motion"
+import { MobilePickerNumber } from "./mobile-picker-number"
 
 // Helper to detect if we're on a mobile device
 const isMobile = () => {
@@ -355,144 +356,130 @@ interface MobileTimePickerProps {
   'aria-labelledby'?: string;
 }
 
-function MobileTimePicker({ time, onTimeChange, userColor = "#03DAC6", use24HourFormat = false, 'aria-labelledby': ariaLabelledby }: MobileTimePickerProps) {
-  // Parse time string "HH:MM" or "H:MM" into separate hour and minute values
+function MobileTimePicker({ time, onTimeChange, userColor = "#F8D667", use24HourFormat = false, 'aria-labelledby': ariaLabelledby }: MobileTimePickerProps): React.ReactElement {
   const [timeParts, setTimeParts] = useState(() => {
+    // Parse the time string into hours, minutes, and period
     const [hoursStr, minutesStr] = time.split(":")
     let hours = parseInt(hoursStr, 10)
     const minutes = parseInt(minutesStr, 10)
     
-    // Convert 24-hour format to 12-hour
+    // Convert 24-hour format to 12-hour if needed
     const period = hours >= 12 ? "PM" : "AM"
-    if (hours === 0) hours = 12
-    else if (hours > 12) hours = hours - 12
+    if (!use24HourFormat) {
+      if (hours === 0) hours = 12
+      else if (hours > 12) hours = hours - 12
+    }
     
     return { hours, minutes, period }
   })
 
-  // Update parent when time changes
-  const updateTime = () => {
-    // Convert to 24-hour format for the time string
-    let hours = timeParts.hours
+  // Update time parts when the time prop changes
+  useEffect(() => {
+    const [hoursStr, minutesStr] = time.split(":")
+    let hours = parseInt(hoursStr, 10)
+    const minutes = parseInt(minutesStr, 10)
     
-    // Only convert if not already in 24-hour format
+    // Convert 24-hour format to 12-hour if needed
+    const period = hours >= 12 ? "PM" : "AM"
     if (!use24HourFormat) {
-      if (timeParts.period === "PM" && hours !== 12) hours += 12
-      if (timeParts.period === "AM" && hours === 12) hours = 0
+      if (hours === 0) hours = 12
+      else if (hours > 12) hours = hours - 12
     }
     
-    const timeString = `${hours.toString().padStart(2, '0')}:${timeParts.minutes.toString().padStart(2, '0')}`
-    onTimeChange(timeString)
-  }
+    setTimeParts({ hours, minutes, period })
+  }, [time, use24HourFormat])
 
-  // Handle changes to hours, minutes, or period
+  // Handle changes to hours
   const handleHoursChange = (newHours: number) => {
-    setTimeParts(prev => ({ ...prev, hours: newHours }))
-  }
-
-  const handleMinutesChange = (newMinutes: number) => {
-    setTimeParts(prev => ({ ...prev, minutes: newMinutes }))
-  }
-
-  const handlePeriodToggle = () => {
-    setTimeParts(prev => {
-      const newPeriod = prev.period === "AM" ? "PM" : "AM"
-      return { ...prev, period: newPeriod }
-    })
-  }
-
-  // Update parent component when our state changes
-  useEffect(() => {
-    updateTime()
-  }, [timeParts])
-
-  // Parse the time string and update state when the time prop changes
-  useEffect(() => {
-    // Force an immediate update whenever the time prop changes
-    if (time === "12:00") {
-      setTimeParts({ hours: use24HourFormat ? 12 : 12, minutes: 0, period: "PM" })
-    } else if (time === "00:00") {
-      setTimeParts({ hours: use24HourFormat ? 0 : 12, minutes: 0, period: "AM" })
-    } else {
-      // Regular time update - parse hours and minutes precisely
-      const [hoursStr, minutesStr] = time.split(":")
-      let hours = parseInt(hoursStr, 10)
-      const minutes = parseInt(minutesStr, 10)
-      
-      // Handle period based on 24-hour format
-      const period = hours >= 12 ? "PM" : "AM"
-      
-      // Convert to 12-hour format if needed
-      if (!use24HourFormat) {
-        if (hours === 0) hours = 12
-        else if (hours > 12) hours = hours - 12
-      }
-      
-      setTimeParts({ hours, minutes, period })
+    const updatedTimeParts = { ...timeParts, hours: newHours }
+    setTimeParts(updatedTimeParts)
+    
+    // Convert back to 24-hour format if needed
+    let hours24 = newHours
+    if (!use24HourFormat) {
+      if (updatedTimeParts.period === "PM" && newHours < 12) hours24 = newHours + 12
+      if (updatedTimeParts.period === "AM" && newHours === 12) hours24 = 0
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [time])
+    
+    onTimeChange(`${hours24.toString().padStart(2, '0')}:${updatedTimeParts.minutes.toString().padStart(2, '0')}`)
+  }
 
-  // Force re-render of rollers when timeParts change
-  const [forceRerender, setForceRerender] = useState(0)
-  
-  // When time parts change, force rollers to update
-  useEffect(() => {
-    setForceRerender(prev => prev + 1)
-  }, [timeParts.hours, timeParts.minutes, timeParts.period])
+  // Handle changes to minutes
+  const handleMinutesChange = (newMinutes: number) => {
+    const updatedTimeParts = { ...timeParts, minutes: newMinutes }
+    setTimeParts(updatedTimeParts)
+    
+    // Convert back to 24-hour format if needed
+    let hours24 = updatedTimeParts.hours
+    if (!use24HourFormat) {
+      if (updatedTimeParts.period === "PM" && hours24 < 12) hours24 += 12
+      if (updatedTimeParts.period === "AM" && hours24 === 12) hours24 = 0
+    }
+    
+    onTimeChange(`${hours24.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`)
+  }
+
+  // Handle changes to period (AM/PM)
+  const handlePeriodToggle = () => {
+    const newPeriod = timeParts.period === "AM" ? "PM" : "AM"
+    const updatedTimeParts = { ...timeParts, period: newPeriod }
+    setTimeParts(updatedTimeParts)
+    
+    // Convert back to 24-hour format
+    let hours24 = updatedTimeParts.hours
+    if (newPeriod === "PM" && hours24 < 12) hours24 += 12
+    if (newPeriod === "AM" && hours24 === 12) hours24 = 0
+    
+    onTimeChange(`${hours24.toString().padStart(2, '0')}:${updatedTimeParts.minutes.toString().padStart(2, '0')}`)
+  }
 
   return (
-    <div className="py-4" aria-labelledby={ariaLabelledby}>
-      <div className="flex justify-center items-center gap-2">
-        {/* Hours roller */}
-        <div className="w-1/3">
-          <RollingNumber 
-            key={`hours-${timeParts.hours}-${forceRerender}`}
-            value={timeParts.hours} 
-            min={use24HourFormat ? 0 : 1} 
-            max={use24HourFormat ? 23 : 12} 
-            step={1} 
-            onChange={handleHoursChange} 
-            userColor={userColor}
-          />
-        </div>
-        
-        <div className="text-2xl font-bold">:</div>
-        
-        {/* Minutes roller */}
-        <div className="w-1/3">
-          <RollingNumber 
-            key={`minutes-${timeParts.minutes}-${forceRerender}`}
-            value={timeParts.minutes} 
-            min={0} 
-            max={59} 
-            step={5} 
-            onChange={handleMinutesChange} 
-            userColor={userColor}
-          />
-        </div>
-        
-        {/* AM/PM toggle - only show in 12-hour mode */}
-        {!use24HourFormat && (
-          <motion.div 
-            className="w-1/4 h-16 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
-            onClick={handlePeriodToggle}
-            style={{ 
-              WebkitTapHighlightColor: 'transparent',
-              backgroundColor: timeParts.period === 'AM' ? userColor : '#333333'
-            }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-            data-component-name="MobileTimePicker"
-          >
-            <div className="text-xl font-medium px-3 py-1" 
-              style={{ color: timeParts.period === 'AM' ? '#222222' : userColor }}
-            >
-              {timeParts.period}
-            </div>
-          </motion.div>
-        )}
+    <div className="flex items-center justify-center space-x-2 py-2" aria-labelledby={ariaLabelledby}>
+      {/* Hours picker */}
+      <div className="w-16">
+        <MobilePickerNumber
+          value={timeParts.hours}
+          min={use24HourFormat ? 0 : 1}
+          max={use24HourFormat ? 23 : 12}
+          step={1}
+          onChange={handleHoursChange}
+          userColor={userColor}
+        />
       </div>
+      
+      {/* Colon separator */}
+      <div className="text-2xl font-bold text-white">:</div>
+      
+      {/* Minutes picker */}
+      <div className="w-16">
+        <MobilePickerNumber
+          value={timeParts.minutes}
+          min={0}
+          max={59}
+          step={5}
+          onChange={handleMinutesChange}
+          userColor={userColor}
+        />
+      </div>
+      
+      {/* AM/PM toggle (only for 12-hour format) */}
+      {!use24HourFormat && (
+        <motion.div 
+          className="w-16 h-10 flex items-center justify-center cursor-pointer rounded-md select-none touch-none"
+          onClick={handlePeriodToggle}
+          style={{ 
+            backgroundColor: timeParts.period === 'AM' ? userColor : '#333333'
+          }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+        >
+          <div className="text-xl font-medium px-3 py-1" 
+            style={{ color: timeParts.period === 'AM' ? '#222222' : userColor }}
+          >
+            {timeParts.period}
+          </div>
+        </motion.div>
+      )}
     </div>
   )
 }

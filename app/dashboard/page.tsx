@@ -10,6 +10,7 @@ import Image from "next/image"
 import { getSupabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { caveat } from "../fonts"
+import { ErrorBoundaryHandler } from "@/components/error-boundary"
 
 // Define types for the application
 interface User {
@@ -938,14 +939,32 @@ export default function Dashboard() {
               <p className="text-[#A0A0A0]">Loading schedules...</p>
             </div>
           ) : (
-            <WeeklySchedule 
-              users={users} 
-              currentWeek={currentWeek} 
-              onColorChange={handleColorUpdate} 
-              schedules={schedules}
-              useAlternatingBg={false}
-              onTimeFormatChange={setUse24HourFormat}
-            />
+            <ErrorBoundaryHandler
+              fallback={
+                <div className="p-4 bg-[#333333] rounded-md my-4">
+                  <h3 className="text-red-400 font-bold mb-2">Schedule Error</h3>
+                  <p className="text-sm text-[#A0A0A0] mb-2">
+                    There was an error loading the schedule. Please try refreshing the page.
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 px-3 py-1 text-xs bg-[#444444] hover:bg-[#555555] rounded"
+                  >
+                    Refresh Page
+                  </button>
+                </div>
+              }
+            >
+              <WeeklySchedule 
+                users={users} 
+                currentWeek={currentWeek} 
+                onColorChange={handleColorUpdate} 
+                schedules={schedules}
+                useAlternatingBg={false}
+                onTimeFormatChange={setUse24HourFormat}
+                onWeekChange={setCurrentWeek}
+              />
+            </ErrorBoundaryHandler>
           )}
           
           {/* Git commit hash display */}
