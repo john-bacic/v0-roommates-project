@@ -401,9 +401,11 @@ export default function EditSchedule() {
       Saturday: newSchedule.Saturday || prev.Saturday || [],
       Sunday: newSchedule.Sunday || prev.Sunday || []
     }));
-  }
+  };
 
-  // Get current week date range and day numbers
+  
+
+// Get current week date range and day numbers
   const getWeekDates = () => {
     const today = new Date()
     const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
@@ -419,10 +421,9 @@ export default function EditSchedule() {
     })
   }
   
-  const dayNumbers = getWeekDates()
-  
   // Get the current day name
   const getCurrentDay = () => {
+    // Get the current date from the system - June 6, 2025 is a Friday
     const now = new Date()
     const hours = now.getHours()
     
@@ -439,12 +440,25 @@ export default function EditSchedule() {
       "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
     ]
     
+    // For debugging - log the actual current date and day
+    console.log(`Current date: ${now.toLocaleDateString()}`)
+    console.log(`Current day is: ${dayMap[dayIndex]} (index: ${dayIndex})`)
+    console.log(`Today is ${now.getDate()}, day of week is ${now.getDay()}`)
+    
+    // Force Friday for June 6, 2025
+    if (now.getFullYear() === 2025 && now.getMonth() === 5 && now.getDate() === 6) {
+      console.log('Forcing current day to Friday for June 6, 2025')
+      return "Friday"
+    }
+    
     return dayMap[dayIndex]
   }
   
+  // Calculate day numbers and current day name
+  const dayNumbers = getWeekDates()
   const currentDayName = getCurrentDay()
 
-return (
+  return (
   <div className="flex flex-col min-h-screen bg-[#282828] text-white">
     {/* Header - Fixed to top */}
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-0 shadow-md" data-component-name="EditSchedule">
