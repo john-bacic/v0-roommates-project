@@ -59,55 +59,67 @@ export default function EditSchedule() {
   
   // Set up initial state after component mounts
   useEffect(() => {
+    // Skip this effect during server-side rendering
+    if (typeof window === 'undefined') return;
+    
     setMounted(true);
     
     // Initialize time format preference from localStorage
-    const savedFormat = localStorage.getItem('use24HourFormat');
-    if (savedFormat !== null) {
-      setUse24HourFormat(savedFormat === 'true');
+    try {
+      const savedFormat = localStorage.getItem('use24HourFormat');
+      if (savedFormat !== null) {
+        setUse24HourFormat(savedFormat === 'true');
+      }
+    } catch (e) {
+      console.error('Error accessing localStorage:', e);
     }
     
-    // Get the user's name from localStorage or URL parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const userParam = urlParams.get('user');
-    const storedName = localStorage.getItem("userName");
-    
-    // Get the week parameter to determine which week to show
-    const weekParam = urlParams.get('week');
-    const weekDate = weekParam ? new Date(weekParam) : new Date();
-    setSelectedWeek(weekDate); // Store the selected week in state
-    
-    // Get the day parameter and update active day if needed
-    const dayParam = urlParams.get('day');
-    const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : "Monday";
-    
-    // Update the active day in state
-    setSchedule(prev => ({
-      ...prev,
-      activeDay
-    }));
-    
-    // Get the return path from URL if available
-    const from = urlParams.get('from');
-    if (from) {
-      setReturnPath(decodeURIComponent(from));
-    }
-    
-    // Prioritize the user parameter from URL if available
-    const userToLoad = userParam || storedName;
-    if (userToLoad) {
-      // Check if the name is one of the roommates
-      if (["Riko", "Narumi", "John"].includes(userToLoad)) {
-        setUserName(userToLoad);
-        loadUserData(userToLoad, selectedWeek);
+    try {
+      // Get the user's name from localStorage or URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const userParam = urlParams.get('user');
+      const storedName = localStorage.getItem("userName");
+      
+      // Get the week parameter to determine which week to show
+      const weekParam = urlParams.get('week');
+      const weekDate = weekParam ? new Date(weekParam) : new Date();
+      setSelectedWeek(weekDate); // Store the selected week in state
+      
+      // Get the day parameter and update active day if needed
+      const dayParam = urlParams.get('day');
+      const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : "Monday";
+      
+      // Update the active day in state
+      setSchedule(prev => ({
+        ...prev,
+        activeDay
+      }));
+      
+      // Get the return path from URL if available
+      const from = urlParams.get('from');
+      if (from) {
+        setReturnPath(decodeURIComponent(from));
+      }
+      
+      // Prioritize the user parameter from URL if available
+      const userToLoad = userParam || storedName;
+      if (userToLoad) {
+        // Check if the name is one of the roommates
+        if (["Riko", "Narumi", "John"].includes(userToLoad)) {
+          setUserName(userToLoad);
+          loadUserData(userToLoad, selectedWeek);
+        } else {
+          // If not a roommate, redirect to home page
+          router.push("/");
+        }
       } else {
-        // If not a roommate, redirect to home page
+        // If no name is set, redirect to home page
         router.push("/");
       }
-    } else {
-      // If no name is set, redirect to home page
-      router.push("/");
+    } catch (e) {
+      console.error('Error in client-side initialization:', e);
+      setError('Failed to initialize. Please refresh the page.');
     }
   }, [router]);
 
@@ -354,6 +366,9 @@ export default function EditSchedule() {
       setUse24HourFormat(event.detail.use24Hour)
     }
     
+    // Skip during server-side rendering
+    if (typeof window === 'undefined') return;
+    
     window.addEventListener('userColorChange', handleColorChange as EventListener)
     window.addEventListener('timeFormatChange', handleTimeFormatChange as EventListener)
     
@@ -362,9 +377,12 @@ export default function EditSchedule() {
       window.removeEventListener('timeFormatChange', handleTimeFormatChange as EventListener)
     }
   }, [userName])
-  
+
   // Apply time format class to document
   useEffect(() => {
+    // Skip during server-side rendering
+    if (typeof window === 'undefined') return;
+    
     // Apply a CSS class to the document to control time input display
     if (use24HourFormat) {
       document.documentElement.classList.add('use-24h-time')
@@ -511,96 +529,132 @@ export default function EditSchedule() {
 
 // Get week date range and day numbers for the selected week
   const getWeekDates = () => {
-    // Get the week parameter from URL, or use current week as fallback
-    // Check if we're on the client side before accessing window
+    // Handle server-side rendering safely
     if (typeof window === 'undefined') {
-      // Server-side: return current week as fallback
-      const currentWeek = new Date();
-      const weekStart = new Date(currentWeek);
-      weekStart.setDate(currentWeek.getDate() - currentWeek.getDay());
-      return Array.from({ length: 7 }, (_, i) => {
-        const date = new Date(weekStart);
-        date.setDate(weekStart.getDate() + i);
-        return date.getDate(); // Return the day number, not the Date object
-      });
+      // For server-side rendering, use default values
+      return {
+        weekStart: new Date(),
+        weekEnd: new Date(),
+        dayNumbers: [1, 2, 3, 4, 5, 6, 7]
+      };
     }
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const weekParam = urlParams.get('week');
-    const selectedWeek = weekParam ? new Date(weekParam) : new Date();
-    
-    // Calculate the start of the week (Sunday)
-    const weekStart = new Date(selectedWeek);
-    weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
-    
-    // Calculate the date for each day of the week
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    return days.map((_, index) => {
-      const date = new Date(weekStart)
-      date.setDate(weekStart.getDate() + index)
-      return date.getDate()
-    })
-  }
+    try {
+      // Get the week parameter from URL, or use current week as fallback
+      const urlParams = new URLSearchParams(window.location.search);
+      const weekParam = urlParams.get('week');
+      
+      // Use the week parameter or current date
+      const weekDate = weekParam ? new Date(weekParam) : new Date();
+      
+      // Calculate the start of the week (Sunday)
+      const weekStart = new Date(weekDate);
+      weekStart.setDate(weekDate.getDate() - weekDate.getDay());
+      
+      // Calculate the end of the week (Saturday)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      // Generate array of day numbers for the week
+      const dayNumbers = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + i);
+        dayNumbers.push(day.getDate());
+      }
+      
+      return { weekStart, weekEnd, dayNumbers };
+    } catch (e) {
+      console.error('Error in getWeekDates:', e);
+      // Fallback for any errors
+      return {
+        weekStart: new Date(),
+        weekEnd: new Date(),
+        dayNumbers: [1, 2, 3, 4, 5, 6, 7]
+      };
+    }
+  };
   
   // Get the current day name (always based on actual current date, not the week being viewed)
   const getCurrentDay = () => {
-    // Get the current date from the system
-    const now = new Date()
-    const hours = now.getHours()
-    
-    // If it's before 6am, consider it the previous day
-    let adjustedDate = new Date(now)
-    if (hours < 6) {
-      adjustedDate.setDate(now.getDate() - 1)
+    // Handle server-side rendering
+    if (typeof window === 'undefined') {
+      return "Monday"; // Default for SSR
     }
     
-    const dayIndex = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
-    
-    // Convert to our day format
-    const dayMap = [
-      "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
-    ]
-    
-    // For debugging - log the actual current date and day
-    console.log(`Current date: ${now.toLocaleDateString()}`)
-    console.log(`Current day is: ${dayMap[dayIndex]} (index: ${dayIndex})`)
-    console.log(`Today is ${now.getDate()}, day of week is ${now.getDay()}`)
-    
-    // Force Monday for June 9, 2025 (current date)
-    if (now.getFullYear() === 2025 && now.getMonth() === 5 && now.getDate() === 9) {
-      console.log('Forcing current day to Monday for June 9, 2025')
-      return "Monday"
+    try {
+      // Get the current date from the system
+      const now = new Date();
+      const hours = now.getHours();
+      
+      // If it's before 6am, consider it the previous day
+      let adjustedDate = new Date(now);
+      if (hours < 6) {
+        adjustedDate.setDate(now.getDate() - 1);
+      }
+      
+      const dayIndex = adjustedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+      
+      // Convert to our day format
+      const dayMap = [
+        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+      ];
+      
+      // For debugging - log the actual current date and day
+      console.log(`Current date: ${now.toLocaleDateString()}`);
+      console.log(`Current day is: ${dayMap[dayIndex]} (index: ${dayIndex})`);
+      console.log(`Today is ${now.getDate()}, day of week is ${now.getDay()}`);
+      
+      // Force Monday for June 9, 2025 (current date)
+      if (now.getFullYear() === 2025 && now.getMonth() === 5 && now.getDate() === 9) {
+        console.log('Forcing current day to Monday for June 9, 2025');
+        return "Monday";
+      }
+      
+      return dayMap[dayIndex];
+    } catch (e) {
+      console.error('Error in getCurrentDay:', e);
+      return "Monday"; // Default fallback
     }
-    
-    return dayMap[dayIndex]
-  }
+  };
   
   // Calculate day numbers and current day name
-  const dayNumbers = getWeekDates()
-  const currentDayName = getCurrentDay()
+  const { dayNumbers } = getWeekDates();
+  const currentDayName = getCurrentDay();
   
   // Check if the current date falls within the week being viewed
   const isCurrentDateInViewedWeek = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const weekParam = urlParams.get('week');
-    const selectedWeek = weekParam ? new Date(weekParam) : new Date();
+    // Handle server-side rendering safely
+    if (typeof window === 'undefined') {
+      return false; // Default value during SSR
+    }
     
-    // Calculate the start and end of the selected week
-    const weekStart = new Date(selectedWeek);
-    weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    
-    // Get the actual current date
-    const now = new Date();
-    const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    // Check if current date falls within the selected week
-    return currentDate >= new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()) &&
-           currentDate <= new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const weekParam = urlParams.get('week');
+      const selectedWeek = weekParam ? new Date(weekParam) : new Date();
+      
+      // Calculate the start and end of the selected week
+      const weekStart = new Date(selectedWeek);
+      weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      // Get the actual current date
+      const now = new Date();
+      const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      // Check if current date falls within the selected week
+      return currentDate >= new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()) &&
+             currentDate <= new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
+    } catch (e) {
+      console.error('Error in isCurrentDateInViewedWeek:', e);
+      return false;
+    }
   }
   
-  const shouldHighlightCurrentDay = isCurrentDateInViewedWeek()
+  // Determine if we should highlight the current day
+  const shouldHighlightCurrentDay = isCurrentDateInViewedWeek();
 
   return (
   <div className="flex flex-col min-h-screen bg-[#282828] text-white">
@@ -615,40 +669,39 @@ export default function EditSchedule() {
                 
                 // Use a more direct approach to ensure dashboard refreshes
                 // Set a flag that will be checked by the dashboard
-                sessionStorage.setItem('dashboardNeedsRefresh', 'true');
-                
-                // Store timestamp to ensure we can detect this is a new refresh request
-                sessionStorage.setItem('refreshTimestamp', Date.now().toString());
-                
-                // Dispatch events for any components that might be listening
-                document.dispatchEvent(new CustomEvent('returnToScheduleView', {
-                  detail: { updatedAt: new Date().toISOString() }
-                }));
-                
-                document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('dashboardNeedsRefresh', 'true');
+                  
+                  // Store timestamp to ensure we can detect this is a new refresh request
+                  sessionStorage.setItem('refreshTimestamp', Date.now().toString());
+                  
+                  // Dispatch events for any components that might be listening
+                  document.dispatchEvent(new CustomEvent('returnToScheduleView', {
+                    detail: { updatedAt: new Date().toISOString() }
+                  }));
+                  
+                  document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
+                }
                 
                 // Navigate to dashboard with a forced reload to ensure fresh data
-                if (returnPath.includes('dashboard')) {
-                  // Get the week parameter from current URL to preserve the week view
-                  const urlParams = new URLSearchParams(window.location.search);
-                  const weekParam = urlParams.get('week');
-                  
-                  // If returning to dashboard, force a complete page reload with week parameter
-                  if (weekParam) {
-                    window.location.href = `/dashboard?week=${encodeURIComponent(weekParam)}&refresh=${Date.now()}`;
-                  } else {
-                    window.location.href = '/dashboard?refresh=' + Date.now();
-                  }
+                // Check if we're on the client side before accessing window
+                if (typeof window === 'undefined') {
+                  // Server-side: use router
+                  router.push('/dashboard');
                 } else {
-                  // For other pages, try history navigation first
-                  if (window.history.length > 1) {
-                    window.history.back();
+                  if (returnPath && returnPath.includes('dashboard')) {
+                    try {
+                      window.history.back();
+                    } catch (e) {
+                      console.error('Error navigating back:', e);
+                      router.push('/dashboard');
+                    }
                   } else {
-                    window.location.href = returnPath;
+                    router.push('/dashboard');
                   }
                 }
-              }} 
-              className="flex items-center text-white hover:opacity-80 cursor-pointer"
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-700 transition-colors"
               data-component-name="BackButton"
               title="Back"
             >
@@ -694,7 +747,7 @@ export default function EditSchedule() {
                     <span className="hidden md:inline">{day.substring(0, 3)}</span>
                   </span>
                   <span className={`${shouldHighlightCurrentDay && day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
-                    {dayNumbers[dayIndex]}
+                    {Array.isArray(dayNumbers) && dayNumbers.length > dayIndex ? dayNumbers[dayIndex] : dayIndex + 1}
                   </span>
                 </div>
                 {isActive && (
