@@ -90,11 +90,46 @@ export default function EditSchedule() {
       const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
       const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : "Monday";
       
-      // Update the active day in state
-      setSchedule(prev => ({
-        ...prev,
-        activeDay
-      }));
+      // Check if we have time block data in sessionStorage
+      const editTimeBlockData = sessionStorage.getItem('editTimeBlock');
+      if (editTimeBlockData) {
+        try {
+          const parsedData = JSON.parse(editTimeBlockData);
+          
+          // Set user info from the stored data
+          if (parsedData.userName) setUserName(parsedData.userName);
+          if (parsedData.userColor) setUserColor(parsedData.userColor);
+          
+          // Set the active day based on the stored data
+          const storedDay = parsedData.day;
+          if (storedDay && validDays.includes(storedDay)) {
+            // Update schedule with the time block
+            if (parsedData.timeBlock) {
+              setSchedule(prev => ({
+                ...prev,
+                activeDay: storedDay,
+                [storedDay]: [parsedData.timeBlock]
+              }));
+            } else {
+              setSchedule(prev => ({
+                ...prev,
+                activeDay: storedDay
+              }));
+            }
+          }
+          
+          // Clear the sessionStorage after using it
+          sessionStorage.removeItem('editTimeBlock');
+        } catch (e) {
+          console.error('Error parsing editTimeBlock data:', e);
+        }
+      } else {
+        // If no stored data, just update the active day
+        setSchedule(prev => ({
+          ...prev,
+          activeDay
+        }));
+      }
       
       // Get the return path from URL if available
       const from = urlParams.get('from');

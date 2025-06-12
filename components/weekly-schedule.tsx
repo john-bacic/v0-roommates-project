@@ -669,11 +669,20 @@ export function WeeklySchedule({
 
   // Handle clicking on a time block - navigate to edit page
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
-    setSelectedUser(user)
-    setSelectedDay(day)
-    setSelectedTimeBlock(timeBlock)
-    setEditMode(true)
-    setModalOpen(true)
+    // Store the selected time block info in sessionStorage for the edit page
+    if (typeof window !== 'undefined') {
+      // Save the data needed for editing
+      sessionStorage.setItem('editTimeBlock', JSON.stringify({
+        userId: user.id,
+        userName: user.name,
+        userColor: user.color,
+        day,
+        timeBlock
+      }))
+      
+      // Navigate to the edit page
+      window.location.href = `/schedule/edit?week=${currentWeek.toISOString()}&day=${day}`
+    }
   }
 
   // Helper function to convert time string to minutes
@@ -893,7 +902,7 @@ export function WeeklySchedule({
     const isCurrentWeek = start.getTime() === currentWeekStart.getTime()
     
     if (isCurrentWeek) {
-      return `Current Week (${formatDate(start)} - ${formatDate(end)})`
+      return `Current (${formatDate(start)} - ${formatDate(end)})`
     } else {
       return `${formatDate(start)} - ${formatDate(end)}`
     }
