@@ -20,6 +20,9 @@ const getTextColor = (bgColor: string): string => {
 }
 
 export default function Overview() {
+  // State to track if we're on the client side
+  const [isClient, setIsClient] = useState(false)
+  
   // Initialize users state with the initial users data
   const [usersList, setUsersList] = useState<typeof initialUsers>(initialUsers)
   const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>>>({})
@@ -51,6 +54,11 @@ export default function Overview() {
     }
     return false // Default to 12-hour format
   })
+  
+  // Set client-side flag after hydration
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
   
   // Helper function to get logical day of the week
   // Hours between midnight and 6am are considered part of the previous day
@@ -190,6 +198,8 @@ export default function Overview() {
   
   // Load data on component mount
   useEffect(() => {
+    if (!isClient) return; // Skip during SSR
+    
     // Load initial data
     loadData()
     
@@ -284,7 +294,7 @@ export default function Overview() {
       window.removeEventListener('focus', handleNavigation)
       document.removeEventListener('returnToScheduleView', handleReturnToView)
     }
-  }, [])
+  }, [isClient])
 
   // Format week range with month names
   const formatWeekRange = (date: Date) => {
@@ -324,6 +334,8 @@ export default function Overview() {
   
   // Add keyboard navigation for days
   useEffect(() => {
+    if (!isClient) return; // Skip during SSR
+    
     // Apply keyboard navigation for day view
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if no input elements are focused
@@ -341,7 +353,7 @@ export default function Overview() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedDay]);
+  }, [selectedDay, isClient]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">

@@ -40,6 +40,9 @@ export default function EditSchedule() {
   const [userColor, setUserColor] = useState("#FF7DB1"); // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(false); // Default to false for server rendering
   const [returnPath, setReturnPath] = useState("/dashboard"); // Default to dashboard
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<Date>(new Date()); // Store the selected week
   const router = useRouter();
   
   // Initialize schedule state with proper typing
@@ -69,6 +72,11 @@ export default function EditSchedule() {
     const userParam = urlParams.get('user');
     const storedName = localStorage.getItem("userName");
     
+    // Get the week parameter to determine which week to show
+    const weekParam = urlParams.get('week');
+    const weekDate = weekParam ? new Date(weekParam) : new Date();
+    setSelectedWeek(weekDate); // Store the selected week in state
+    
     // Get the day parameter and update active day if needed
     const dayParam = urlParams.get('day');
     const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -92,7 +100,7 @@ export default function EditSchedule() {
       // Check if the name is one of the roommates
       if (["Riko", "Narumi", "John"].includes(userToLoad)) {
         setUserName(userToLoad);
-        loadUserData(userToLoad);
+        loadUserData(userToLoad, selectedWeek);
       } else {
         // If not a roommate, redirect to home page
         router.push("/");
@@ -104,8 +112,12 @@ export default function EditSchedule() {
   }, [router]);
 
   // Function to load user data and schedules from Supabase
-  const loadUserData = async (name: string) => {
+  const loadUserData = async (name: string, weekOverride?: Date) => {
     try {
+      setLoading(true);
+      setError(null);
+      console.log('Loading user data for:', name, 'with week override:', weekOverride);
+      
       // Get user data from Supabase
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -115,80 +127,145 @@ export default function EditSchedule() {
       
       if (userError) {
         console.error('Error fetching user data:', userError);
+        setError('Failed to load user data');
+        setLoading(false);
         return;
       }
+      
+      if (!userData) {
+        console.error('No user data found for:', name);
+        setError(`No user data found for ${name}`);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('User data loaded successfully:', userData);
       
       // Set user color
       setUserColor(userData.color);
       
-      // Get schedules for this user
-      const { data: schedulesData, error: schedulesError } = await supabase
-        .from('schedules')
-        .select('*')
-        .eq('user_id', userData.id);
-      
-      if (schedulesError) {
-        console.error('Error fetching schedules:', schedulesError);
-        return;
+      // Use the week override if provided, otherwise get from URL or default to current date
+      let selectedWeek = weekOverride;
+      if (!selectedWeek) {
+        // Check if we're on the client side before accessing window
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const weekParam = urlParams.get('week');
+          selectedWeek = weekParam ? new Date(weekParam) : new Date();
+        } else {
+          // Server-side: use current date as fallback
+          selectedWeek = new Date();
+        }
       }
       
-      // Get the day parameter from URL to ensure we maintain the selected day
-      const urlParams = new URLSearchParams(window.location.search);
-      const dayParam = urlParams.get('day');
-      const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-      const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : schedule.activeDay;
+      // Calculate week start and end dates for filtering
+      const weekStart = new Date(selectedWeek);
+      weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay()); // Start of week (Sunday)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
       
-      // Update the active day in state if it's different from URL
-      if (activeDay !== schedule.activeDay) {
+      // Format dates as YYYY-MM-DD for Supabase query
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      
+      console.log(`Loading schedules for week ${weekStart.toDateString()} to ${weekEnd.toDateString()}`);
+      console.log(`Date range for filtering: ${weekStartStr} to ${weekEndStr}`);
+      
+      try {
+        // Get schedules for this user filtered by the selected week's date range
+        const { data: schedulesData, error: schedulesError } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('user_id', userData.id)
+          // Filter by date range for the selected week
+          .gte('date', weekStartStr)
+          .lte('date', weekEndStr);
+        
+        if (schedulesError) {
+          console.error('Error fetching schedules:', schedulesError);
+          setError('Failed to load schedule data');
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Schedules data retrieved:', schedulesData ? schedulesData.length : 0, 'items');
+        
+        // If no schedules found, create empty schedule structure
+        if (!schedulesData || schedulesData.length === 0) {
+          console.log('No schedules found for user, creating empty schedule');
+          // We'll continue with empty schedules below
+        }
+        
+        // Get the day parameter from URL to ensure we maintain the selected day
+        let dayParam = null;
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          dayParam = urlParams.get('day');
+        }
+        const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : schedule.activeDay;
+        
+        // Update the active day in state if it's different from URL
+        if (activeDay !== schedule.activeDay) {
+          setSchedule(prev => ({
+            ...prev,
+            activeDay
+          }));
+        }
+        
+        // Transform schedules data to the format needed by the editor
+        const formattedSchedule: {activeDay: string, [key: string]: any} = {
+          activeDay: activeDay, // Use the day from URL parameter or keep current
+          Monday: [],
+          Tuesday: [],
+          Wednesday: [],
+          Thursday: [],
+          Friday: [],
+          Saturday: [],
+          Sunday: [],
+        };
+        
+        if (schedulesData && schedulesData.length > 0) {
+          schedulesData.forEach((item: { day: string; id: string; start_time: string; end_time: string; label: string; all_day: boolean }) => {
+            if (!formattedSchedule[item.day]) {
+              formattedSchedule[item.day] = [];
+            }
+            
+            formattedSchedule[item.day].push({
+              id: item.id,
+              start: item.start_time,
+              end: item.end_time,
+              label: item.label,
+              allDay: item.all_day
+            });
+          });
+        }
+        
+        // Set the formatted schedule
         setSchedule(prev => ({
           ...prev,
-          activeDay
+          ...formattedSchedule,
+          activeDay: formattedSchedule.activeDay || prev.activeDay,
+          Monday: formattedSchedule.Monday || [],
+          Tuesday: formattedSchedule.Tuesday || [],
+          Wednesday: formattedSchedule.Wednesday || [],
+          Thursday: formattedSchedule.Thursday || [],
+          Friday: formattedSchedule.Friday || [],
+          Saturday: formattedSchedule.Saturday || [],
+          Sunday: formattedSchedule.Sunday || []
         }));
+        
+        // Always ensure loading is set to false
+        setLoading(false);
+      } catch (scheduleError) {
+        console.error('Error processing schedules:', scheduleError);
+        setError('Failed to process schedule data');
+        setLoading(false);
       }
-      
-      // Transform schedules data to the format needed by the editor
-      const formattedSchedule: {activeDay: string, [key: string]: any} = {
-        activeDay: activeDay, // Use the day from URL parameter or keep current
-        Monday: [],
-        Tuesday: [],
-        Wednesday: [],
-        Thursday: [],
-        Friday: [],
-        Saturday: [],
-        Sunday: [],
-      };
-      
-      if (schedulesData && schedulesData.length > 0) {
-        schedulesData.forEach((item: { day: string; id: string; start_time: string; end_time: string; label: string; all_day: boolean }) => {
-          if (!formattedSchedule[item.day]) {
-            formattedSchedule[item.day] = [];
-          }
-          
-          formattedSchedule[item.day].push({
-            id: item.id,
-            start: item.start_time,
-            end: item.end_time,
-            label: item.label,
-            allDay: item.all_day
-          });
-        });
-      }
-      
-      // Set the formatted schedule
-      setSchedule(prev => ({
-        ...prev,
-        ...formattedSchedule,
-        activeDay: formattedSchedule.activeDay || prev.activeDay,
-        Monday: formattedSchedule.Monday || [],
-        Tuesday: formattedSchedule.Tuesday || [],
-        Wednesday: formattedSchedule.Wednesday || [],
-        Thursday: formattedSchedule.Thursday || [],
-        Friday: formattedSchedule.Friday || [],
-        Saturday: formattedSchedule.Saturday || [],
-        Sunday: formattedSchedule.Sunday || []
-      }));
     } catch (error) {
       console.error('Error loading user data:', error);
+      setError('Failed to load schedule data');
+      setLoading(false);
     }
   };
 
@@ -216,6 +293,9 @@ export default function EditSchedule() {
 
   // Effect for initialization and routing - runs only on client-side
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     // Initialize time format preference from localStorage
     const savedFormat = localStorage.getItem('use24HourFormat')
     if (savedFormat !== null) {
@@ -318,11 +398,27 @@ export default function EditSchedule() {
       
       const userId = userData.id;
       
-      // Delete all existing schedules for this user
+      // Get the selected week from URL parameter
+      let selectedWeek = new Date(); // Default fallback
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const weekParam = urlParams.get('week');
+        selectedWeek = weekParam ? new Date(weekParam) : new Date();
+      }
+      
+      // Calculate week start and end dates for deletion
+      const weekStart = new Date(selectedWeek);
+      weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay()); // Start of week (Sunday)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
+      
+      // Delete existing schedules for this user and this week only
       const { error: deleteError } = await supabase
         .from('schedules')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .gte('date', weekStart.toISOString().split('T')[0])
+        .lte('date', weekEnd.toISOString().split('T')[0]);
       
       if (deleteError) {
         console.error('Error deleting existing schedules:', deleteError);
@@ -337,12 +433,19 @@ export default function EditSchedule() {
         end_time: string;
         label: string;
         all_day: boolean;
+        date: string;
       }> = [];
       
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       
-      for (const day of days) {
+      for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+        const day = days[dayIndex];
         if (schedule[day] && Array.isArray(schedule[day])) {
+          // Calculate the specific date for this day of the week
+          const dayDate = new Date(weekStart);
+          dayDate.setDate(weekStart.getDate() + dayIndex);
+          const dateString = dayDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+          
           for (const block of schedule[day]) {
             if (block && typeof block === 'object') {
               schedulesToInsert.push({
@@ -351,7 +454,8 @@ export default function EditSchedule() {
                 start_time: block.start || '',
                 end_time: block.end || '',
                 label: block.label || '',
-                all_day: Boolean(block.allDay)
+                all_day: Boolean(block.allDay),
+                date: dateString
               });
             }
           }
@@ -405,25 +509,42 @@ export default function EditSchedule() {
 
   
 
-// Get current week date range and day numbers
+// Get week date range and day numbers for the selected week
   const getWeekDates = () => {
-    const today = new Date()
-    const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
-    const currentDate = today.getDate()
+    // Get the week parameter from URL, or use current week as fallback
+    // Check if we're on the client side before accessing window
+    if (typeof window === 'undefined') {
+      // Server-side: return current week as fallback
+      const currentWeek = new Date();
+      const weekStart = new Date(currentWeek);
+      weekStart.setDate(currentWeek.getDate() - currentWeek.getDay());
+      return Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + i);
+        return date.getDate(); // Return the day number, not the Date object
+      });
+    }
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const weekParam = urlParams.get('week');
+    const selectedWeek = weekParam ? new Date(weekParam) : new Date();
+    
+    // Calculate the start of the week (Sunday)
+    const weekStart = new Date(selectedWeek);
+    weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
     
     // Calculate the date for each day of the week
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     return days.map((_, index) => {
-      const diff = index - currentDay
-      const date = new Date(today)
-      date.setDate(currentDate + diff)
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + index)
       return date.getDate()
     })
   }
   
-  // Get the current day name
+  // Get the current day name (always based on actual current date, not the week being viewed)
   const getCurrentDay = () => {
-    // Get the current date from the system - June 6, 2025 is a Friday
+    // Get the current date from the system
     const now = new Date()
     const hours = now.getHours()
     
@@ -445,10 +566,10 @@ export default function EditSchedule() {
     console.log(`Current day is: ${dayMap[dayIndex]} (index: ${dayIndex})`)
     console.log(`Today is ${now.getDate()}, day of week is ${now.getDay()}`)
     
-    // Force Friday for June 6, 2025
-    if (now.getFullYear() === 2025 && now.getMonth() === 5 && now.getDate() === 6) {
-      console.log('Forcing current day to Friday for June 6, 2025')
-      return "Friday"
+    // Force Monday for June 9, 2025 (current date)
+    if (now.getFullYear() === 2025 && now.getMonth() === 5 && now.getDate() === 9) {
+      console.log('Forcing current day to Monday for June 9, 2025')
+      return "Monday"
     }
     
     return dayMap[dayIndex]
@@ -457,6 +578,29 @@ export default function EditSchedule() {
   // Calculate day numbers and current day name
   const dayNumbers = getWeekDates()
   const currentDayName = getCurrentDay()
+  
+  // Check if the current date falls within the week being viewed
+  const isCurrentDateInViewedWeek = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const weekParam = urlParams.get('week');
+    const selectedWeek = weekParam ? new Date(weekParam) : new Date();
+    
+    // Calculate the start and end of the selected week
+    const weekStart = new Date(selectedWeek);
+    weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    // Get the actual current date
+    const now = new Date();
+    const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Check if current date falls within the selected week
+    return currentDate >= new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()) &&
+           currentDate <= new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
+  }
+  
+  const shouldHighlightCurrentDay = isCurrentDateInViewedWeek()
 
   return (
   <div className="flex flex-col min-h-screen bg-[#282828] text-white">
@@ -485,8 +629,16 @@ export default function EditSchedule() {
                 
                 // Navigate to dashboard with a forced reload to ensure fresh data
                 if (returnPath.includes('dashboard')) {
-                  // If returning to dashboard, force a complete page reload
-                  window.location.href = '/dashboard?refresh=' + Date.now();
+                  // Get the week parameter from current URL to preserve the week view
+                  const urlParams = new URLSearchParams(window.location.search);
+                  const weekParam = urlParams.get('week');
+                  
+                  // If returning to dashboard, force a complete page reload with week parameter
+                  if (weekParam) {
+                    window.location.href = `/dashboard?week=${encodeURIComponent(weekParam)}&refresh=${Date.now()}`;
+                  } else {
+                    window.location.href = '/dashboard?refresh=' + Date.now();
+                  }
                 } else {
                   // For other pages, try history navigation first
                   if (window.history.length > 1) {
@@ -537,18 +689,18 @@ export default function EditSchedule() {
                 data-component-name="_c"
               >
                 <div className="w-full flex flex-col md:flex-row items-center justify-center h-full md:space-x-1">
-                  <span className={`${day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
+                  <span className={`${shouldHighlightCurrentDay && day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
                     <span className="md:hidden">{day.substring(0, 1)}</span>
                     <span className="hidden md:inline">{day.substring(0, 3)}</span>
                   </span>
-                  <span className={`${day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
+                  <span className={`${shouldHighlightCurrentDay && day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
                     {dayNumbers[dayIndex]}
                   </span>
                 </div>
                 {isActive && (
                   <span 
-                    className={`absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm ${day === currentDayName ? 'bg-red-500' : ''}`}
-                    style={day !== currentDayName ? { backgroundColor: userColor } : {}}
+                    className={`absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm ${shouldHighlightCurrentDay && day === currentDayName ? 'bg-red-500' : ''}`}
+                    style={!(shouldHighlightCurrentDay && day === currentDayName) ? { backgroundColor: userColor } : {}}
                   />
                 )}
               </button>
@@ -560,17 +712,33 @@ export default function EditSchedule() {
 
       {/* Main content - Added top padding to account for fixed header with tabs */}
       <main className="flex-1 p-4 pt-28 max-w-7xl mx-auto w-full">
-
-        <div className="bg-[#333333] rounded-lg p-4 mt-4" data-component-name="EditSchedule">
-          <ScheduleEditor 
-            schedule={schedule} 
-            onChange={handleScheduleChange} 
-            userColor={userColor} 
-            onSave={handleSave} 
-            use24HourFormat={use24HourFormat}
-            userName={userName}
-          />
-        </div>
+        {error && (
+          <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 mb-4 text-red-200">
+            <h3 className="font-semibold mb-2">Schedule Error</h3>
+            <p>{error}</p>
+            <p className="text-sm mt-2">Please try refreshing the page.</p>
+          </div>
+        )}
+        
+        {loading && (
+          <div className="bg-[#333333] rounded-lg p-4 mt-4 text-center">
+            <p>Loading schedule...</p>
+          </div>
+        )}
+        
+        {!loading && !error && (
+          <div className="bg-[#333333] rounded-lg p-4 mt-4" data-component-name="EditSchedule">
+            <ScheduleEditor 
+              schedule={schedule} 
+              onChange={handleScheduleChange} 
+              userColor={userColor} 
+              onSave={handleSave} 
+              use24HourFormat={use24HourFormat}
+              userName={userName}
+              weekDate={selectedWeek} // Pass the selected week to the ScheduleEditor
+            />
+          </div>
+        )}
       </main>
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Edit2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ToastAction } from "@/components/ui/toast"
@@ -11,8 +11,9 @@ import { getSupabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { caveat } from "../fonts"
 import { ErrorBoundaryHandler } from "@/components/error-boundary"
+import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns'
 
-// Define types for the application
+// Define interfaces
 interface User {
   id: number;
   name: string;
@@ -117,9 +118,20 @@ export default function Dashboard() {
   // Initialize with a default value to avoid hydration mismatch
   const [use24HourFormat, setUse24HourFormat] = useState(false)
   
+  // Loading and error states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   // Update client-side state after hydration
   useEffect(() => {
+    console.log('💻 Client hydration useEffect triggered');
     setIsClient(true)
+    console.log('✅ Set isClient to true');
+    
+    // Debug environment variables on client side
+    console.log('🔍 Environment variables check:');
+    console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing');
+    console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Missing');
     
     // Now that we're on the client side, we can safely access localStorage
     const savedFormat = localStorage.getItem('use24HourFormat')
@@ -135,15 +147,45 @@ export default function Dashboard() {
     }
   }, [])
   
-  // Force currentWeek to be today's date on initial load, but only on client side
+  // Initialize week date - only run once after hydration
+  const weekInitialized = useRef(false);
+  
   useEffect(() => {
-    if (isClient) {
-      setCurrentWeek(new Date())
+    // Skip during SSR and if already initialized
+    if (!isClient || weekInitialized.current) return;
+    
+    // Mark as initialized to prevent duplicate execution
+    weekInitialized.current = true;
+    
+    // Check for week parameter in URL
+    const urlParams = new URLSearchParams(window.location.search)
+    const weekParam = urlParams.get('week')
+    
+    if (weekParam) {
+      try {
+        const weekFromUrl = new Date(weekParam)
+        if (!isNaN(weekFromUrl.getTime())) {
+          console.log('Setting currentWeek from URL parameter:', weekFromUrl.toISOString())
+          setCurrentWeek(weekFromUrl)
+          return
+        }
+      } catch (error) {
+        console.error('Invalid week parameter in URL:', weekParam)
+      }
     }
+    
+    // Default to today's date if no valid week parameter
+    const today = new Date()
+    console.log('Setting currentWeek to today:', today.toISOString())
+    setCurrentWeek(today)
   }, [isClient])
+  
+
   
   // Check for refresh flags and refresh the dashboard when needed
   useEffect(() => {
+    if (!isClient) return; // Skip during SSR
+    
     console.log('Dashboard mounted, checking for refresh flags');
     
     // Check for all possible refresh flags
@@ -185,10 +227,12 @@ export default function Dashboard() {
     return () => {
       document.removeEventListener('refreshTimeDisplays', handleRefreshEvent);
     };
-  }, []);
+  }, [isClient]);
   
   // Add another effect to handle focus/visibility changes
   useEffect(() => {
+    if (!isClient) return; // Skip during SSR
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         const refreshTimestamp = sessionStorage.getItem('refreshTimestamp');
@@ -209,7 +253,7 @@ export default function Dashboard() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [isClient]);
   
   // Apply the time format class to the document - only run on client side
   useEffect(() => {
@@ -246,73 +290,113 @@ export default function Dashboard() {
     })
   }, [use24HourFormat])
 
-  const [schedules, setSchedules] = useState<SchedulesType>({})
-  const [loading, setLoading] = useState(true)
+  // State for schedules
+  const [schedules, setSchedules] = useState<Record<string, Record<string, TimeBlock[]>>>({});
+  
+  // Debug state to track schedule loading
+  const [scheduleLoadAttempts, setScheduleLoadAttempts] = useState(0);
 
-  // Function to load data from Supabase
-  const loadData = async () => {
-    setLoading(true)
-    
+  // Function to load data from Supabase - defined with useCallback to avoid recreation
+  const loadData = useCallback(async (weekDate?: Date) => {
     try {
-      // Fetch users from Supabase
-      const { data, error: usersError } = await getSupabase()
-        .from('users')
-        .select('*')
-        
-      // Ensure data is an array and filter for valid user objects
-      const rawData = Array.isArray(data) ? data : []
-      const usersData = rawData.filter(isValidUser)
+      console.log('🔄 Starting loadData function...');
+      setLoading(true);
+      setError(null);
+      setScheduleLoadAttempts(prev => prev + 1);
+
+      // Use provided week date or current week from state
+      const targetDate = weekDate || currentWeek;
+      const weekStart = startOfWeek(targetDate, { weekStartsOn: 0 }); // 0 = Sunday
+      const weekEnd = endOfWeek(targetDate, { weekStartsOn: 0 });
       
+      // Store the week start and end for filtering schedules later
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+      console.log('Loading data for week:', weekStart.toDateString(), 'to', weekEnd.toDateString());
+      console.log('Week date range for filtering:', weekStartStr, 'to', weekEndStr);
+
+      // Get all users
+      const { data: usersData, error: usersError } = await getSupabase()
+        .from('users')
+        .select('*');
+
       if (usersError) {
-        console.error('Error fetching users:', usersError)
-        // Fall back to initial users if there's an error
-        setUsers(initialUsers)
-      } else if (usersData && usersData.length > 0) {
-        // Ensure the data matches the expected User type
-        const typedUsers = usersData.map(user => ({
-          id: typeof user.id === 'number' ? user.id : parseInt(String(user.id)),
-          name: String(user.name || ''),
-          color: String(user.color || '#BB86FC'),
-          initial: String(user.initial || '')
-        }))
-        setUsers(typedUsers)
-        
-        // Set current user's color if they exist in the users list
-        if (userName) {
-          // Find the current user by name with safe type handling
-          const currentUser = usersData.find(u => u && typeof u === 'object' && 'name' in u && String(u.name) === userName)
-          if (currentUser && currentUser.color) {
-            setUserColor(String(currentUser.color))
-          }
+        console.error('Error fetching users:', usersError);
+        setError('Failed to load users');
+        setLoading(false);
+        return;
+      }
+
+      // Check if we have users
+      if (!usersData || usersData.length === 0) {
+        console.log('No users found');
+        setError('No users found');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Loaded users:', usersData);
+
+      // Set users state
+      setUsers(usersData.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        color: user.color || '#CCCCCC'
+      })));
+
+      // Initialize schedules object
+      const schedulesData: Record<string, Record<string, TimeBlock[]>> = {};
+
+      console.log('👥 Processing schedules for', usersData.length, 'users');
+
+      // Process each user's schedule
+      for (const user of usersData) {
+        const userId = user.id;
+        console.log(`📅 Processing schedule for user: ${user.name} (ID: ${userId})`);
+
+        // Initialize formatted schedules for this user with all days of the week
+        const formattedSchedules: Record<string, TimeBlock[]> = {
+          'Sunday': [],
+          'Monday': [],
+          'Tuesday': [],
+          'Wednesday': [],
+          'Thursday': [],
+          'Friday': [],
+          'Saturday': []
         }
-        
-        // Fetch schedules for each user
-        const schedulesData: Record<number, Record<string, Array<{
-          id: string;
-          start: string;
-          end: string;
-          label: string;
-          allDay: boolean;
-        }>>> = {}
-        
-        for (const user of usersData) {
-          // Get schedules from Supabase with aggressive type assertion to fix TypeScript error
-          // @ts-ignore - Bypass TypeScript check for Supabase response
-          const response = await getSupabase()
-            .from('schedules')
-            .select('*')
-            // @ts-ignore: Supabase type inference issue
-            .eq('user_id', user.id)
-          
-          // Extract data and error from response
-          const data = response.data
-          const schedulesError = response.error
-          
-          // Ensure data is an array
-          const userSchedules = Array.isArray(data) ? data : []
-            
-          // Map the data to ensure it has the correct structure
-          const typedSchedules = userSchedules.map((schedule: any) => ({
+
+        // Get schedules from Supabase with aggressive type assertion to fix TypeScript error
+        // @ts-ignore - Bypass TypeScript check for Supabase response
+        // Get schedules for this user for the specific week
+        // Filter by date range using the date column in the database
+        const response = await getSupabase()
+          .from('schedules')
+          .select('*')
+          // @ts-ignore: Supabase type inference issue
+          .eq('user_id', user.id)
+          // Filter by date range for the current week
+          .gte('date', weekStartStr)
+          .lte('date', weekEndStr)
+
+        // Extract data and error from response
+        const data = response.data
+        const schedulesError = response.error
+
+        // Ensure data is an array
+        const userSchedules = Array.isArray(data) ? data : []
+
+        // Debug logging for schedules
+        console.log(`=== SCHEDULES FOR USER ${user.name} ===`);
+        console.log('Query date range:', weekStart.toISOString().split('T')[0], 'to', weekEnd.toISOString().split('T')[0]);
+        console.log('Raw schedules from DB:', userSchedules);
+        console.log('Raw schedules count:', userSchedules.length);
+        console.log('=====================================');
+
+        // Map the data to ensure it has the correct structure
+        const typedSchedules = userSchedules.map((schedule: any) => {
+          console.log('Processing schedule:', schedule);
+          return {
             id: String(schedule?.id || ''),
             user_id: typeof schedule?.user_id === 'number' ? schedule.user_id : parseInt(String(schedule?.user_id || '0')),
             day: String(schedule?.day || ''),
@@ -321,47 +405,162 @@ export default function Dashboard() {
             label: String(schedule?.label || ''),
             all_day: Boolean(schedule?.all_day),
             created_at: String(schedule?.created_at || '')
-          }))
-          
-          if (!schedulesError && typedSchedules.length > 0) {
-            // Transform the data into the format expected by the app
-            const formattedSchedules: Record<string, Array<{
-              id: string;
-              start: string;
-              end: string;
-              label: string;
-              allDay: boolean;
-            }>> = {}
-            
-            typedSchedules.forEach(schedule => {
-              const day = String(schedule.day || '')
-              if (!formattedSchedules[day]) {
-                formattedSchedules[day] = []
-              }
-              
-              formattedSchedules[day].push({
-                id: String(schedule.id || ''),
-                start: String(schedule.start_time || ''),
-                end: String(schedule.end_time || ''),
-                label: String(schedule.label || ''),
-                allDay: Boolean(schedule.all_day)
-              })
-            })
-            
-            // Ensure user.id is treated as a number key
-            const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id))
-            schedulesData[userId] = formattedSchedules
+          };
+        })
+
+        console.log('Typed schedules:', typedSchedules);
+
+        // Generate a unique key for this specific week
+        // This will be used to store and retrieve week-specific schedules
+        const weekKey = weekStart.toISOString().split('T')[0];
+        console.log('Current week key:', weekKey);
+        
+        // Since we don't have a date field in the database to filter by,
+        // we'll use localStorage to store week-specific schedules
+        // Each week will have its own schedules stored separately
+        
+        // Check if we have already loaded schedules for this specific week
+        let weekSpecificSchedules = null;
+        if (isClient) {
+          try {
+            const savedSchedules = localStorage.getItem(`week_schedules_${weekKey}`);
+            if (savedSchedules) {
+              weekSpecificSchedules = JSON.parse(savedSchedules);
+              console.log(`Found existing schedules for week ${weekKey}:`, weekSpecificSchedules);
+            }
+          } catch (e) {
+            console.error('Error checking for week-specific schedules:', e);
           }
         }
         
-        setSchedules(schedulesData)
+        // Always process schedules, even if empty (to ensure proper initialization)
+        // Transform the data into the format expected by the app
+        typedSchedules.forEach(schedule => {
+          // Get day from schedule, with fallbacks to ensure we have a valid day
+          let day = String(schedule.day || '')
+
+          // If day is empty or invalid, try to determine it from the date field
+          if (!day || !['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(day)) {
+            console.log('Invalid day value:', day, 'for schedule:', schedule);
+
+            // Try to get day from date field if available
+            // Access the date as a property from the original schedule object (not the typed one)
+            const scheduleDate = userSchedules.find(s => s.id === schedule.id)?.date;
+
+            if (scheduleDate) {
+              try {
+                const dateObj = new Date(scheduleDate);
+                const dayIndex = dateObj.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex];
+                console.log('Determined day from date:', day);
+              } catch (e) {
+                console.error('Error parsing date:', e);
+                day = 'Monday'; // Default to Monday if all else fails
+              }
+            } else {
+              day = 'Monday'; // Default to Monday if no date field
+              console.log('No date field, defaulting to Monday');
+            }
+          }
+
+          // Ensure the day exists in our formatted schedules
+          if (!formattedSchedules[day]) {
+            formattedSchedules[day] = []
+          }
+
+          formattedSchedules[day].push({
+            id: String(schedule.id || ''),
+            start: String(schedule.start_time || ''),
+            end: String(schedule.end_time || ''),
+            label: String(schedule.label || ''),
+            allDay: Boolean(schedule.all_day)
+          })
+        })
+
+        // Always set the user's schedule data, even if empty
+        console.log('Final formatted schedules for user:', formattedSchedules);
+        console.log(`📊 Schedule count for ${user.name}: ${Object.values(formattedSchedules).flat().length} items`);
+        schedulesData[userId] = formattedSchedules;
+      }
+
+      // Set schedules state
+      console.log('🔄 Setting schedules state with:', schedulesData);
+      console.log('📊 Total schedule items:',
+        Object.values(schedulesData)
+          .map(userSchedule => Object.values(userSchedule).flat().length)
+          .reduce((a, b) => a + b, 0)
+      );
+      setSchedules(schedulesData);
+
+      // Save schedules to localStorage as a backup with week information
+      if (isClient) {
+        try {
+          // Create a week key in ISO format for storage
+          const weekKey = weekStart.toISOString().split('T')[0];
+          
+          // Store schedules with the week key to ensure week-specific data
+          localStorage.setItem(`week_schedules_${weekKey}`, JSON.stringify(schedulesData));
+          console.log(`💾 Saved schedules for week ${weekKey} to localStorage`);
+        } catch (e) {
+          console.error('Error saving schedules to localStorage:', e);
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentWeek, toast]);
+
+  // Effect to load data when component mounts - only run once
+  const initialLoadComplete = useRef(false);
+  
+  useEffect(() => {
+    // Skip during SSR and if already loaded
+    if (!isClient || initialLoadComplete.current) return;
+    
+    // Mark as loaded to prevent duplicate execution
+    initialLoadComplete.current = true;
+    
+    // Try to load schedules from localStorage for the current week
+    try {
+      // Create a week key in ISO format for storage
+      const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
+      const weekKey = weekStart.toISOString().split('T')[0];
+      
+      const savedSchedules = localStorage.getItem(`week_schedules_${weekKey}`);
+      if (savedSchedules) {
+        const parsedSchedules = JSON.parse(savedSchedules);
+        console.log(`📂 Loaded schedules for week ${weekKey} from localStorage:`, parsedSchedules);
+        setSchedules(parsedSchedules);
+      }
+    } catch (e) {
+      console.error('Error loading schedules from localStorage:', e);
+    }
+    
+    // Initial data load
+    console.log('🚀 Initial data load from mount effect');
+    loadData(currentWeek);
+  }, [isClient, loadData, currentWeek]); // Include loadData since it's now a useCallback
+  
+  // Effect to reload data whenever the current week changes
+  useEffect(() => {
+    // Skip during SSR or initial load
+    if (!isClient || !initialLoadComplete.current) return;
+    
+    console.log('🔄 Reloading data due to week change:', currentWeek.toDateString());
+    
+    // Always clear schedules first to prevent showing stale data
+    setSchedules({});
+    
+    // Load fresh data from the database immediately
+    // This ensures we don't show schedules from the wrong week
+    loadData(currentWeek);
+    
+    // We'll skip loading from localStorage as it might contain stale data
+    // The loadData function will save the fresh data to localStorage after fetching
+  
+  }, [currentWeek, loadData, isClient]);
 
   // Set up real-time subscriptions to schedule and user changes - CLIENT SIDE ONLY
   useEffect(() => {
@@ -375,8 +574,7 @@ export default function Dashboard() {
       // Set up a one-time event listener for when the document is fully loaded
       const handleLoad = () => {
         console.log('Dashboard: Document fully loaded, now safe to set up WebSockets');
-        // Force a re-render to trigger this effect again after complete hydration
-        setIsClient(true);
+        // Don't call setIsClient here - it causes an infinite loop
       };
       
       // Only add the listener if we're still not fully loaded
@@ -394,8 +592,7 @@ export default function Dashboard() {
     
     // No polling - we'll rely on the visibility change event instead
     try {
-      // Initial data load
-      loadData();
+      // Don't call loadData here - it's already called in the mount effect
       
       // The visibility change handler is already set up in another useEffect
       console.log('Using page visibility changes for data refreshing');
@@ -414,10 +611,12 @@ export default function Dashboard() {
       // No polling interval to clear
       console.log('Component unmounting - no intervals to clear');
     };
-  }, [isClient, userName, toast]); // Include isClient in dependencies
+  }, [isClient, toast]); // Remove userName from dependencies
 
   // Load user data after component mounts (client-side only)
   useEffect(() => {
+    console.log('🔧 User data useEffect triggered - isClient:', isClient);
+    
     if (isClient) {
       // Get the user's name from localStorage (we'll keep this for user preference)
       const storedName = localStorage.getItem("userName")
@@ -460,8 +659,7 @@ export default function Dashboard() {
       }
     }
     
-    // Initial data load - moved inside the useEffect proper scope
-    loadData()
+    // No initial data load here - moved to the mount effect
     
     // Return cleanup function
     return () => {
@@ -508,16 +706,39 @@ export default function Dashboard() {
     return () => {}
   }, [isClient]) // Add isClient as dependency
 
+  // Reload data whenever the current week changes
+  const previousWeekRef = useRef<Date | null>(null);
+  
+  useEffect(() => {
+    // Skip during SSR or initial load (handled by initialLoadComplete)
+    if (!isClient || !initialLoadComplete.current) return;
+    
+    // Get normalized week starts for comparison
+    const prevWeekStart = previousWeekRef.current ? 
+      startOfWeek(previousWeekRef.current, { weekStartsOn: 0 }).getTime() : null;
+    const currentWeekStart = startOfWeek(currentWeek, { weekStartsOn: 0 }).getTime();
+    
+    // Only reload if week has actually changed and we have a previous week
+    if (prevWeekStart !== null && prevWeekStart !== currentWeekStart) {
+      console.log('Week changed, reloading data for week:', currentWeek);
+      loadData(currentWeek);
+    }
+    
+    // Update ref for next comparison
+    previousWeekRef.current = currentWeek;
+  }, [currentWeek, isClient, loadData])
+
   // Format week range using a static string for server-side rendering or dynamic date for client-side
   const formatWeekRange = (date: Date) => {
-    // During server-side rendering, return a fixed string
+    // During server-side rendering, return a generic string
     if (!isClient) {
-      return "Current Week" // This ensures consistent server/client rendering
+      return "Week Schedule" // Generic label for server-side rendering
     }
     
     // Only do date calculations on the client side
     const start = new Date(date)
     start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
+    start.setHours(0, 0, 0, 0) // Reset time to midnight for accurate comparison
 
     const end = new Date(start)
     end.setDate(start.getDate() + 6) // End of week (Saturday)
@@ -528,12 +749,30 @@ export default function Dashboard() {
       return `${monthNames[d.getMonth()]} ${d.getDate()}`
     }
 
-    return `${formatDate(start)} - ${formatDate(end)}`
+    // Check if this is the current week
+    const today = new Date()
+    const currentWeekStart = new Date(today)
+    currentWeekStart.setDate(today.getDate() - today.getDay())
+    currentWeekStart.setHours(0, 0, 0, 0) // Reset time to midnight for accurate comparison
+    
+    const isCurrentWeek = start.getTime() === currentWeekStart.getTime()
+    
+    if (isCurrentWeek) {
+      return `Current Week (${formatDate(start)} - ${formatDate(end)})`
+    } else {
+      return `${formatDate(start)} - ${formatDate(end)}`
+    }
   }
 
   const previousWeek = () => {
     const prevWeek = new Date(currentWeek)
     prevWeek.setDate(currentWeek.getDate() - 7)
+    
+    // Clear local schedules state immediately
+    setSchedules({})
+    setLoading(true)
+    
+    // Update the week - this will trigger the useEffect that loads data
     setCurrentWeek(prevWeek)
   }
 
@@ -541,126 +780,28 @@ export default function Dashboard() {
     const nextWeek = new Date(currentWeek)
     nextWeek.setDate(currentWeek.getDate() + 7)
     
-    // Check if we're entering a new week (based on Sunday)
-    const currentSunday = new Date(currentWeek)
-    currentSunday.setDate(currentWeek.getDate() - currentWeek.getDay()) // Get the Sunday of current week
+    // Clear local schedules state immediately
+    setSchedules({})
+    setLoading(true)
     
-    const nextSunday = new Date(nextWeek)
-    nextSunday.setDate(nextWeek.getDate() - nextWeek.getDay()) // Get the Sunday of next week
-    
-    // If the Sunday dates are different, we're entering a new week
-    if (nextSunday.getTime() !== currentSunday.getTime()) {
-      // Clear schedules for the new week
-      clearSchedulesForNewWeek()
-      
-      // Show a toast message encouraging users to add new schedules with an option to repeat previous week
-      toast({
-        title: "New week, fresh start! 🎉",
-        description: "Time to plan your schedule for the week ahead. Click any time slot to add your activities!",
-        variant: "default",
-        duration: 8000,
-        action: (
-          <ToastAction altText="Repeat previous week" onClick={repeatPreviousWeek}>
-            Repeat previous week
-          </ToastAction>
-        ),
-      })
-    }
-    
+    // Update the week - this will trigger the useEffect that loads data
     setCurrentWeek(nextWeek)
   }
 
-  // Function to repeat the previous week's schedule
-  const repeatPreviousWeek = async () => {
-    try {
-      // Store the previous week's schedules before clearing
-      // Use a deep clone with explicit empty object fallback to avoid TypeScript error
-      const previousWeekSchedules = structuredClone(schedules || {}) as SchedulesType
-      
-      // Clear the schedules first
-      await clearSchedulesForNewWeek(false) // Pass false to not show toast again
-      
-      // Create a copy of the schedules (which are now cleared)
-      const updatedSchedules = { ...schedules } as SchedulesType
-      
-      // Copy previous week's schedules to the new week
-      for (const userId in previousWeekSchedules) {
-        if (previousWeekSchedules.hasOwnProperty(userId)) {
-          const userIdNum = parseInt(userId)
-          
-          // Copy schedules for each day
-          DAYS_OF_WEEK.forEach((day: DayName) => {
-            if (previousWeekSchedules[userIdNum] && previousWeekSchedules[userIdNum][day]) {
-              // Create new array with new IDs for each time block
-              updatedSchedules[userIdNum][day] = previousWeekSchedules[userIdNum][day].map((block: TimeBlock) => {
-                // Generate a temporary ID
-                const tempId = `temp-${Math.random().toString(36).substring(2, 11)}`
-                
-                return {
-                  ...block,
-                  id: tempId // Use a new temporary ID
-                }
-              })
-              
-              // Add to Supabase if it's the current user
-              if (userName === users.find(u => u.id === userIdNum)?.name) {
-                // Add each block to Supabase
-                updatedSchedules[userIdNum][day].forEach(async (block: TimeBlock) => {
-                  const { data: insertedData, error } = await getSupabase()
-                    .from('schedules')
-                    .insert({
-                      user_id: userIdNum,
-                      day: day,
-                      start_time: block.start,
-                      end_time: block.end,
-                      label: block.label,
-                      all_day: block.allDay || false
-                    })
-                    .select()
-                  
-                  if (error) {
-                    console.error('Error adding repeated schedule to Supabase:', error)
-                  } else if (insertedData && insertedData.length > 0) {
-                    // Update the ID with the one from Supabase
-                    const newId = insertedData[0].id as string
-                    const blockIndex = updatedSchedules[userIdNum][day].findIndex(b => b.id === block.id)
-                    if (blockIndex !== -1) {
-                      updatedSchedules[userIdNum][day][blockIndex].id = newId
-                    }
-                  }
-                })
-              }
-            }
-          })
-        }
-      }
-      
-      // Update local state
-      setSchedules(updatedSchedules)
-      
-      // Save to localStorage as a fallback
-      localStorage.setItem('roommate-schedules', JSON.stringify(updatedSchedules))
-      
-      // Show success toast
-      toast({
-        title: "Schedule repeated! 🔄",
-        description: "Your previous week's schedule has been copied to this week.",
-        variant: "default",
-        duration: 3000,
-      })
-      
-    } catch (error) {
-      console.error('Error repeating previous week\'s schedule:', error)
-      
-      // Show error toast
-      toast({
-        title: "Oops! Something went wrong",
-        description: "We couldn't repeat your previous schedule. Please try again.",
-        variant: "destructive",
-        duration: 3000,
-      })
-    }
+  const goToToday = () => {
+    const today = new Date()
+    console.log('Going to today:', today.toISOString())
+    
+    // Clear schedules first
+    setSchedules({})
+    setLoading(true)
+    
+    // Set current week to today
+    setCurrentWeek(today)
+    // Clear schedules to force reload
+    setSchedules({})
   }
+
 
   // Function to clear schedules for the new week
   const clearSchedulesForNewWeek = async (showToast = true) => {
@@ -680,13 +821,21 @@ export default function Dashboard() {
             }
           })
           
-          // Update in Supabase
+          // Update in Supabase - only clear schedules for the current week
           if (userName === users.find(u => u.id === userIdNum)?.name) {
-            // Only clear schedules in Supabase for the current user
+            // Calculate the current week's date range for deletion
+            const weekStart = new Date(currentWeek)
+            weekStart.setDate(currentWeek.getDate() - currentWeek.getDay()) // Start of week (Sunday)
+            const weekEnd = new Date(weekStart)
+            weekEnd.setDate(weekStart.getDate() + 6) // End of week (Saturday)
+            
+            // Only clear schedules in Supabase for the current user and current week
             const { error } = await getSupabase()
               .from('schedules')
               .delete()
               .eq('user_id', userIdNum)
+              .gte('date', weekStart.toISOString().split('T')[0])
+              .lte('date', weekEnd.toISOString().split('T')[0])
             
             if (error) {
               console.error('Error clearing schedules in Supabase:', error)
@@ -701,8 +850,26 @@ export default function Dashboard() {
       // Save to localStorage as a fallback
       localStorage.setItem('roommate-schedules', JSON.stringify(updatedSchedules))
       
+      // Show toast if requested
+      if (showToast) {
+        toast({
+          title: "Schedule cleared",
+          description: "Your schedule for this week has been cleared.",
+          variant: "default",
+          duration: 3000,
+        })
+      }
+      
     } catch (error) {
       console.error('Error clearing schedules for new week:', error)
+      
+      // Show error toast
+      toast({
+        title: "Oops! Something went wrong",
+        description: "We couldn't clear your schedule. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      })
     }
   }
   
@@ -879,9 +1046,11 @@ export default function Dashboard() {
               data-component-name="Dashboard"
             />
             <h1 
-              className="text-2xl caveat-bold" 
+              className="text-2xl caveat-bold cursor-pointer" 
               style={{ fontFamily: 'var(--font-caveat), cursive' }}
               data-component-name="Dashboard"
+              onClick={goToToday}
+              title="Go to current week"
             >
               Roomeez
             </h1>
@@ -893,6 +1062,7 @@ export default function Dashboard() {
             <span className="text-sm text-[#A0A0A0] mr-2" data-component-name="Dashboard">
               {isClient ? `Hi, ${userName || "Friend"}` : "Hi, Friend"}
             </span>
+
             <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
               {/* This div will be used by the WeeklySchedule component */}
             </div>
@@ -956,13 +1126,15 @@ export default function Dashboard() {
               }
             >
               <WeeklySchedule 
-                users={users} 
-                currentWeek={currentWeek} 
-                onColorChange={handleColorUpdate} 
+                users={users}
+                currentWeek={currentWeek}
+                onColorChange={handleColorUpdate}
                 schedules={schedules}
                 useAlternatingBg={false}
                 onTimeFormatChange={setUse24HourFormat}
+                key={`schedule-${scheduleLoadAttempts}`} // Force re-render when schedules load
                 onWeekChange={setCurrentWeek}
+                onGoToToday={goToToday}
               />
             </ErrorBoundaryHandler>
           )}
@@ -994,7 +1166,7 @@ export default function Dashboard() {
             }}
           >
             <Link 
-              href={`/schedule/edit?from=%2Fdashboard&day=${encodeURIComponent(getCurrentDay())}`} 
+              href={`/schedule/edit?from=%2Fdashboard&week=${currentWeek.toISOString()}&day=${encodeURIComponent(getCurrentDay())}&user=${encodeURIComponent(userName)}`} 
               data-component-name="LinkComponent"
             >
               <Edit2 className="h-6 w-6" />

@@ -30,6 +30,7 @@ interface WeeklyScheduleProps {
   useAlternatingBg?: boolean
   onTimeFormatChange?: (use24Hour: boolean) => void
   onWeekChange?: (newWeek: Date) => void
+  onGoToToday?: () => void
 }
 
 // Sample schedule data - in a real app, this would be loaded from localStorage or a database
@@ -73,7 +74,8 @@ export function WeeklySchedule({
   schedules: initialSchedules, 
   useAlternatingBg = false, 
   onTimeFormatChange,
-  onWeekChange 
+  onWeekChange,
+  onGoToToday
 }: WeeklyScheduleProps) {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
@@ -125,6 +127,11 @@ export function WeeklySchedule({
   const [selectedTimeBlock, setSelectedTimeBlock] = useState<TimeBlock | null>(null)
   const [isColorPickerOnly, setIsColorPickerOnly] = useState(false)
 
+  // State for managing data loading and UI
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [forceUpdate, setForceUpdate] = useState(0)
+  
   // Set up a timer to update current time every minute
   useEffect(() => {
     // Update current time immediately
@@ -140,59 +147,13 @@ export function WeeklySchedule({
     return () => clearInterval(interval)
   }, [])
   
-  // State for managing data loading and UI
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [forceUpdate, setForceUpdate] = useState(0)
-  
-  // Function to load schedules from Supabase
-  const loadSchedules = useCallback(async () => {
-    try {
-      console.log('[WeeklySchedule] Loading schedules...')
-      const supabase = getSupabase()
-      const { data: schedulesData, error } = await supabase
-        .from('schedules')
-        .select('*')
-      
-      if (error) {
-        console.error('[WeeklySchedule] Error loading schedules:', error)
-        return
-      }
-      
-      if (schedulesData) {
-        // Process the schedules data to match the expected format
-        const formattedSchedules: Record<number, Record<string, Array<TimeBlock>>> = {}
-        
-        schedulesData.forEach((schedule: any) => {
-          const userId = schedule.user_id
-          const day = schedule.day
-          
-          if (!formattedSchedules[userId]) {
-            formattedSchedules[userId] = {}
-          }
-          
-          if (!formattedSchedules[userId][day]) {
-            formattedSchedules[userId][day] = []
-          }
-          
-          formattedSchedules[userId][day].push({
-            id: schedule.id,
-            start: schedule.start_time,
-            end: schedule.end_time,
-            label: schedule.label,
-            allDay: schedule.all_day
-          })
-        })
-        
-        setSchedules(formattedSchedules)
-        console.log('[WeeklySchedule] Schedules loaded successfully')
-      }
-    } catch (err) {
-      console.error('[WeeklySchedule] Error in loadSchedules:', err)
-    } finally {
+  // Update schedules when prop changes
+  useEffect(() => {
+    if (initialSchedules) {
+      setSchedules(initialSchedules)
       setLoading(false)
     }
-  }, [])
+  }, [initialSchedules])
   
   // Function to load users from Supabase
   const loadUsers = useCallback(async () => {
@@ -229,9 +190,8 @@ export function WeeklySchedule({
   // Load initial data when component mounts
   useEffect(() => {
     if (typeof window === 'undefined') return
-    loadSchedules()
     loadUsers()
-  }, [loadSchedules, loadUsers])
+  }, [loadUsers])
   
   // Function to handle closing the modal
   const handleModalClose = useCallback(() => {
@@ -253,9 +213,9 @@ export function WeeklySchedule({
   
   // Memoize the callback handlers to prevent infinite loops
   const handleScheduleChange = useCallback((payload: any) => {
-    console.log('[WeeklySchedule] Schedule change detected:', payload)
-    loadSchedules()
-  }, [loadSchedules])
+    console.log('[WeeklySchedule] Schedule change detected - parent will handle reload')
+    // Don't reload schedules here - let the parent dashboard handle it
+  }, [])
   
   const handleUserChange = useCallback((payload: any) => {
     console.log('[WeeklySchedule] User change detected:', payload)
@@ -563,23 +523,18 @@ export function WeeklySchedule({
     }
   }
   
-  // Handle opening the modal when clicking on a user
+  // Handle navigating to the edit page when clicking on a user
   const handleUserClick = (user: User, day: string) => {
     // Only allow editing your own schedule
     if (user.name === currentUserName) {
-      const { start, end } = getDefaultTimes(day, user.id)
-      setSelectedUser(user)
-      setSelectedDay(day)
-      setEditMode(false)
-      setSelectedTimeBlock({
-        id: crypto.randomUUID(),
-        start,
-        end,
-        label: "Work",
-        allDay: false
-      })
-      setIsColorPickerOnly(false) // Make sure it's in regular mode
-      setModalOpen(true)
+      // Format the current week date for the URL
+      const weekParam = currentWeek.toISOString();
+      
+      // Construct the URL with parameters
+      const editUrl = `/schedule/edit?user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}&week=${encodeURIComponent(weekParam)}&from=${encodeURIComponent('/dashboard')}`;
+      
+      // Navigate to the edit page
+      window.location.href = editUrl;
     }
   }
 
@@ -714,55 +669,74 @@ export function WeeklySchedule({
 
   // Handle clicking on a time block - navigate to edit page
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
-    // Get the current path to use as the 'from' parameter
-    const currentPath = encodeURIComponent(window.location.pathname);
-    
-    // Navigate to the edit page with the user's name and day as query parameters
-    window.location.href = `/schedule/edit?from=${currentPath}&user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}`;
+    setSelectedUser(user)
+    setSelectedDay(day)
+    setSelectedTimeBlock(timeBlock)
+    setEditMode(true)
+    setModalOpen(true)
   }
 
-  // Close the modal and reset state
-  // Note: Using the handleModalClose function defined earlier
+  // Helper function to convert time string to minutes
+  const timeToMinutes = (timeString: string): number => {
+    const [hours, minutes] = timeString.split(':').map(Number)
+    return hours * 60 + minutes
+  }
 
   // Check if a time block overlaps with existing time blocks
   const checkOverlap = (day: string, timeBlock: TimeBlock, excludeId?: string): { hasOverlap: boolean, overlappingBlock?: TimeBlock } => {
-    const userId = selectedUser?.id
-    // Type guard to ensure userId exists and schedules are properly typed
-    if (!userId || !schedules[userId as number] || !schedules[userId as number][day]) return { hasOverlap: false }
-    
-    // For each existing block on this day
-    for (const existingBlock of schedules[userId as number][day]) {
-      // Skip the current block being edited
+    if (!selectedUser) return { hasOverlap: false }
+
+    const userId = selectedUser.id
+    const userIdNum = userId as number
+    const userSchedules = schedules[userIdNum]?.[day] || []
+
+    for (const existingBlock of userSchedules) {
+      // Skip the block we're editing
       if (excludeId && existingBlock.id === excludeId) continue
-      
-      // Both blocks are all-day events - they definitely overlap
-      if (timeBlock.allDay && existingBlock.allDay) {
+
+      // Check for overlap
+      if (timeBlock.allDay || existingBlock.allDay) {
+        // If either block is all-day, they overlap
         return { hasOverlap: true, overlappingBlock: existingBlock }
       }
-      
-      // Only the new block is an all-day event - it overlaps with all existing events
-      if (timeBlock.allDay) {
-        return { hasOverlap: true, overlappingBlock: existingBlock }
-      }
-      
-      // Only the existing block is an all-day event - it overlaps with all new events
-      if (existingBlock.allDay) {
-        return { hasOverlap: true, overlappingBlock: existingBlock }
-      }
-      
-      // Neither is all-day, check time overlap
-      const timeStart = new Date(`2000-01-01T${timeBlock.start}`)
-      const timeEnd = new Date(`2000-01-01T${timeBlock.end}`)
-      const existingStart = new Date(`2000-01-01T${existingBlock.start}`)
-      const existingEnd = new Date(`2000-01-01T${existingBlock.end}`)
-      
-      // Check if there's an overlap - times can be equal (e.g., end of one = start of another) without overlapping
-      if (timeStart < existingEnd && timeEnd > existingStart) {
+
+      // Convert times to minutes for easier comparison
+      const blockStart = timeToMinutes(timeBlock.start)
+      const blockEnd = timeToMinutes(timeBlock.end)
+      const existingStart = timeToMinutes(existingBlock.start)
+      const existingEnd = timeToMinutes(existingBlock.end)
+
+      // Check if times overlap
+      if (blockStart < existingEnd && blockEnd > existingStart) {
         return { hasOverlap: true, overlappingBlock: existingBlock }
       }
     }
-    
+
     return { hasOverlap: false }
+  }
+
+  // Helper function to calculate the date for a specific day in the current week
+  const calculateDateForDay = (dayName: string, weekDate: Date): string => {
+    const dayMap: Record<string, number> = {
+      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 
+      'Thursday': 4, 'Friday': 5, 'Saturday': 6
+    }
+    
+    const targetDayIndex = dayMap[dayName]
+    if (targetDayIndex === undefined) {
+      throw new Error(`Invalid day name: ${dayName}`)
+    }
+    
+    // Get the start of the week (Sunday)
+    const weekStart = new Date(weekDate)
+    weekStart.setDate(weekDate.getDate() - weekDate.getDay())
+    
+    // Calculate the target date
+    const targetDate = new Date(weekStart)
+    targetDate.setDate(weekStart.getDate() + targetDayIndex)
+    
+    // Return in YYYY-MM-DD format
+    return targetDate.toISOString().split('T')[0]
   }
 
   // Handle saving the schedule from the modal
@@ -817,6 +791,7 @@ export function WeeklySchedule({
         const { data: updatedData, error: updateError } = await getSupabase()
           .from('schedules')
           .update({
+            date: calculateDateForDay(day, currentWeek),
             start_time: timeBlock.start,
             end_time: timeBlock.end,
             label: timeBlock.label,
@@ -849,6 +824,7 @@ export function WeeklySchedule({
           .insert({
             user_id: userId,
             day: day,
+            date: calculateDateForDay(day, currentWeek),
             start_time: timeBlock.start,
             end_time: timeBlock.end,
             label: timeBlock.label,
@@ -897,6 +873,7 @@ export function WeeklySchedule({
   const formatWeekRange = (date: Date) => {
     const start = new Date(date)
     start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
+    start.setHours(0, 0, 0, 0) // Reset time to midnight for accurate comparison
 
     const end = new Date(start)
     end.setDate(start.getDate() + 6) // End of week (Saturday)
@@ -907,7 +884,19 @@ export function WeeklySchedule({
       return `${monthNames[d.getMonth()]} ${d.getDate()}`
     }
 
-    return `${formatDate(start)} - ${formatDate(end)}`
+    // Check if this is the current week
+    const today = new Date()
+    const currentWeekStart = new Date(today)
+    currentWeekStart.setDate(today.getDate() - today.getDay())
+    currentWeekStart.setHours(0, 0, 0, 0) // Reset time to midnight for accurate comparison
+    
+    const isCurrentWeek = start.getTime() === currentWeekStart.getTime()
+    
+    if (isCurrentWeek) {
+      return `Current Week (${formatDate(start)} - ${formatDate(end)})`
+    } else {
+      return `${formatDate(start)} - ${formatDate(end)}`
+    }
   }
 
   const handleDeleteTimeBlock = async (day: string, timeBlockId: string) => {
@@ -1024,35 +1013,36 @@ export function WeeklySchedule({
       adjustedDate.setDate(today.getDate() - 1)
     }
     
-    const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
-    const dayName = days[dayOfWeek] // With Sunday as first day, we can use dayOfWeek directly
-    
-    // For debugging - log today's date and the current day name
-    console.log('Current date:', today.toDateString(), 'Day name:', dayName)
-    console.log('Current time:', today.toTimeString())
-    
     // Check if the current week includes the adjusted date
     const weekStart = new Date(currentWeek)
     weekStart.setDate(currentWeek.getDate() - currentWeek.getDay()) // Start of week (Sunday)
+    weekStart.setHours(0, 0, 0, 0) // Reset time for accurate comparison
     
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekStart.getDate() + 6) // End of week (Saturday)
+    weekEnd.setHours(23, 59, 59, 999) // End of day for accurate comparison
     
-    // For debugging - log the week range
-    console.log('Week start:', weekStart.toDateString())
-    console.log('Week end:', weekEnd.toDateString())
-    console.log('Current week prop:', currentWeek.toDateString())
+    // Reset time components for accurate date comparison
+    const todayDateOnly = new Date(today)
+    todayDateOnly.setHours(0, 0, 0, 0)
+    
+    const adjustedDateOnly = new Date(adjustedDate)
+    adjustedDateOnly.setHours(0, 0, 0, 0)
     
     // Check if today is in the current week range
     const isInCurrentWeek = (
-      (adjustedDate >= weekStart && adjustedDate <= weekEnd) || 
-      (today >= weekStart && today <= weekEnd)
+      (adjustedDateOnly >= weekStart && adjustedDateOnly <= weekEnd) || 
+      (todayDateOnly >= weekStart && todayDateOnly <= weekEnd)
     )
     
-    console.log('Is in current week:', isInCurrentWeek)
+    // Only return the day name if we're viewing the current week
+    if (isInCurrentWeek) {
+      const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
+      return days[dayOfWeek] // With Sunday as first day, we can use dayOfWeek directly
+    }
     
-    // Always return the current day name for debugging
-    return dayName
+    // Return null if we're not viewing the current week
+    return null
   }
   
   // Helper function to get the current time position as a percentage
@@ -1111,16 +1101,7 @@ export function WeeklySchedule({
               variant="ghost" 
               size="icon" 
               className="h-8 w-8 hover:bg-black/10"
-              onClick={() => {
-                // Show toast instead of changing week
-                const toast = document.createElement('div');
-                toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-                toast.innerText = 'Multi-week support coming soon!';
-                document.body.appendChild(toast);
-                setTimeout(() => {
-                  toast.remove();
-                }, 3000);
-              }}
+              onClick={handlePreviousWeek}
               aria-label="Previous week"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1135,16 +1116,7 @@ export function WeeklySchedule({
               variant="ghost" 
               size="icon" 
               className="h-8 w-8 hover:bg-black/10"
-              onClick={() => {
-                // Show toast instead of changing week
-                const toast = document.createElement('div');
-                toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-                toast.innerText = 'Multi-week support coming soon!';
-                document.body.appendChild(toast);
-                setTimeout(() => {
-                  toast.remove();
-                }, 3000);
-              }}
+              onClick={handleNextWeek}
               aria-label="Next week"
             >
               <ChevronRight className="h-4 w-4" />
@@ -1299,7 +1271,6 @@ export function WeeklySchedule({
                       {` - ${dayOfMonth}`}
                     </span>
                   );
-                  return null;
                 })()}
               </h4>
               
@@ -1448,6 +1419,29 @@ export function WeeklySchedule({
                           )
                         })}
                       </div>
+
+                      {/* Empty state message for current user when no schedules exist */}
+                      {userSchedule.length === 0 && isCurrentUser && !isCollapsed && (
+                        <div 
+                          className="absolute inset-0 flex items-center justify-center cursor-pointer hover:bg-[#404040] transition-colors duration-200 rounded-md"
+                          onClick={() => handleUserClick(user, day)}
+                          title="Click to add your first schedule"
+                        >
+                          <div className="flex items-center gap-2 text-[#888888] text-xs">
+                            <Plus className="h-3 w-3" />
+                            <span>Click to add schedule</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Empty state message for other users when no schedules exist */}
+                      {userSchedule.length === 0 && !isCurrentUser && !isCollapsed && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-[#666666] text-xs">
+                            No schedule
+                          </div>
+                        </div>
+                      )}
 
                       {/* Schedule blocks */}
                       {userSchedule.map((block, index) => {

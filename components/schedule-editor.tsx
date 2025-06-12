@@ -27,9 +27,10 @@ interface ScheduleEditorProps {
   onSave?: () => void
   use24HourFormat?: boolean
   userName?: string
+  weekDate?: Date // Add weekDate prop to track which week we're editing
 }
 
-export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24HourFormat = false, userName }: ScheduleEditorProps) {
+export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24HourFormat = false, userName, weekDate }: ScheduleEditorProps) {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const activeDay = schedule.activeDay as string
 
@@ -157,7 +158,24 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         const userId = userData.id;
         
-        // Insert the new block
+        // Calculate the date for the current week day
+        const currentWeek = new Date(weekDate || new Date());
+        const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(activeDay);
+        const scheduleDate = new Date(currentWeek);
+        
+        // Get the start of the week (Sunday)
+        const startOfWeek = new Date(currentWeek);
+        startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay()); // Go back to Sunday
+        
+        // Add days to get to the target day
+        const targetDate = new Date(startOfWeek);
+        targetDate.setDate(startOfWeek.getDate() + dayIndex);
+        
+        // Format as YYYY-MM-DD
+        const formattedDate = targetDate.toISOString().split('T')[0];
+        console.log(`Adding schedule for ${activeDay} with date: ${formattedDate}`);
+        
+        // Insert the new block with date
         const { data: insertData, error: insertError } = await supabase
           .from('schedules')
           .insert({
@@ -166,7 +184,8 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
             start_time: newBlock.start,
             end_time: newBlock.end,
             label: newBlock.label,
-            all_day: newBlock.allDay || false
+            all_day: newBlock.allDay || false,
+            date: formattedDate // Add the date field
           })
           .select();
         
@@ -246,13 +265,30 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         // If the block has an ID, update it
         if (block.id) {
+          // Calculate the date for the current week day
+          const currentWeek = new Date(weekDate || new Date());
+          const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayName);
+          
+          // Get the start of the week (Sunday)
+          const startOfWeek = new Date(currentWeek);
+          startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay()); // Go back to Sunday
+          
+          // Add days to get to the target day
+          const targetDate = new Date(startOfWeek);
+          targetDate.setDate(startOfWeek.getDate() + dayIndex);
+          
+          // Format as YYYY-MM-DD
+          const formattedDate = targetDate.toISOString().split('T')[0];
+          console.log(`Updating schedule for ${dayName} with date: ${formattedDate}`);
+          
           const { error: updateError } = await supabase
             .from('schedules')
             .update({
               start_time: block.start,
               end_time: block.end,
               label: block.label,
-              all_day: Boolean(block.allDay)
+              all_day: Boolean(block.allDay),
+              date: formattedDate // Add the date field
             })
             .eq('id', block.id);
           

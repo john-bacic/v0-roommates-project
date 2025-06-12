@@ -10,9 +10,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Check if we're running on the server
-const isServer = typeof window === 'undefined';
-
 // For debug logging
 const debug = (message: string) => {
   if (process.env.NODE_ENV === 'development') {
@@ -29,8 +26,10 @@ const logError = (message: string, error: unknown) => {
   console.error(`[ERROR] ${message}:`, errorDetails);
 };
 
-// Simple client cache for browser environments
+// Simple client cache for browser environments - use a singleton pattern
 let browserClient: ReturnType<typeof createClient> | null = null;
+// Track if we've already warned about missing env vars
+let hasWarnedAboutEnvVars = false;
 
 /**
  * Create a mock client for server-side rendering.
@@ -42,12 +41,17 @@ function createMockClient() {
   // Return a minimal mock that won't throw errors
   return {
     from: () => ({
-      select: () => ({ data: null, error: null }),
-      insert: () => ({ data: null, error: null }),
-      update: () => ({ data: null, error: null }),
-      delete: () => ({ data: null, error: null }),
-      eq: () => ({ data: null, error: null }),
-      order: () => ({ data: null, error: null }),
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: [], error: null }),
+      update: () => ({ data: [], error: null }),
+      delete: () => ({ data: [], error: null }),
+      eq: () => ({ data: [], error: null }),
+      gte: () => ({ data: [], error: null }),
+      lte: () => ({ data: [], error: null }),
+      is: () => ({ data: [], error: null }),
+      order: () => ({ data: [], error: null }),
+      limit: () => ({ data: [], error: null }),
+      single: () => ({ data: null, error: null }),
     }),
     auth: {
       getSession: () => null,
@@ -58,50 +62,60 @@ function createMockClient() {
 }
 
 /**
- * Get a Supabase client - creates a singleton in browser environments
- * and returns a mock client in server environments.
+ * Get the appropriate Supabase client for the current environment
+ * Uses a singleton pattern to prevent multiple client instances
  */
-export function getSupabase(options?: { enableRealtime?: boolean }) {
-  // Always return a mock client during server-side rendering
-  if (isServer) {
+export function getSupabase() {
+  // Always check dynamically rather than using a static variable
+  const isServerSide = typeof window === 'undefined';
+  
+  debug(`getSupabase called - isServerSide: ${isServerSide}`);
+  
+  if (isServerSide) {
+    debug('Returning mock client for server-side');
+    return createMockClient();
+  }
+  
+  // Return existing client if we already created one
+  if (browserClient !== null) {
+    debug('Returning existing browser client');
+    return browserClient;
+  }
+  
+  // Client-side: create real client
+  debug('Creating new Supabase client for client-side');
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    if (!hasWarnedAboutEnvVars) {
+      console.error('Missing Supabase environment variables on client side');
+      console.error('URL:', supabaseUrl ? 'Set' : 'Missing');
+      console.error('Key:', supabaseKey ? 'Set' : 'Missing');
+      hasWarnedAboutEnvVars = true;
+    }
     return createMockClient();
   }
   
   try {
-    // Reuse existing client if available
-    if (browserClient) {
-      return browserClient;
-    }
-    
-    // Check for required environment variables
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase URL or API key');
-    }
-    
-    const clientConfig: any = {
+    browserClient = createClient(supabaseUrl, supabaseKey, {
       auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-      }
-    };
+        persistSession: false, // Disable session persistence for simplicity
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: -1, // Disable realtime completely
+        },
+      },
+    });
     
-    // IMPORTANT: Completely disable Realtime functionality
-    // This prevents any WebSocket-related errors
-    debug('Creating client with Realtime completely disabled');
-    
-    // Set realtime to false to completely disable it
-    clientConfig.realtime = false;
-    
-    // Create and cache the client
-    browserClient = createClient(supabaseUrl, supabaseKey, clientConfig);
+    debug('Successfully created real Supabase client');
     return browserClient;
   } catch (error) {
-    logError('Error creating Supabase client', error);
-    // Return a mock client in case of errors
-    return createMockClient();
+    logError('Failed to create Supabase client', error);
+    const mockClient = createMockClient();
+    return mockClient;
   }
 }
 
