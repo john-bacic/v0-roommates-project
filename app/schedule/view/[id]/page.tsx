@@ -8,6 +8,14 @@ import { supabase, fetchUserSchedule, fetchWeekSchedules, User, TimeBlock as Sup
 import { Button } from "@/components/ui/button"
 import { parseWeekParam, getWeekBounds, formatWeekRange } from "@/lib/date-utils"
 
+interface TimeBlock {
+  id?: string;
+  start: string;
+  end: string;
+  label: string;
+  allDay?: boolean;
+}
+
 export default function ViewSchedule() {
   const params = useParams()
   const router = useRouter()
