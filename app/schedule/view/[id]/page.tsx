@@ -295,7 +295,10 @@ export default function ViewSchedule() {
         <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
           <div className="flex items-center justify-between w-full">
             <Link 
-              href="/roommates" 
+              href={{
+                pathname: "/roommates",
+                query: { week: getWeekBounds(currentWeek).startStr }
+              }}
               className="flex items-center text-white hover:opacity-80"
               data-component-name="LinkComponent"
               title="Back to Roommates"

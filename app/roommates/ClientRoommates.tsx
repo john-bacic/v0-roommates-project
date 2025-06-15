@@ -211,8 +211,13 @@ export default function Roommates() {
 
   useEffect(() => {
     const weekParam = searchParams.get("week");
-    if (weekParam) setSelectedWeek(parseWeekParam(weekParam));
-  }, []);
+    if (weekParam) {
+      const newWeek = parseWeekParam(weekParam);
+      setSelectedWeek(newWeek);
+      // Also emit week change event to sync other components
+      emitWeekChange(newWeek, 'roommates');
+    }
+  }, [searchParams]);
 
   // Function to determine if a user has any schedules on a specific day
   // and check if they have an all-day off schedule
@@ -539,7 +544,15 @@ export default function Roommates() {
                     border: "none"
                   }}
                 >
-                  <Link href={`/schedule/view/${roommate.id}`} data-component-name="LinkComponent">View Schedule</Link>
+                  <Link
+                    href={{
+                      pathname: `/schedule/view/${roommate.id}`,
+                      query: { week: getWeekBounds(selectedWeek).startStr }
+                    }}
+                    data-component-name="LinkComponent"
+                  >
+                    View Schedule
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

@@ -86,18 +86,9 @@ export function parseWeekParam(weekParam: string | null): Date {
   if (!weekParam) {
     return new Date(); // Default to current week
   }
-  
-  try {
-    const date = new Date(weekParam);
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid week parameter:', weekParam);
-      return new Date();
-    }
-    return date;
-  } catch (error) {
-    console.error('Error parsing week parameter:', error);
-    return new Date();
-  }
+  // Parse as local date (YYYY-MM-DD)
+  const [year, month, day] = weekParam.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 /**
