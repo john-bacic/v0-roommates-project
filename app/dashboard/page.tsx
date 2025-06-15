@@ -781,6 +781,11 @@ export default function Dashboard() {
     return "#000" // Always use dark text against colored backgrounds
   }
 
+  const { start: weekStart } = getWeekBounds(currentWeek);
+  const nextRoommatesWeek = new Date(weekStart);
+  nextRoommatesWeek.setDate(weekStart.getDate() + 7);
+  const nextRoommatesWeekStr = getWeekBounds(nextRoommatesWeek).startStr;
+
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Main header - fixed at the top */}
@@ -825,7 +830,7 @@ export default function Dashboard() {
             <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
               {/* This div will be used by the WeeklySchedule component */}
             </div>
-            <Link href={{ pathname: "/roommates", query: { week: currentWeek.toISOString().split('T')[0] } }}>
+            <Link href={{ pathname: "/roommates", query: { week: nextRoommatesWeekStr } }}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Users className="h-4 w-4" />
                 <span className="sr-only">Roommates</span>
