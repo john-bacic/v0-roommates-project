@@ -8,6 +8,7 @@ import { supabase, fetchWeekSchedules } from "@/lib/supabase"
 import { parseWeekParam, formatWeekRange, isSameWeek } from "@/lib/date-utils"
 import { Button } from "@/components/ui/button"
 import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
+import { useSearchParams } from "next/navigation"
 
 // Initial users data as fallback
 const initialUsers = [
@@ -313,6 +314,11 @@ export default function Overview() {
     }
   }, [])
 
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const weekParam = searchParams.get("week");
+    if (weekParam) setSelectedWeek(parseWeekParam(weekParam));
+  }, []);
   
   // Navigate to the previous day
   const goToPreviousDay = () => {
@@ -384,7 +390,7 @@ export default function Overview() {
                 }}
                 aria-label="Previous week"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 text-[#A0A0A0]" />
                 <span className="sr-only">Previous week</span>
               </Button>
               <h1 
@@ -406,7 +412,7 @@ export default function Overview() {
                 }}
                 aria-label="Next week"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 text-[#A0A0A0]" />
                 <span className="sr-only">Next week</span>
               </Button>
             </div>

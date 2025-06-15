@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState, useCallback } from "react"
 import { supabase, fetchWeekSchedules } from "@/lib/supabase"
 import { QRCodeSVG } from "qrcode.react"
-import { usePathname } from "next/navigation"
-import { formatWeekRange, isSameWeek, getWeekBounds } from "@/lib/date-utils"
+import { usePathname, useSearchParams } from "next/navigation"
+import { formatWeekRange, isSameWeek, getWeekBounds, parseWeekParam } from "@/lib/date-utils"
 import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
 
 // Define interfaces for our data types
@@ -67,6 +67,7 @@ export default function Roommates() {
   const [selectedWeek, setSelectedWeek] = useState<Date>(new Date())
   const [userName, setUserName] = useState('')
   const [userColor, setUserColor] = useState('#B388F5') // Default color
+  const searchParams = useSearchParams();
 
   const fetchUsersAndSchedules = useCallback(async () => {
       try {
@@ -206,6 +207,11 @@ export default function Roommates() {
       fetchUsersAndSchedules()
     }
   }, [fetchUsersAndSchedules])
+
+  useEffect(() => {
+    const weekParam = searchParams.get("week");
+    if (weekParam) setSelectedWeek(parseWeekParam(weekParam));
+  }, []);
 
   // Function to determine if a user has any schedules on a specific day
   // and check if they have an all-day off schedule
@@ -382,7 +388,7 @@ export default function Roommates() {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center justify-between w-full relative">
             <Link 
-              href="/dashboard" 
+              href={{ pathname: "/dashboard", query: { week: selectedWeek.toISOString().split('T')[0] } }}
               className="flex items-center text-white hover:opacity-80 z-10"
               data-component-name="LinkComponent"
               title="Back to Dashboard"
@@ -403,7 +409,7 @@ export default function Roommates() {
                 }}
                 aria-label="Previous week"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-4 w-4 text-[#A0A0A0]" />
                 <span className="sr-only">Previous week</span>
               </Button>
               <h1 
@@ -425,7 +431,7 @@ export default function Roommates() {
                 }}
                 aria-label="Next week"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 text-[#A0A0A0]" />
                 <span className="sr-only">Next week</span>
               </Button>
             </div>

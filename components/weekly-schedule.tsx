@@ -1126,7 +1126,7 @@ export function WeeklySchedule({
               onClick={handlePreviousWeek}
               aria-label="Previous week"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4 text-[#A0A0A0]" />
               <span className="sr-only">Previous week</span>
             </Button>
             
@@ -1145,7 +1145,7 @@ export function WeeklySchedule({
               onClick={handleNextWeek}
               aria-label="Next week"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 text-[#A0A0A0]" />
               <span className="sr-only">Next week</span>
             </Button>
           </div>

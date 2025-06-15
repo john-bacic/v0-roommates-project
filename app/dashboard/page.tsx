@@ -819,19 +819,19 @@ export default function Dashboard() {
           {/* Add a link to the overview page in the header section */}
           <div className="flex items-center gap-2">
             {/* Show greeting with user name from database */}
-            <span className="text-sm text-[#A0A0A0] mr-2" data-component-name="Dashboard">
+            <span className="text-sm mr-2" style={{ color: userColor }} data-component-name="Dashboard">
               {isClient ? `Hi, ${userName || "Friend"}` : "Hi, Friend"}
             </span>
             <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
               {/* This div will be used by the WeeklySchedule component */}
             </div>
-            <Link href="/roommates">
+            <Link href={{ pathname: "/roommates", query: { week: currentWeek.toISOString().split('T')[0] } }}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Users className="h-4 w-4" />
                 <span className="sr-only">Roommates</span>
               </Button>
             </Link>
-            <Link href="/overview">
+            <Link href={{ pathname: "/overview", query: { week: currentWeek.toISOString().split('T')[0] } }}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
