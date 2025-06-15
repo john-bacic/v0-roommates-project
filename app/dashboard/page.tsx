@@ -782,9 +782,7 @@ export default function Dashboard() {
   }
 
   const { start: weekStart } = getWeekBounds(currentWeek);
-  const nextRoommatesWeek = new Date(weekStart);
-  nextRoommatesWeek.setDate(weekStart.getDate() + 7);
-  const nextRoommatesWeekStr = getWeekBounds(nextRoommatesWeek).startStr;
+  const currentWeekStr = getWeekBounds(currentWeek).startStr;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
@@ -830,7 +828,7 @@ export default function Dashboard() {
             <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
               {/* This div will be used by the WeeklySchedule component */}
             </div>
-            <Link href={{ pathname: "/roommates", query: { week: nextRoommatesWeekStr } }}>
+            <Link href={{ pathname: "/roommates", query: { week: currentWeekStr } }}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Users className="h-4 w-4" />
                 <span className="sr-only">Roommates</span>
