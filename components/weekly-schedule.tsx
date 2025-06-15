@@ -1158,18 +1158,19 @@ export function WeeklySchedule({
                 const newFormat = !use24HourFormat
                 setUse24HourFormat(newFormat)
                 localStorage.setItem('use24HourFormat', newFormat.toString())
-                // Notify parent components about the time format change
                 if (onTimeFormatChange) {
                   onTimeFormatChange(newFormat)
                 }
-                // Dispatch an event for other components to listen to
                 window.dispatchEvent(new CustomEvent('timeFormatChange', { detail: { use24Hour: newFormat } }))
               }}
               className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
               id="toggle-time-format"
               title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
             >
-              <Clock className="h-4 w-4" />
+              <Clock
+                className={`h-4 w-4 text-[#A0A0A0] transition-transform duration-300 ${use24HourFormat ? 'rotate-y-180' : ''}`}
+                style={{ transform: use24HourFormat ? 'rotateY(180deg)' : 'none' }}
+              />
             </Button>
             <Button
               variant="ghost"
@@ -1185,6 +1186,7 @@ export function WeeklySchedule({
             >
               {isCollapsed ? (
                 <svg
+                  className="h-4 w-4 text-[#A0A0A0]"
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
                   height="16"
@@ -1202,6 +1204,7 @@ export function WeeklySchedule({
                 </svg>
               ) : (
                 <svg
+                  className="h-4 w-4 text-[#A0A0A0]"
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
                   height="16"

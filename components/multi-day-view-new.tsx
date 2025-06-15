@@ -326,7 +326,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
             className="h-8 w-8 text-white hover:bg-[#333333]"
             title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
           >
-            <Clock className="h-4 w-4" />
+            <Clock className="h-4 w-4 text-[#A0A0A0]" />
           </Button>
           <Button
             variant="ghost"
@@ -337,6 +337,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           >
             {isCollapsed ? (
               <svg
+                className="h-4 w-4 text-[#A0A0A0]"
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
                 height="16"
@@ -346,7 +347,6 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="lucide lucide-layout-list"
               >
                 <rect width="7" height="7" x="3" y="3" rx="1" />
                 <rect width="7" height="7" x="3" y="14" rx="1" />
@@ -357,6 +357,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
               </svg>
             ) : (
               <svg
+                className="h-4 w-4 text-[#A0A0A0]"
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
                 height="16"
@@ -366,7 +367,6 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="lucide lucide-layout-grid"
               >
                 <rect width="7" height="7" x="3" y="3" rx="1" />
                 <rect width="7" height="7" x="14" y="3" rx="1" />

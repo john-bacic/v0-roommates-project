@@ -272,7 +272,7 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
           className="h-8 w-8 text-white hover:bg-[#333333]"
           title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
         >
-          <Clock className="h-4 w-4" />
+          <Clock className="h-4 w-4 text-[#A0A0A0]" />
         </Button>
         <h3 className="text-sm font-medium">All Schedules</h3>
       </div>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState, useCallback } from "react"
 import { supabase, fetchWeekSchedules } from "@/lib/supabase"
 import { QRCodeSVG } from "qrcode.react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useSearchParams, useRouter } from "next/navigation"
 import { formatWeekRange, isSameWeek, getWeekBounds, parseWeekParam } from "@/lib/date-utils"
 import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
 
@@ -68,6 +68,7 @@ export default function Roommates() {
   const [userName, setUserName] = useState('')
   const [userColor, setUserColor] = useState('#B388F5') // Default color
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const fetchUsersAndSchedules = useCallback(async () => {
       try {
@@ -381,6 +382,12 @@ export default function Roommates() {
     }
   }, [fetchUsersAndSchedules])
 
+  const setWeekAndUrl = (date: Date) => {
+    setSelectedWeek(date);
+    const weekStr = date.toISOString().split('T')[0];
+    router.replace(`?week=${weekStr}`);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at top */}
@@ -404,7 +411,7 @@ export default function Roommates() {
                 onClick={() => {
                   const prevWeek = new Date(selectedWeek)
                   prevWeek.setDate(selectedWeek.getDate() - 7)
-                  setSelectedWeek(prevWeek)
+                  setWeekAndUrl(prevWeek)
                   emitWeekChange(prevWeek, 'roommates')
                 }}
                 aria-label="Previous week"
@@ -426,7 +433,7 @@ export default function Roommates() {
                 onClick={() => {
                   const nextWeek = new Date(selectedWeek)
                   nextWeek.setDate(selectedWeek.getDate() + 7)
-                  setSelectedWeek(nextWeek)
+                  setWeekAndUrl(nextWeek)
                   emitWeekChange(nextWeek, 'roommates')
                 }}
                 aria-label="Next week"
