@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState, useCallback } from "react"
 import { supabase, fetchWeekSchedules } from "@/lib/supabase"
 import { QRCodeSVG } from "qrcode.react"
-import { usePathname } from "next/navigation"
-import { formatWeekRange, isSameWeek, getWeekBounds } from "@/lib/date-utils"
+import { usePathname, useSearchParams } from "next/navigation"
+import { formatWeekRange, isSameWeek, getWeekBounds, parseWeekParam } from "@/lib/date-utils"
 import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
 
 // Define interfaces for our data types
@@ -67,6 +67,13 @@ function ClientRoommates() {
   const [selectedWeek, setSelectedWeek] = useState<Date>(new Date())
   const [userName, setUserName] = useState('')
   const [userColor, setUserColor] = useState('#B388F5') // Default color
+  const searchParams = useSearchParams();
+
+  // Read week param from URL on mount
+  useEffect(() => {
+    const weekParam = searchParams.get("week");
+    if (weekParam) setSelectedWeek(parseWeekParam(weekParam));
+  }, [searchParams]);
 
   // Helper function to format a list of days nicely
   const formatDaysList = (days: string[]) => {
