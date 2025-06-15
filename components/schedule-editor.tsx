@@ -10,7 +10,9 @@ import { TimePickerDialog } from "@/components/ui/time-picker-dialog"
 import { Separator } from "@/components/ui/separator"
 import { Trash2, X } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { getDateForDayInWeek } from "@/lib/date-utils"
 import { useSwipe } from "@/hooks/use-swipe"
+import { emitScheduleUpdate } from "@/lib/schedule-events"
 
 interface TimeBlock {
   id?: string
@@ -27,10 +29,10 @@ interface ScheduleEditorProps {
   onSave?: () => void
   use24HourFormat?: boolean
   userName?: string
-  weekDate?: Date // Add weekDate prop to track which week we're editing
+  weekDate?: Date
 }
 
-export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24HourFormat = false, userName, weekDate }: ScheduleEditorProps) {
+export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24HourFormat = false, userName, weekDate = new Date() }: ScheduleEditorProps) {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const activeDay = schedule.activeDay as string
 
@@ -158,34 +160,17 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         const userId = userData.id;
         
-        // Calculate the date for the current week day
-        const currentWeek = new Date(weekDate || new Date());
-        const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(activeDay);
-        const scheduleDate = new Date(currentWeek);
-        
-        // Get the start of the week (Sunday)
-        const startOfWeek = new Date(currentWeek);
-        startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay()); // Go back to Sunday
-        
-        // Add days to get to the target day
-        const targetDate = new Date(startOfWeek);
-        targetDate.setDate(startOfWeek.getDate() + dayIndex);
-        
-        // Format as YYYY-MM-DD
-        const formattedDate = targetDate.toISOString().split('T')[0];
-        console.log(`Adding schedule for ${activeDay} with date: ${formattedDate}`);
-        
         // Insert the new block with date
         const { data: insertData, error: insertError } = await supabase
           .from('schedules')
           .insert({
             user_id: userId,
             day: activeDay,
+            date: getDateForDayInWeek(weekDate, activeDay),
             start_time: newBlock.start,
             end_time: newBlock.end,
             label: newBlock.label,
-            all_day: newBlock.allDay || false,
-            date: formattedDate // Add the date field
+            all_day: newBlock.allDay || false
           })
           .select();
         
@@ -200,6 +185,9 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         // Save to localStorage as a fallback
         localStorage.setItem(`schedule_${userName}`, JSON.stringify(newSchedule));
+        
+        // Emit schedule update event
+        emitScheduleUpdate(userId, weekDate, activeDay, 'schedule-editor');
       } catch (error) {
         console.error('Error saving schedule to Supabase:', error);
       }
@@ -265,31 +253,19 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         // If the block has an ID, update it
         if (block.id) {
-          // Calculate the date for the current week day
-          const currentWeek = new Date(weekDate || new Date());
-          const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayName);
+          const updateData: any = {
+            start_time: block.start,
+            end_time: block.end,
+            label: block.label,
+            all_day: Boolean(block.allDay)
+          };
           
-          // Get the start of the week (Sunday)
-          const startOfWeek = new Date(currentWeek);
-          startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay()); // Go back to Sunday
-          
-          // Add days to get to the target day
-          const targetDate = new Date(startOfWeek);
-          targetDate.setDate(startOfWeek.getDate() + dayIndex);
-          
-          // Format as YYYY-MM-DD
-          const formattedDate = targetDate.toISOString().split('T')[0];
-          console.log(`Updating schedule for ${dayName} with date: ${formattedDate}`);
+          // The day is already in the dayName parameter, so we always update the date
+          updateData.date = getDateForDayInWeek(weekDate, dayName);
           
           const { error: updateError } = await supabase
             .from('schedules')
-            .update({
-              start_time: block.start,
-              end_time: block.end,
-              label: block.label,
-              all_day: Boolean(block.allDay),
-              date: formattedDate // Add the date field
-            })
+            .update(updateData)
             .eq('id', block.id);
           
           if (updateError) {
@@ -302,6 +278,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
             .insert({
               user_id: userId,
               day: dayName,
+              date: getDateForDayInWeek(weekDate, dayName),
               start_time: block.start,
               end_time: block.end,
               label: block.label,
@@ -320,6 +297,9 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
         
         // Save to localStorage as a fallback
         localStorage.setItem(`schedule_${userName}`, JSON.stringify(newSchedule));
+        
+        // Emit schedule update event
+        emitScheduleUpdate(userId, weekDate, activeDay, 'schedule-editor');
       } catch (error) {
         console.error('Error saving schedule to Supabase:', error);
       }

@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Edit2, Clock } from "lucide-react"
+import { ArrowLeft, Edit2, Clock, ChevronLeft, ChevronRight } from "lucide-react"
 import { SingleDayView } from "@/components/single-day-view"
-import { supabase } from "@/lib/supabase"
+import { supabase, fetchWeekSchedules } from "@/lib/supabase"
+import { parseWeekParam, formatWeekRange, isSameWeek } from "@/lib/date-utils"
 import { Button } from "@/components/ui/button"
+import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
 
 // Initial users data as fallback
 const initialUsers = [
@@ -20,31 +22,28 @@ const getTextColor = (bgColor: string): string => {
 }
 
 export default function Overview() {
-  // State to track if we're on the client side
-  const [isClient, setIsClient] = useState(false)
-  
   // Initialize users state with the initial users data
   const [usersList, setUsersList] = useState<typeof initialUsers>(initialUsers)
   const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>>>({})
+  const [selectedWeek, setSelectedWeek] = useState<Date>(new Date())
   const [loading, setLoading] = useState(true)
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   
-  // Get the current date and calculate dates for each day of the week
+  // Get the dates for each day of the selected week
   const getWeekDates = () => {
-    const today = new Date()
-    const currentDay = today.getDay() // 0 = Sunday, 1 = Monday, etc.
-    const currentDate = today.getDate()
+    const weekStart = new Date(selectedWeek)
+    const startDay = weekStart.getDay() // 0 = Sunday, 1 = Monday, etc.
     
-    // Calculate the date for each day of the week
+    // Adjust to start of week (Sunday)
+    weekStart.setDate(weekStart.getDate() - startDay)
+    
+    // Calculate the date for each day of the selected week
     return days.map((_, index) => {
-      const diff = index - currentDay
-      const date = new Date(today)
-      date.setDate(currentDate + diff)
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + index)
       return date.getDate()
     })
   }
-  
-  const dayNumbers = getWeekDates()
   const [userName, setUserName] = useState("")
   const [userColor, setUserColor] = useState("#FF7DB1") // Default color
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
@@ -55,14 +54,8 @@ export default function Overview() {
     return false // Default to 12-hour format
   })
   
-  // Set client-side flag after hydration
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-  
-  // Helper function to get logical day of the week
-  // Hours between midnight and 6am are considered part of the previous day
-  const getCurrentDay = (): string => {
+  // Helper function to get logical day of the week only if viewing current week
+  const getCurrentDay = (): string | null => {
     const now = new Date();
     const hours = now.getHours();
     
@@ -72,9 +65,24 @@ export default function Overview() {
       adjustedDate.setDate(now.getDate() - 1);
     }
     
+    // Check if we're viewing the current week
+    const weekStart = new Date(selectedWeek)
+    weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay()) // Start of week (Sunday)
+    weekStart.setHours(0, 0, 0, 0)
+    
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6) // End of week (Saturday)
+    weekEnd.setHours(23, 59, 59, 999)
+    
+    const isCurrentWeek = adjustedDate >= weekStart && adjustedDate <= weekEnd
+    
+    if (!isCurrentWeek) {
+      return null // Don't highlight any day if not current week
+    }
+    
     const dayIndex = adjustedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
     
-    // Convert to our day format (we use Monday as first day)
+    // Convert to our day format
     const dayMap = {
       0: "Sunday",
       1: "Monday",
@@ -92,7 +100,7 @@ export default function Overview() {
   const currentDayName = getCurrentDay();
   
   // State for day view
-  const [selectedDay, setSelectedDay] = useState<string>(getCurrentDay())
+  const [selectedDay, setSelectedDay] = useState<string>(getCurrentDay() || "Monday")
 
   // Function to load data from Supabase
   const loadData = async () => {
@@ -143,42 +151,27 @@ export default function Overview() {
           }
         }
         
-        // Fetch schedules for each user
-        const schedulesData: Record<number, Record<string, Array<any>>> = {}
+        // Fetch schedules for the selected week
+        console.log('[Overview] Loading schedules for week:', formatWeekRange(selectedWeek))
+        const weekSchedules = await fetchWeekSchedules(selectedWeek)
         
-        for (const user of formattedUsers) {
-          const { data: userSchedules, error: schedulesError } = await supabase
-            .from('schedules')
-            .select('*')
-            .eq('user_id', user.id as number)
+        // Transform the data to match the component's expected format
+        const schedulesData: Record<number, Record<string, Array<{id: string; start: string; end: string; label: string; allDay?: boolean}>>> = {}
+        
+        Object.entries(weekSchedules).forEach(([userIdStr, userSchedule]) => {
+          const userId = parseInt(userIdStr)
+          schedulesData[userId] = {}
           
-          if (!schedulesError && userSchedules) {
-            // Transform the data into the format expected by the app
-            const formattedSchedules: Record<string, Array<{id: string; start: string; end: string; label: string; allDay?: boolean}>> = {}
-            
-            userSchedules.forEach((schedule: { day: string; start_time: string; end_time: string; label: string; all_day: boolean; id: string }) => {
-              const day = schedule.day as string;
-              const startTime = schedule.start_time as string;
-              const endTime = schedule.end_time as string;
-              const label = schedule.label as string;
-              const allDay = schedule.all_day as boolean;
-              
-              if (!formattedSchedules[day]) {
-                formattedSchedules[day] = []
-              }
-              
-              formattedSchedules[day].push({
-                id: schedule.id as string,
-                start: startTime,
-                end: endTime,
-                label: label,
-                allDay: allDay
-              })
-            })
-            
-            schedulesData[user.id] = formattedSchedules
-          }
-        }
+          Object.entries(userSchedule).forEach(([day, blocks]) => {
+            schedulesData[userId][day] = blocks.map(block => ({
+              id: block.id,
+              start: block.start,
+              end: block.end,
+              label: block.label,
+              allDay: block.allDay
+            }))
+          })
+        })
         
         setSchedules(schedulesData)
       }
@@ -198,8 +191,6 @@ export default function Overview() {
   
   // Load data on component mount
   useEffect(() => {
-    if (!isClient) return; // Skip during SSR
-    
     // Load initial data
     loadData()
     
@@ -294,24 +285,41 @@ export default function Overview() {
       window.removeEventListener('focus', handleNavigation)
       document.removeEventListener('returnToScheduleView', handleReturnToView)
     }
-  }, [isClient])
-
-  // Format week range with month names
-  const formatWeekRange = (date: Date) => {
-    const start = new Date(date)
-    start.setDate(date.getDate() - date.getDay()) // Start of week (Sunday)
-
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6) // End of week (Saturday)
-
-    // Format with month name
-    const formatDate = (d: Date) => {
-      const monthName = d.toLocaleString('default', { month: 'short' })
-      return `${monthName} ${d.getDate()}`
+  }, [selectedWeek])
+  
+  // Set up event listeners for schedule synchronization
+  useEffect(() => {
+    const events = useScheduleEvents()
+    
+    // Listen for schedule updates from other components
+    const unsubscribeSchedule = events.on('schedule-updated', (event) => {
+      console.log('[Overview] Schedule update event received:', event.detail)
+      if (event.detail.source !== 'overview') {
+        loadData()
+      }
+    })
+    
+    // Listen for week changes from other components
+    const unsubscribeWeek = events.on('week-changed', (event) => {
+      console.log('[Overview] Week change event received:', event.detail)
+      if (event.detail.source !== 'overview' && event.detail.weekDate) {
+        setSelectedWeek(event.detail.weekDate)
+      }
+    })
+    
+    // Listen for sync requests
+    const unsubscribeSync = events.on('sync-required', () => {
+      console.log('[Overview] Sync request received')
+      loadData()
+    })
+    
+    return () => {
+      unsubscribeSchedule()
+      unsubscribeWeek()
+      unsubscribeSync()
     }
+  }, [])
 
-    return `${formatDate(start)} - ${formatDate(end)}`
-  }
   
   // Navigate to the previous day
   const goToPreviousDay = () => {
@@ -334,8 +342,6 @@ export default function Overview() {
   
   // Add keyboard navigation for days
   useEffect(() => {
-    if (!isClient) return; // Skip during SSR
-    
     // Apply keyboard navigation for day view
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if no input elements are focused
@@ -353,12 +359,12 @@ export default function Overview() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedDay, isClient]);
+  }, [selectedDay]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at the top */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-0 shadow-md" data-component-name="Overview">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 pb-0 shadow-md min-h-[97px]" data-component-name="Overview">
         <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="Overview">
           <div className="flex items-center justify-between w-full mb-3" data-component-name="Overview">
             <div className="flex items-center group w-[72px]">
@@ -372,9 +378,41 @@ export default function Overview() {
                 <span className="sr-only">Back</span>
               </Link>
             </div>
-            <h1 className="text-xl font-bold absolute left-1/2 transform -translate-x-1/2" data-component-name="Overview">
-              Days
-            </h1>
+            <div className="flex items-center gap-1 absolute left-1/2 transform -translate-x-1/2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 hover:bg-black/10"
+                onClick={() => {
+                  const prevWeek = new Date(selectedWeek)
+                  prevWeek.setDate(selectedWeek.getDate() - 7)
+                  setSelectedWeek(prevWeek)
+                  emitWeekChange(prevWeek, 'overview')
+                }}
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous week</span>
+              </Button>
+              <h1 className="text-sm font-medium mx-2" data-component-name="Overview">
+                {formatWeekRange(selectedWeek)}
+              </h1>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 hover:bg-black/10"
+                onClick={() => {
+                  const nextWeek = new Date(selectedWeek)
+                  nextWeek.setDate(selectedWeek.getDate() + 7)
+                  setSelectedWeek(nextWeek)
+                  emitWeekChange(nextWeek, 'overview')
+                }}
+                aria-label="Next week"
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next week</span>
+              </Button>
+            </div>
             {/* Time format toggle button */}
             <Button
               variant="ghost"
@@ -436,7 +474,7 @@ export default function Overview() {
                       <span className="hidden md:inline">{day.substring(0, 3)}</span>
                     </span>
                     <span className={`${day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
-                      {dayNumbers[days.indexOf(day)]}
+                      {getWeekDates()[days.indexOf(day)]}
                     </span>
                   </div>
                   {isActive && (
@@ -453,7 +491,7 @@ export default function Overview() {
       </header>
 
       {/* Main content - add padding to account for fixed header with tabs */}
-      <main className="flex-1 p-4 pt-28 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-4 pt-32 max-w-7xl mx-auto w-full">
         {/* Content container */}
         <div className="bg-[#282828] rounded-lg md:p-4 p-2">
           {loading ? (
@@ -468,11 +506,11 @@ export default function Overview() {
               use24HourFormat={use24HourFormat}
               onBlockClick={(user, day, block) => {
                 // Navigate to edit schedule for this day and user
-                window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview`;
+                window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview&week=${selectedWeek.toISOString().split('T')[0]}`;
               }}
               onAddClick={(user, day) => {
                 // Navigate to edit schedule for this day and user
-                window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview`;
+                window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview&week=${selectedWeek.toISOString().split('T')[0]}`;
               }}
               currentUserName={userName}
               onTimeFormatChange={(use24Hour) => {
@@ -496,7 +534,7 @@ export default function Overview() {
               borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
-            <Link href={`/schedule/edit?day=${encodeURIComponent(selectedDay)}&from=%2Foverview`}>
+            <Link href={`/schedule/edit?day=${encodeURIComponent(selectedDay)}&from=%2Foverview&week=${selectedWeek.toISOString().split('T')[0]}`}>
               <Edit2 className="h-6 w-6" />
               <span className="sr-only">Edit schedule</span>
             </Link>

@@ -56,12 +56,9 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 768px) and (max-device-width: 1024px)" />
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 834px) and (max-device-width: 834px) and (-webkit-device-pixel-ratio: 2)" />
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 1024px) and (max-device-width: 1024px) and (-webkit-device-pixel-ratio: 2)" />
-        
-        {/* Force CSS reload */}
-        <link rel="stylesheet" href="/globals.css" key="app-css" />
       </head>
-      <body className="overflow-y-hidden bg-background text-foreground">
-        <div id="app-container" className="h-full w-full">
+      <body className="overflow-y-hidden">
+        <div id="app-container">
           {children}
         </div>
         <ClientOnlyScripts />
