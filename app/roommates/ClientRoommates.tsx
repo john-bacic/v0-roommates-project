@@ -343,9 +343,6 @@ export default function Roommates() {
     // Set up visibility-based refresh instead of polling
     console.log('Setting up visibility-based refresh for Roommates component');
     
-    // Initial data load
-    fetchUsersAndSchedules();
-    
     // Handle page visibility changes (when user returns to the tab)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -361,7 +358,7 @@ export default function Roommates() {
       console.log('Cleaning up visibility listener in Roommates');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [selectedWeek])
+  }, [selectedWeek, fetchUsersAndSchedules])
 
   // Set up event listeners for schedule synchronization
   useEffect(() => {
