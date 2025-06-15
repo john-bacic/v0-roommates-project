@@ -70,7 +70,7 @@ export default function ViewSchedule() {
           // Get schedule data
           const { start } = getWeekBounds(currentWeek);
           const weekSchedules = await fetchWeekSchedules(start, numId);
-          setSchedule(weekSchedules[numId] || {});
+          setSchedule(weekSchedules[numId] as Record<string, TimeBlock[]> || {});
         } else {
           router.push("/dashboard")
         }
