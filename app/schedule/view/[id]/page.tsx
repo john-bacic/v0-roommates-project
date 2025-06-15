@@ -21,7 +21,7 @@ export default function ViewSchedule() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [roommate, setRoommate] = useState<User | null>(null)
-  const [schedule, setSchedule] = useState<Record<string, Array<SupabaseTimeBlock>> | null>(null)
+  const [schedule, setSchedule] = useState<Record<string, Array<TimeBlock>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserName, setCurrentUserName] = useState("")
   const [currentWeek, setCurrentWeek] = useState(() => {
@@ -78,7 +78,12 @@ export default function ViewSchedule() {
           // Get schedule data
           const { start } = getWeekBounds(currentWeek);
           const weekSchedules = await fetchWeekSchedules(start, numId);
-          setSchedule(weekSchedules[numId] as Record<string, TimeBlock[]> || {});
+          const userSchedule = weekSchedules[numId];
+          if (userSchedule) {
+            setSchedule(userSchedule as Record<string, TimeBlock[]>);
+          } else {
+            setSchedule({});
+          }
         } else {
           router.push("/dashboard")
         }
@@ -449,7 +454,7 @@ export default function ViewSchedule() {
                   {schedule && schedule[day]?.map((block, index) => {
                     let startPos, endPos, width;
                     
-                    if (block.all_day) {
+                    if (block.allDay) {
                       startPos = 0;
                       endPos = 100;
                       width = 100;
@@ -487,18 +492,18 @@ export default function ViewSchedule() {
                         style={{
                           left: `${startPos}%`,
                           width: `${width}%`,
-                          backgroundColor: block.all_day ? 'transparent' : roommate?.color,
-                          color: block.all_day ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
+                          backgroundColor: block.allDay ? 'transparent' : roommate?.color,
+                          color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
                           top: isCollapsed ? "0" : undefined,
-                          border: block.all_day ? `2px solid ${roommate?.color}` : 'none',
-                          backgroundImage: block.all_day ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                          border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
+                          backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
                         }}
-                        title={`Edit: ${block.label}${block.all_day ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
+                        title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                       >
                         {!isCollapsed && width > 15 ? (
                           <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
                             <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
-                              {!block.all_day ? (
+                              {!block.allDay ? (
                                 width < 20 ? (
                                   // For very narrow blocks, show only the label
                                   <div className="flex items-center max-w-full overflow-hidden">
