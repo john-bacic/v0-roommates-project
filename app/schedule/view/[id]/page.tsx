@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, ChevronUp, ChevronDown, Edit2, Plus } from "lucide-react"
+import { ArrowLeft, Clock, ChevronUp, ChevronDown, Edit2, Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { supabase, fetchUserSchedule, fetchWeekSchedules, User, TimeBlock as SupabaseTimeBlock } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
-import { parseWeekParam, getWeekBounds, formatWeekRange } from "@/lib/date-utils"
+import { parseWeekParam, getWeekBounds, formatWeekRange, isSameWeek } from "@/lib/date-utils"
 
 interface TimeBlock {
   id?: string;
@@ -95,7 +95,7 @@ export default function ViewSchedule() {
     }
     
     loadData()
-  }, [params.id, router])
+  }, [params.id, router, currentWeek])
 
   // Effect for header visibility on scroll
   useEffect(() => {
@@ -335,28 +335,68 @@ export default function ViewSchedule() {
         data-component-name="ViewSchedule"
       >
         <div className="flex justify-between items-center h-[36px] w-full max-w-7xl mx-auto px-4">
-          <div>
-            <h3 className="text-sm font-medium">Week of {formatWeekRange(currentWeek)}</h3>
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-black/10"
+              onClick={() => {
+                const prevWeek = new Date(currentWeek)
+                prevWeek.setDate(currentWeek.getDate() - 7)
+                setCurrentWeek(prevWeek)
+                // Optionally emit week change event if you use it
+              }}
+              aria-label="Previous week"
+            >
+              <ChevronLeft className="h-4 w-4 text-[#A0A0A0]" />
+              <span className="sr-only">Previous week</span>
+            </Button>
+            <h3 
+              className={`text-sm font-medium mx-2 ${isSameWeek(currentWeek, new Date()) ? '' : 'text-[#A0A0A0]'}`} 
+              style={isSameWeek(currentWeek, new Date()) ? { color: roommate?.color || '#FFFFFF' } : {}}
+              data-component-name="ViewSchedule"
+            >
+              Week of {formatWeekRange(currentWeek)}
+            </h3>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 hover:bg-black/10"
+              onClick={() => {
+                const nextWeek = new Date(currentWeek)
+                nextWeek.setDate(currentWeek.getDate() + 7)
+                setCurrentWeek(nextWeek)
+                // Optionally emit week change event if you use it
+              }}
+              aria-label="Next week"
+            >
+              <ChevronRight className="h-4 w-4 text-[#A0A0A0]" />
+              <span className="sr-only">Next week</span>
+            </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTimeFormat}
-              className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
+              className="h-8 w-8 md:hover:bg-white md:hover:text-black"
               title={use24HourFormat ? "Switch to AM/PM format" : "Switch to 24-hour format"}
             >
-              <Clock className="h-4 w-4" />
+              <Clock
+                className={`h-4 w-4 text-[#A0A0A0] transition-transform duration-300`}
+                style={{ transform: use24HourFormat ? 'rotateY(180deg)' : 'none' }}
+              />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleView}
-              className="h-8 w-8 text-white md:hover:bg-white md:hover:text-black"
+              className="h-8 w-8 md:hover:bg-white md:hover:text-black"
               title={isCollapsed ? "expand-all" : "collapse-all"}
             >
               {isCollapsed ? (
                 <svg
+                  className="h-4 w-4 text-[#A0A0A0]"
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
                   height="16"
@@ -372,6 +412,7 @@ export default function ViewSchedule() {
                 </svg>
               ) : (
                 <svg
+                  className="h-4 w-4 text-[#A0A0A0]"
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
                   height="16"
