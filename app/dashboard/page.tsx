@@ -283,16 +283,8 @@ export default function Dashboard() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const refreshTimestamp = sessionStorage.getItem('refreshTimestamp');
-        if (refreshTimestamp) {
-          // Only refresh if we haven't refreshed for this timestamp yet
-          const lastProcessedTimestamp = sessionStorage.getItem('lastProcessedTimestamp');
-          if (refreshTimestamp !== lastProcessedTimestamp) {
-            console.log('Refreshing dashboard on visibility change');
-            sessionStorage.setItem('lastProcessedTimestamp', refreshTimestamp);
-            loadData();
-          }
-        }
+        console.log('Tab became visible - refreshing dashboard data');
+        loadData();
       }
     };
     
@@ -433,7 +425,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [currentWeek, userName, formatWeekRange])
+  }, [currentWeek, userName])
 
   // Set up real-time subscriptions to schedule and user changes - CLIENT SIDE ONLY
   useEffect(() => {

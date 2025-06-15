@@ -29,6 +29,7 @@ interface SingleDayViewProps {
   onAddClick: (user: User, day: string) => void
   currentUserName: string
   onTimeFormatChange?: (use24Hour: boolean) => void
+  selectedWeek?: Date
 }
 
 // Helper function to get text color based on background color
@@ -44,7 +45,8 @@ export function SingleDayView({
   onBlockClick,
   onAddClick,
   currentUserName,
-  onTimeFormatChange
+  onTimeFormatChange,
+  selectedWeek
 }: SingleDayViewProps) {
   // State for 24-hour time format toggle
   const [localUse24HourFormat, setLocalUse24HourFormat] = useState(use24HourFormat)
@@ -74,8 +76,31 @@ export function SingleDayView({
     return days[dayIndex]
   }
   
-  // Check if the day being viewed is the current logical day
-  const isCurrentDay = getLogicalDayName() === day
+  // Check if the day being viewed is the current logical day AND we're viewing the current week
+  const isCurrentDay = (() => {
+    // First check if the day name matches
+    if (getLogicalDayName() !== day) return false;
+    
+    // If no selectedWeek is provided, assume we're viewing current week
+    if (!selectedWeek) return true;
+    
+    // Check if we're viewing the current week
+    const now = new Date();
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
+    currentWeekStart.setHours(0, 0, 0, 0);
+    
+    const currentWeekEnd = new Date(currentWeekStart);
+    currentWeekEnd.setDate(currentWeekStart.getDate() + 6); // End of current week (Saturday)
+    currentWeekEnd.setHours(23, 59, 59, 999);
+    
+    const selectedWeekStart = new Date(selectedWeek);
+    selectedWeekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
+    selectedWeekStart.setHours(0, 0, 0, 0);
+    
+    // Check if selected week is the current week
+    return selectedWeekStart.getTime() === currentWeekStart.getTime();
+  })()
   
   // State to track the current hour for day transition checks
   const [currentHour, setCurrentHour] = useState<number>(new Date().getHours())

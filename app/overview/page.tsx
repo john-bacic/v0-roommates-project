@@ -221,17 +221,11 @@ export default function Overview() {
       refreshTimeDisplays();
     }
     
-    // Set up polling mechanism instead of Realtime subscriptions
-    console.log('Setting up polling for Overview component');
+    // Set up visibility-based refresh instead of polling
+    console.log('Setting up visibility-based refresh for Overview component');
     
     // Initial data load
     loadData();
-    
-    // Set up polling interval (every 30 seconds)
-    const pollingInterval = setInterval(() => {
-      console.log('Polling for schedule and user updates in Overview...');
-      loadData();
-    }, 30000); // 30 seconds
     
     // Listen for custom scheduleDataUpdated events from SingleDayView component
     const handleScheduleUpdate = (event: Event) => {
@@ -274,10 +268,9 @@ export default function Overview() {
     window.addEventListener('focus', handleNavigation)
     document.addEventListener('returnToScheduleView', handleReturnToView)
     
-    // Clean up polling interval and event listeners on unmount
+    // Clean up event listeners on unmount
     return () => {
-      console.log('Cleaning up polling interval in Overview');
-      clearInterval(pollingInterval)
+      console.log('Cleaning up event listeners in Overview');
       document.removeEventListener('scheduleDataUpdated', handleScheduleUpdate)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       document.removeEventListener('refreshTimeDisplays', handleRefreshEvent)
@@ -369,7 +362,7 @@ export default function Overview() {
           <div className="flex items-center justify-between w-full mb-3" data-component-name="Overview">
             <div className="flex items-center group w-[72px]">
               <Link 
-                href="/dashboard" 
+                href={`/dashboard?week=${selectedWeek.toISOString().split('T')[0]}`} 
                 className="flex items-center text-white hover:opacity-80"
                 data-component-name="LinkComponent"
                 title="Back to Dashboard"
@@ -394,7 +387,11 @@ export default function Overview() {
                 <ChevronLeft className="h-4 w-4" />
                 <span className="sr-only">Previous week</span>
               </Button>
-              <h1 className="text-sm font-medium mx-2" data-component-name="Overview">
+              <h1 
+                className={`text-sm font-medium mx-2 ${isSameWeek(selectedWeek, new Date()) ? '' : 'text-[#A0A0A0]'}`} 
+                style={isSameWeek(selectedWeek, new Date()) ? { color: userColor } : {}}
+                data-component-name="Overview"
+              >
                 {formatWeekRange(selectedWeek)}
               </h1>
               <Button 
@@ -469,18 +466,18 @@ export default function Overview() {
                   }}
                 >
                   <div className="w-full flex flex-col md:flex-row items-center justify-center h-full md:space-x-1">
-                    <span className={`${day === currentDayName ? 'text-red-500 font-bold' : ''} leading-none`}>
+                    <span className={`${day === currentDayName && isSameWeek(selectedWeek, new Date()) ? 'text-red-500 font-bold' : ''} leading-none`}>
                       <span className="md:hidden">{day.substring(0, 1)}</span>
                       <span className="hidden md:inline">{day.substring(0, 3)}</span>
                     </span>
-                    <span className={`${day === currentDayName ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
+                    <span className={`${day === currentDayName && isSameWeek(selectedWeek, new Date()) ? 'text-red-500 font-bold' : 'text-inherit'} text-xs leading-none`}>
                       {getWeekDates()[days.indexOf(day)]}
                     </span>
                   </div>
                   {isActive && (
                     <span 
-                      className={`absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm ${day === currentDayName ? 'bg-red-500' : ''}`}
-                      style={day !== currentDayName ? { backgroundColor: userColor } : {}}
+                      className={`absolute bottom-0 left-0 w-full h-0.5 rounded-t-sm ${day === currentDayName && isSameWeek(selectedWeek, new Date()) ? 'bg-red-500' : ''}`}
+                      style={day !== currentDayName || !isSameWeek(selectedWeek, new Date()) ? { backgroundColor: userColor } : {}}
                     />
                   )}
                 </button>
@@ -504,6 +501,7 @@ export default function Overview() {
               schedules={schedules}
               day={selectedDay || days[0]}
               use24HourFormat={use24HourFormat}
+              selectedWeek={selectedWeek}
               onBlockClick={(user, day, block) => {
                 // Navigate to edit schedule for this day and user
                 window.location.href = `/schedule/edit?day=${encodeURIComponent(day)}&user=${encodeURIComponent(user.name)}&from=%2Foverview&week=${selectedWeek.toISOString().split('T')[0]}`;

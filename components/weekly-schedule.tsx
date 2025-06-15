@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { QuickScheduleModal } from "@/components/quick-schedule-modal"
 import { Plus, Edit2, Clock, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { getSupabase, fetchWeekSchedules } from "@/lib/supabase"
-import { getDateForDayInWeek } from "@/lib/date-utils"
+import { getDateForDayInWeek, isSameWeek } from "@/lib/date-utils"
 import { useRealtime } from "@/lib/use-realtime"
 import { emitScheduleUpdate } from "@/lib/schedule-events"
 
@@ -1130,7 +1130,11 @@ export function WeeklySchedule({
               <span className="sr-only">Previous week</span>
             </Button>
             
-            <h3 className="text-sm font-medium" data-component-name="WeeklySchedule">
+            <h3 
+              className={`text-sm font-medium ${isSameWeek(currentWeek, new Date()) ? '' : 'text-[#A0A0A0]'}`} 
+              style={isSameWeek(currentWeek, new Date()) ? { color: users.find(u => u.name === currentUserName)?.color || '#FFFFFF' } : {}}
+              data-component-name="WeeklySchedule"
+            >
               {formatWeekRange(currentWeek)}
             </h3>
             

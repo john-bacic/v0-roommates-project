@@ -196,25 +196,30 @@ export default function EditSchedule() {
     }
   };
 
-  // Set up polling mechanism instead of Realtime subscriptions
+  // Set up visibility-based refresh instead of polling
   useEffect(() => {
     if (!userName) return;
     
-    console.log('Setting up polling for EditSchedule component');
+    console.log('Setting up visibility-based refresh for EditSchedule component');
     
     // Initial data load with selected week
     loadUserData(userName, selectedWeek);
     
-    // Set up polling interval (every 30 seconds)
-    const pollingInterval = setInterval(() => {
-      console.log('Polling for schedule updates...');
-      loadUserData(userName, selectedWeek);
-    }, 30000); // 30 seconds
+    // Handle page visibility changes (when user returns to the tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible - refreshing edit schedule data');
+        loadUserData(userName, selectedWeek);
+      }
+    };
     
-    // Clean up interval on unmount
+    // Add event listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Clean up event listener on unmount
     return () => {
-      console.log('Cleaning up polling interval');
-      clearInterval(pollingInterval);
+      console.log('Cleaning up visibility listener');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [userName, selectedWeek]);
 
@@ -589,7 +594,11 @@ export default function EditSchedule() {
               <ChevronLeft className="h-4 w-4" />
               <span className="sr-only">Previous week</span>
             </Button>
-            <h1 className="text-sm font-medium mx-2" data-component-name="EditSchedule">
+            <h1 
+              className={`text-sm font-medium mx-2 ${isSameWeek(selectedWeek, new Date()) ? '' : 'text-[#A0A0A0]'}`} 
+              style={isSameWeek(selectedWeek, new Date()) ? { color: userColor } : {}}
+              data-component-name="EditSchedule"
+            >
               {formatWeekRange(selectedWeek)}
             </h1>
             <Button 
