@@ -243,42 +243,33 @@ export default function ViewSchedule() {
     const now = new Date()
     const hours = now.getHours()
     const minutes = now.getMinutes()
-    
-    // Convert to decimal hours (e.g., 14:30 = 14.5)
-    const decimalHours = hours + (minutes / 60)
-    
-    // The grid has 24 equal divisions (one per hour)
-    const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
-    
-    // Our visible range is 6am to 6am next day (24 hours)
-    let position
-    
-    // Handle times after midnight (0-5am)
-    if (hours < 6) {
-      // For hours 0-5, show them at the end of the previous day (after hour 24)
-      position = (hours + 24 - 6) * hourWidth
-    } else {
-      // For normal hours (6am-11pm)
-      position = (decimalHours - 6) * hourWidth
-    }
-    
-    return Math.min(Math.max(0, position), 100) // Clamp between 0-100%
+    const seconds = now.getSeconds()
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    const [h, m] = timeString.split(":").map(Number)
+    let totalMinutes = h * 60 + m + (seconds / 60)
+    if (h >= 0 && h < 6) totalMinutes += 24 * 60
+    const startMinutes = 6 * 60
+    const totalDuration = 24 * 60
+    return ((totalMinutes - startMinutes) / totalDuration) * 100
   }
   
   // Helper function to check if the current day is in the visible week
   const getCurrentTimeDay = () => {
     const today = new Date()
     const hours = today.getHours()
-    
-    // If time is between midnight and 6am, show on previous day
     let adjustedDate = new Date(today)
-    if (hours < 6) {
-      adjustedDate.setDate(today.getDate() - 1)
-    }
-    
-    const dayOfWeek = adjustedDate.getDay() // 0 = Sunday, 1 = Monday, ...
-    const dayName = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1] // Convert to our days array index
-    return dayName
+    if (hours < 6) adjustedDate.setDate(today.getDate() - 1)
+    const dayOfWeek = adjustedDate.getDay()
+    const dayName = days[dayOfWeek]
+    // Check if today is in the current week
+    const weekStart = new Date(currentWeek)
+    weekStart.setDate(currentWeek.getDate() - currentWeek.getDay())
+    weekStart.setHours(0, 0, 0, 0)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+    weekEnd.setHours(23, 59, 59, 999)
+    const isInCurrentWeek = adjustedDate >= weekStart && adjustedDate <= weekEnd
+    return isInCurrentWeek ? dayName : null
   }
   
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -461,10 +452,7 @@ export default function ViewSchedule() {
                   <div className="bg-[#282828] mb-2 pt-1 relative">
                     <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
                       <div className="absolute inset-0 flex overflow-visible">
-                        {/* Current time indicator removed */}
-                        
                         {/* Time labels */}
-                        
                         {hours.map((hour) => (
                           <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
                             <div
@@ -480,116 +468,115 @@ export default function ViewSchedule() {
                     </div>
                   </div>
 
-                  {/* Schedule timeline */}
-                  <div 
-                    className={`relative ${isCollapsed ? "h-2" : "h-10"} bg-[#373737] rounded-md overflow-hidden transition-all duration-200`}
-                    data-component-name="ViewSchedule"
-                  >
-                    {/* Vertical grid lines - improved positioning */}
-                    <div className="absolute inset-0 w-full h-full pointer-events-none">
-                      {hours.map((hour) => {
-                        const position = (hour - 6) * (100 / 24);
-                        return (
-                          <div 
-                            key={hour} 
-                            className="absolute h-full border-l border-[#191919]" 
-                            style={{ left: `${position}%` }}
-                          />
-                        );
-                      })}
-                    </div>
-
-
-                    
-                    {/* Schedule blocks for this day */}
-                    {schedule && schedule[day]?.map((block, index) => {
-                      let startPos, endPos, width;
-                      
-                      if (block.allDay) {
-                        startPos = 0;
-                        endPos = 100;
-                        width = 100;
-                      } else {
-                        // Calculate the position and width of the time block
-                         const startHour = parseInt(block.start.split(":")[0])
-                         const startMinute = parseInt(block.start.split(":")[1])
-                         const endHour = parseInt(block.end.split(":")[0])
-                         const endMinute = parseInt(block.end.split(":")[1])
-                        
-                        // Use the improved calculation for more accurate positioning
-                        let startDecimalHours = startHour + (startMinute / 60)
-                        let endDecimalHours = endHour + (endMinute / 60)
-                        
-                        // Handle times after midnight (0-6) by adding 24
-                        if (startHour >= 0 && startHour < 6) {
-                          startDecimalHours += 24
-                        }
-                        if (endHour >= 0 && endHour < 6) {
-                          endDecimalHours += 24
-                        }
-                        
-                        // Calculate positions using the same logic as timeToPosition function
-                        const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
-                        startPos = (startDecimalHours - 6) * hourWidth
-                        endPos = (endDecimalHours - 6) * hourWidth
-                        width = endPos - startPos
-                      }
-
-                      return (
-                        <div
-                          key={block.id || index}
-                          className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-start transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
-                          onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
+                  {/* Container for timeline and current time indicator */}
+                  <div className="relative">
+                    {/* Current time indicator - now at same level as schedule timeline */}
+                    {getCurrentTimeDay() === day && (
+                      <div 
+                        className="absolute top-0 w-[2px] bg-red-500 pointer-events-none" 
+                        style={{ 
+                          left: `${getCurrentTimePosition()}%`,
+                          height: 'calc(100% + 2rem)', // Extended height to reach bottom
+                          zIndex: 200, // Very high z-index
+                          top: '-2rem' // Start from above to include time header
+                        }}
+                        data-component-name="ViewSchedule"
+                      >
+                        {/* Red dot at the top of the line */}
+                        <div 
+                          className="absolute w-[10px] h-[10px] rounded-full bg-red-500"
                           style={{
-                            left: `${startPos}%`,
-                            width: `${width}%`,
-                            backgroundColor: block.allDay ? 'transparent' : roommate?.color,
-                            color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
-                            top: isCollapsed ? "0" : undefined,
-                            border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
-                            backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                            top: '-4px',
+                            left: '-4px',
+                            position: 'absolute',
+                            zIndex: 201,
+                            pointerEvents: 'none'
                           }}
-                          title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
-                        >
-                          {!isCollapsed && width > 15 ? (
-                            <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
-                              <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
-                                {!block.allDay ? (
-                                  width < 20 ? (
-                                    // For very narrow blocks, show only the label
-                                    <div className="flex items-center max-w-full overflow-hidden">
-                                      <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
-                                        {block.label}
-                                      </span>
-                                      {isCurrentUser && width > 12 && (
-                                        <svg
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          width="24"
-                                          height="24"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
-                                        >
-                                          <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
-                                        </svg>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    // For wider blocks, show time and label
-                                    <>
-                                      <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
-                                        {formatTime(block.start)} - {formatTime(block.end)}
-                                      </span>
-                                      <span className="text-xs opacity-60 mr-1">|</span>
+                          data-component-name="ViewSchedule"
+                        ></div>
+                      </div>
+                    )}
+
+                    {/* Schedule timeline */}
+                    <div 
+                      className={`relative ${isCollapsed ? "h-2" : "h-10"} bg-[#373737] rounded-md overflow-hidden transition-all duration-200`}
+                      data-component-name="ViewSchedule"
+                    >
+                      {/* Vertical grid lines - improved positioning */}
+                      <div className="absolute inset-0 w-full h-full pointer-events-none">
+                        {hours.map((hour) => {
+                          const position = (hour - 6) * (100 / 24);
+                          return (
+                            <div 
+                              key={hour} 
+                              className="absolute h-full border-l border-[#191919]" 
+                              style={{ left: `${position}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* Schedule blocks for this day */}
+                      {schedule && schedule[day]?.map((block, index) => {
+                        let startPos, endPos, width;
+                        
+                        if (block.allDay) {
+                          startPos = 0;
+                          endPos = 100;
+                          width = 100;
+                        } else {
+                          // Calculate the position and width of the time block
+                           const startHour = parseInt(block.start.split(":")[0])
+                           const startMinute = parseInt(block.start.split(":")[1])
+                           const endHour = parseInt(block.end.split(":")[0])
+                           const endMinute = parseInt(block.end.split(":")[1])
+                          
+                          // Use the improved calculation for more accurate positioning
+                          let startDecimalHours = startHour + (startMinute / 60)
+                          let endDecimalHours = endHour + (endMinute / 60)
+                          
+                          // Handle times after midnight (0-6) by adding 24
+                          if (startHour >= 0 && startHour < 6) {
+                            startDecimalHours += 24
+                          }
+                          if (endHour >= 0 && endHour < 6) {
+                            endDecimalHours += 24
+                          }
+                          
+                          // Calculate positions using the same logic as timeToPosition function
+                          const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
+                          startPos = (startDecimalHours - 6) * hourWidth
+                          endPos = (endDecimalHours - 6) * hourWidth
+                          width = endPos - startPos
+                        }
+
+                        return (
+                          <div
+                            key={block.id || index}
+                            className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-start transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
+                            onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
+                            style={{
+                              left: `${startPos}%`,
+                              width: `${width}%`,
+                              backgroundColor: block.allDay ? 'transparent' : roommate?.color,
+                              color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
+                              top: isCollapsed ? "0" : undefined,
+                              border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
+                              backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                            }}
+                            title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
+                          >
+                            {!isCollapsed && width > 15 ? (
+                              <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
+                                <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
+                                  {!block.allDay ? (
+                                    width < 20 ? (
+                                      // For very narrow blocks, show only the label
                                       <div className="flex items-center max-w-full overflow-hidden">
                                         <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
                                           {block.label}
                                         </span>
-                                        {isCurrentUser && (
+                                        {isCurrentUser && width > 12 && (
                                           <svg
                                             xmlns="http://www.w3.org/2000/svg"
                                             width="24"
@@ -606,38 +593,67 @@ export default function ViewSchedule() {
                                           </svg>
                                         )}
                                       </div>
-                                    </>
-                                  )
-                                ) : (
-                                  // All-day blocks
-                                  <div className="flex items-center max-w-full overflow-hidden">
-                                    <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
-                                      {block.label} (All Day)
-                                    </span>
-                                    {isCurrentUser && (
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
-                                      >
-                                        <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
-                                      </svg>
-                                    )}
-                                  </div>
-                                )}
+                                    ) : (
+                                      // For wider blocks, show time and label
+                                      <>
+                                        <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
+                                          {formatTime(block.start)} - {formatTime(block.end)}
+                                        </span>
+                                        <span className="text-xs opacity-60 mr-1">|</span>
+                                        <div className="flex items-center max-w-full overflow-hidden">
+                                          <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                            {block.label}
+                                          </span>
+                                          {isCurrentUser && (
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              width="24"
+                                              height="24"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                            >
+                                              <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                            </svg>
+                                          )}
+                                        </div>
+                                      </>
+                                    )
+                                  ) : (
+                                    // All-day blocks
+                                    <div className="flex items-center max-w-full overflow-hidden">
+                                      <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                        {block.label} (All Day)
+                                      </span>
+                                      {isCurrentUser && (
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          width="24"
+                                          height="24"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                        >
+                                          <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
