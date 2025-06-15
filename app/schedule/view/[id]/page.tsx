@@ -3,18 +3,23 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Clock, ChevronUp, ChevronDown, Edit2, Plus } from "lucide-react"
-import { useParams, useRouter } from "next/navigation"
-import { supabase, fetchUserSchedule, User, TimeBlock as SupabaseTimeBlock } from "@/lib/supabase"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { supabase, fetchUserSchedule, fetchWeekSchedules, User, TimeBlock as SupabaseTimeBlock } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
+import { parseWeekParam, getWeekBounds, formatWeekRange } from "@/lib/date-utils"
 
 export default function ViewSchedule() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [roommate, setRoommate] = useState<User | null>(null)
   const [schedule, setSchedule] = useState<Record<string, Array<SupabaseTimeBlock>> | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUserName, setCurrentUserName] = useState("")
-  const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [currentWeek, setCurrentWeek] = useState(() => {
+    const weekParam = searchParams.get("week");
+    return weekParam ? parseWeekParam(weekParam) : new Date();
+  })
   const [currentUserId, setCurrentUserId] = useState<number>(3) // Default to John (id: 3) as the signed-in user
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [use24HourFormat, setUse24HourFormat] = useState(() => {
@@ -27,6 +32,12 @@ export default function ViewSchedule() {
   })
   const [headerVisible, setHeaderVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
+  const numId = Number(params.id)
+
+  useEffect(() => {
+    const weekParam = searchParams.get("week");
+    if (weekParam) setCurrentWeek(parseWeekParam(weekParam));
+  }, [searchParams]);
 
   useEffect(() => {
     // Load data from Supabase
@@ -57,8 +68,9 @@ export default function ViewSchedule() {
           }
           
           // Get schedule data
-          const scheduleData = await fetchUserSchedule(numId)
-          setSchedule(scheduleData)
+          const { start } = getWeekBounds(currentWeek);
+          const weekSchedules = await fetchWeekSchedules(start, numId);
+          setSchedule(weekSchedules[numId] || {});
         } else {
           router.push("/dashboard")
         }
@@ -211,23 +223,6 @@ export default function ViewSchedule() {
     const newState = !isCollapsed
     setIsCollapsed(newState)
     localStorage.setItem('weeklyScheduleCollapsed', String(newState))
-  }
-  
-  // Format week range with month names
-  const formatWeekRange = (date: Date) => {
-    const start = new Date(date)
-    start.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1)) // Start of week (Monday)
-
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6) // End of week (Sunday)
-
-    // Format with month name
-    const formatDate = (d: Date) => {
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      return `${monthNames[d.getMonth()]} ${d.getDate()}`
-    }
-
-    return `${formatDate(start)} - ${formatDate(end)}`
   }
   
   // Get current time position as a percentage
@@ -452,10 +447,10 @@ export default function ViewSchedule() {
                       width = 100;
                     } else {
                       // Calculate the position and width of the time block
-                       const startHour = parseInt(block.start_time.split(":")[0])
-                       const startMinute = parseInt(block.start_time.split(":")[1])
-                       const endHour = parseInt(block.end_time.split(":")[0])
-                       const endMinute = parseInt(block.end_time.split(":")[1])
+                       const startHour = parseInt(block.start.split(":")[0])
+                       const startMinute = parseInt(block.start.split(":")[1])
+                       const endHour = parseInt(block.end.split(":")[0])
+                       const endMinute = parseInt(block.end.split(":")[1])
                       
                       // Use the improved calculation for more accurate positioning
                       let startDecimalHours = startHour + (startMinute / 60)
@@ -490,7 +485,7 @@ export default function ViewSchedule() {
                           border: block.all_day ? `2px solid ${roommate?.color}` : 'none',
                           backgroundImage: block.all_day ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
                         }}
-                        title={`Edit: ${block.label}${block.all_day ? " (All Day)" : `: ${block.start_time} - ${block.end_time}`}`}
+                        title={`Edit: ${block.label}${block.all_day ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
                       >
                         {!isCollapsed && width > 15 ? (
                           <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
@@ -523,7 +518,7 @@ export default function ViewSchedule() {
                                   // For wider blocks, show time and label
                                   <>
                                     <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
-                                      {formatTime(block.start_time)} - {formatTime(block.end_time)}
+                                      {formatTime(block.start)} - {formatTime(block.end)}
                                     </span>
                                     <span className="text-xs opacity-60 mr-1">|</span>
                                     <div className="flex items-center max-w-full overflow-hidden">
