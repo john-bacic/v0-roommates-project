@@ -22,7 +22,7 @@ const getTextColor = (bgColor: string): string => {
   return "#000" // Always use dark text against colored backgrounds
 }
 
-export default function Overview() {
+function ClientOverview() {
   // Initialize users state with the initial users data
   const [usersList, setUsersList] = useState<typeof initialUsers>(initialUsers)
   const [schedules, setSchedules] = useState<Record<number, Record<string, Array<{ start: string; end: string; label: string; allDay?: boolean }>>>>({})
@@ -547,4 +547,8 @@ export default function Overview() {
       )}
     </div>
   )
+}
+
+export default function Overview() {
+  return <ClientOverview />
 }
