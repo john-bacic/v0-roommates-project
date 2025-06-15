@@ -1,0 +1,576 @@
+"use client";
+import Link from "next/link"
+import { ArrowLeft, Share2, Copy, Check, Edit2, Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState, useCallback } from "react"
+import { supabase, fetchWeekSchedules } from "@/lib/supabase"
+import { QRCodeSVG } from "qrcode.react"
+import { usePathname } from "next/navigation"
+import { formatWeekRange, isSameWeek, getWeekBounds } from "@/lib/date-utils"
+import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
+
+// Define interfaces for our data types
+interface Schedule {
+  id: string;
+  start: string;
+  end: string;
+  label: string;
+  allDay: boolean;
+}
+
+interface Roommate {
+  id: number;
+  name: string;
+  color: string;
+  initial: string;
+  description: string;
+  availableDays: number[];
+  allDayOffDays?: number[];
+}
+
+// Initial users data as fallback
+const initialUsers: Roommate[] = [
+  {
+    id: 1,
+    name: "Riko",
+    color: "#FF7DB1",
+    initial: "R",
+    description: "Available: Mon-Fri, Busy on weekends",
+    availableDays: [0, 1, 2, 3, 4] // Monday to Friday
+  },
+  { 
+    id: 2, 
+    name: "Narumi", 
+    color: "#63D7C6", 
+    initial: "N", 
+    description: "Available: Tue-Sat, Free on Sun-Mon",
+    availableDays: [1, 2, 3, 4, 5] // Tuesday to Saturday
+  },
+  { 
+    id: 3, 
+    name: "John", 
+    color: "#F8D667", 
+    initial: "J", 
+    description: "Available: Mon-Thu, Free on Fri-Sun",
+    availableDays: [0, 1, 2, 3] // Monday to Thursday
+  },
+]
+
+function ClientRoommates() {
+  const [roommates, setRoommates] = useState<Roommate[]>(initialUsers)
+  const [loading, setLoading] = useState(true)
+  const [currentUrl, setCurrentUrl] = useState("")
+  const [copied, setCopied] = useState(false)
+  const [currentUser, setCurrentUser] = useState<number | null>(3) // Default to John (id: 3) as the signed-in user
+  const pathname = usePathname()
+  const [selectedWeek, setSelectedWeek] = useState<Date>(new Date())
+  const [userName, setUserName] = useState('')
+  const [userColor, setUserColor] = useState('#B388F5') // Default color
+
+  // Helper function to format a list of days nicely
+  const formatDaysList = (days: string[]) => {
+    if (days.length === 0) return "None";
+    if (days.length === 1) return days[0].substring(0, 3);
+    if (days.length === 2) return `${days[0].substring(0, 3)}, ${days[1].substring(0, 3)}`;
+    // Check for consecutive days to use ranges
+    const dayIndices = days.map(day => [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    ].indexOf(day));
+    dayIndices.sort((a, b) => a - b);
+    // Check if days are consecutive
+    let isConsecutive = true;
+    for (let i = 1; i < dayIndices.length; i++) {
+      if (dayIndices[i] !== dayIndices[i-1] + 1) {
+        isConsecutive = false;
+        break;
+      }
+    }
+    if (isConsecutive) {
+      return `${days[0].substring(0, 3)}-${days[days.length-1].substring(0, 3)}`;
+    } else {
+      return days.map(day => day.substring(0, 3)).join(', ');
+    }
+  };
+
+  // Function to determine if a user has any schedules on a specific day
+  // and check if they have an all-day off schedule
+  const checkDayScheduleStatus = (userId: number, schedules: any, dayIndex: number) => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[dayIndex];
+    let hasSchedules = false;
+    let isAllDayOff = false;
+    if (schedules && schedules[userId] && schedules[userId][dayName]) {
+      const daySchedules = schedules[userId][dayName];
+      hasSchedules = daySchedules.length > 0;
+      isAllDayOff = daySchedules.some((schedule: any) => schedule.allDay === true);
+    }
+    return { hasSchedules, isAllDayOff };
+  };
+
+  // Function to generate availability description based on schedules
+  const generateAvailabilityDescription = (userId: number, schedules: Record<number, Record<string, Array<Schedule>>>) => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const workingDays: string[] = [];
+    const offDays: string[] = [];
+    const allDayOffDays: string[] = [];
+    const noScheduleDays: string[] = [];
+    dayNames.forEach((day, index) => {
+      const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(userId, schedules, index);
+      if (isAllDayOff) {
+        allDayOffDays.push(day);
+        offDays.push(day);
+      } else if (hasSchedules) {
+        workingDays.push(day);
+      } else {
+        noScheduleDays.push(day);
+      }
+    });
+    if (workingDays.length === 0 && offDays.length === 0) {
+      return "No schedule set";
+    }
+    const parts = [];
+    if (workingDays.length > 0) {
+      parts.push(`Working: ${formatDaysList(workingDays)}`);
+    }
+    if (allDayOffDays.length > 0) {
+      parts.push(`Day off: ${formatDaysList(allDayOffDays)}`);
+    }
+    if (noScheduleDays.length > 0 && (workingDays.length > 0 || allDayOffDays.length > 0)) {
+      parts.push(`No schedule: ${formatDaysList(noScheduleDays)}`);
+    }
+    return parts.join(' • ');
+  };
+
+  const fetchUsersAndSchedules = useCallback(async () => {
+    try {
+      console.log('Starting to fetch users and schedules');
+      setLoading(true);
+      
+      // Check if supabase client is initialized
+      if (!supabase) {
+        console.error('Supabase client is not initialized');
+        setRoommates(initialUsers);
+        setLoading(false);
+        return;
+      }
+      
+      // Fetch users
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*');
+        
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        // Fall back to initial users if there's an error
+        setRoommates(initialUsers);
+        setLoading(false);
+        return;
+      }
+      
+      // Load schedules for the selected week using week-aware function
+      const weekSchedules = await fetchWeekSchedules(selectedWeek);
+      
+      // Convert week schedules to flat array format for processing
+      const schedulesData: any[] = [];
+      Object.entries(weekSchedules).forEach(([userId, userSchedule]) => {
+        Object.entries(userSchedule).forEach(([day, blocks]) => {
+          blocks.forEach(block => {
+            schedulesData.push({
+              id: block.id,
+              user_id: parseInt(userId),
+              day: day,
+              start_time: block.start,
+              end_time: block.end,
+              label: block.label,
+              all_day: block.allDay
+            });
+          });
+        });
+      });
+      
+      // Make sure we have valid data
+      const validSchedulesData = schedulesData || [];
+      
+      // Process schedules into the format we need
+      const processedSchedules: Record<number, Record<string, Array<any>>> = {};
+      
+      validSchedulesData.forEach((schedule: { user_id: number | string; day: string; id: string; start_time: string; end_time: string; label: string; all_day: boolean }) => {
+        const userId = (schedule.user_id as number);
+        const day = (schedule.day as string);
+        const id = (schedule.id as string);
+        const startTime = (schedule.start_time as string);
+        const endTime = (schedule.end_time as string);
+        const label = (schedule.label as string);
+        const allDay = (schedule.all_day as boolean);
+        
+        if (!processedSchedules[userId]) {
+          processedSchedules[userId] = {};
+        }
+        
+        if (!processedSchedules[userId][day]) {
+          processedSchedules[userId][day] = [];
+        }
+        
+        processedSchedules[userId][day].push({
+          id,
+          start: startTime,
+          end: endTime,
+          label,
+          allDay
+        });
+      });
+      
+      // Map users with their availability based on actual schedules
+      if (usersData && usersData.length > 0) {
+        const mappedUsers = usersData.map((user: { id: number | string; name?: string; color?: string; initial?: string }) => {
+          // Calculate available days based on schedules
+          const availableDays: number[] = [];
+          const allDayOffDays: number[] = [];
+          const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id));
+          
+          ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach((day, index) => {
+            // Convert user.id to number to ensure proper typing
+            const { hasSchedules, isAllDayOff } = checkDayScheduleStatus(userId, processedSchedules, index);
+            
+            // If it's an all-day off schedule, don't mark as available
+            if (hasSchedules && !isAllDayOff) {
+              availableDays.push(index);
+            }
+            
+            if (isAllDayOff) {
+              allDayOffDays.push(index);
+            }
+          });
+          
+          // Create properly typed Roommate object
+          return {
+            id: userId,
+            name: user.name as string,
+            color: user.color as string,
+            initial: (user.initial as string) || (user.name as string).charAt(0).toUpperCase(),
+            description: generateAvailabilityDescription(userId, processedSchedules),
+            availableDays: availableDays,
+            allDayOffDays: allDayOffDays
+          } as Roommate;
+        });
+        
+        setRoommates(mappedUsers);
+      }
+    } catch (error) {
+      console.error('Error in fetchUsersAndSchedules:', error);
+      console.log('Error details:', JSON.stringify(error, null, 2));
+      // Fall back to initial users if there's an error
+      setRoommates(initialUsers);
+    } finally {
+      setLoading(false);
+      console.log('Finished fetching users and schedules');
+    }
+  }, [selectedWeek]);
+
+  // Effect to get the current URL and set up date-related state
+  useEffect(() => {
+    // Only run in client-side
+    if (typeof window !== 'undefined') {
+      // Get the base URL (protocol + host)
+      const baseUrl = window.location.origin
+      setCurrentUrl(baseUrl)
+      
+      // Set up current date information
+      fetchUsersAndSchedules()
+    }
+  }, [fetchUsersAndSchedules])
+
+  useEffect(() => {
+    // Get current user info
+    const storedName = localStorage.getItem('userName');
+    if (storedName) {
+      setUserName(storedName);
+      // Fetch user color
+      supabase
+        .from('users')
+        .select('color')
+        .eq('name', storedName)
+        .single()
+        .then(({ data, error }: { data: any; error: any }) => {
+          if (!error && data) {
+            setUserColor(data.color);
+          }
+        });
+    }
+    
+    fetchUsersAndSchedules();
+
+    // Set up visibility-based refresh instead of polling
+    console.log('Setting up visibility-based refresh for Roommates component');
+    
+    // Initial data load
+    fetchUsersAndSchedules();
+    
+    // Handle page visibility changes (when user returns to the tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible - refreshing roommates data');
+        fetchUsersAndSchedules();
+      }
+    };
+    
+    // Add event listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      console.log('Cleaning up visibility listener in Roommates');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [selectedWeek])
+
+  // Set up event listeners for schedule synchronization
+  useEffect(() => {
+    const events = useScheduleEvents()
+    
+    // Listen for week changes from other components
+    const unsubscribeWeek = events.on('week-changed', (event) => {
+      console.log('[Roommates] Week change event received:', event.detail)
+      if (event.detail.source !== 'roommates' && event.detail.weekDate) {
+        setSelectedWeek(event.detail.weekDate)
+      }
+    })
+    
+    // Listen for sync requests
+    const unsubscribeSync = events.on('sync-required', () => {
+      console.log('[Roommates] Sync request received')
+      fetchUsersAndSchedules()
+    })
+    
+    return () => {
+      unsubscribeWeek()
+      unsubscribeSync()
+    }
+  }, [fetchUsersAndSchedules])
+
+  return (
+    <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+      {/* Header - fixed at top */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#333333] bg-[#242424] p-4 shadow-md">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center justify-between w-full relative">
+            <Link 
+              href="/dashboard" 
+              className="flex items-center text-white hover:opacity-80 z-10"
+              data-component-name="LinkComponent"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="h-6 w-6" />
+              <span className="sr-only">Back</span>
+            </Link>
+            <div className="flex items-center gap-1 absolute left-1/2 transform -translate-x-1/2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 hover:bg-black/10"
+                onClick={() => {
+                  const prevWeek = new Date(selectedWeek)
+                  prevWeek.setDate(selectedWeek.getDate() - 7)
+                  setSelectedWeek(prevWeek)
+                  emitWeekChange(prevWeek, 'roommates')
+                }}
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous week</span>
+              </Button>
+              <h1 
+                className={`text-sm font-medium mx-2 ${isSameWeek(selectedWeek, new Date()) ? '' : 'text-[#A0A0A0]'}`} 
+                style={isSameWeek(selectedWeek, new Date()) ? { color: userColor } : {}}
+                data-component-name="Roommates"
+              >
+                {formatWeekRange(selectedWeek)}
+              </h1>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 hover:bg-black/10"
+                onClick={() => {
+                  const nextWeek = new Date(selectedWeek)
+                  nextWeek.setDate(selectedWeek.getDate() + 7)
+                  setSelectedWeek(nextWeek)
+                  emitWeekChange(nextWeek, 'roommates')
+                }}
+                aria-label="Next week"
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next week</span>
+              </Button>
+            </div>
+            <div className="w-6"></div> {/* Spacer to balance the back button */}
+          </div>
+        </div>
+      </header>
+      {/* Spacer to account for fixed header */}
+      <div className="h-[73px]"></div>
+
+      {/* Main content */}
+      <main className="flex-1 p-4 max-w-7xl mx-auto w-full relative">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {roommates.map((roommate) => (
+            <Card key={roommate.id} className="bg-[#333333] border-[#333333]">
+              <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-medium"
+                  style={{ 
+                    backgroundColor: roommate.color,
+                    color: '#000000'
+                  }}
+                  data-component-name="Roommates"
+                >
+                  {roommate.initial}
+                </div>
+                <CardTitle>{roommate.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[#A0A0A0]">{roommate.description}</p>
+
+                <div className="mt-4">
+                  <h4 className="text-xs font-medium text-[#A0A0A0] mb-2">DAYS OFF</h4>
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from({ length: 7 }, (_, i) => {
+                      // Calculate the date for this day of the selected week (starting from Sunday)
+                      const weekStart = new Date(selectedWeek);
+                      weekStart.setDate(selectedWeek.getDate() - selectedWeek.getDay());
+                      const date = new Date(weekStart);
+                      date.setDate(weekStart.getDate() + i);
+                      
+                      // Get the day of the month
+                      const dayOfMonth = date.getDate();
+                      // Get the day abbreviation
+                      const dayAbbr = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][i];
+                      // Get the full day name
+                      const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][i];
+                      
+                      // Check if this day is marked as all-day off
+                      const isAllDayOff = roommate.allDayOffDays && roommate.allDayOffDays.includes(i);
+                      // Check if this day has any schedules
+                      const hasSchedules = roommate.availableDays && roommate.availableDays.includes(i);
+                      
+                      // Determine background color and status text
+                      let bgColor = '#333333'; // Default gray background
+                      let statusText = 'No schedule';
+                      
+                      if (isAllDayOff) {
+                        // Use red for all-day events
+                        bgColor = '#FF5252'; // Red for all-day events
+                        statusText = 'All day';
+                      } else if (hasSchedules) {
+                        // Use the user's color at 50% opacity for regular schedules
+                        const hexColor = roommate.color.replace('#', '');
+                        const r = parseInt(hexColor.substring(0, 2), 16);
+                        const g = parseInt(hexColor.substring(2, 4), 16);
+                        const b = parseInt(hexColor.substring(4, 6), 16);
+                        bgColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+                        statusText = 'Working';
+                      }
+                      
+                      return (
+                        <div 
+                          key={i} 
+                          className="aspect-square rounded flex flex-col items-center justify-center cursor-pointer relative group transition-all duration-200 hover:scale-105"
+                          style={{ backgroundColor: bgColor }}
+                          title={`${dayName}: ${statusText}`}
+                          onClick={() => {
+                            // Navigate to edit schedule for this user and day
+                            if (roommate.id === currentUser) {
+                              window.location.href = `/schedule/edit?user=${encodeURIComponent(roommate.name)}&day=${encodeURIComponent(dayName)}&from=%2Froommates&week=${selectedWeek.toISOString().split('T')[0]}`;
+                            }
+                          }}
+                          data-component-name="Roommates"
+                        >
+                          <div className="text-[10px] font-medium">{dayAbbr}</div>
+                          <div className="text-[11px]">{dayOfMonth}</div>
+                          {/* Add small edit icon if current user */}
+                          {roommate.id === currentUser && (
+                            <Edit2 className="absolute bottom-1 right-1 h-2 w-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 mt-3 text-[11px] text-[#999999]">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded" style={{ backgroundColor: `rgba(${parseInt(roommate.color.substring(1, 3), 16)}, ${parseInt(roommate.color.substring(3, 5), 16)}, ${parseInt(roommate.color.substring(5, 7), 16)}, 0.5)` }}></div>
+                      <span>Working</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-[#FF5252]"></div>
+                      <span>Day off</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons - only show for current user */}
+                {roommate.id === currentUser && (
+                  <div className="mt-4 flex justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-[#242424] border-[#444444] text-white hover:bg-[#333333] hover:text-white"
+                      onClick={() => {
+                        // Navigate to edit schedule
+                        window.location.href = `/schedule/edit?user=${encodeURIComponent(roommate.name)}&from=%2Froommates&week=${selectedWeek.toISOString().split('T')[0]}`;
+                      }}
+                      data-component-name="_c"
+                    >
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit Schedule
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Share section */}
+        <div className="mt-8 p-6 bg-[#333333] rounded-lg">
+          <h2 className="text-lg font-semibold mb-4">Share with Roommates</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-[#A0A0A0] mb-2">Share this link with your roommates:</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={currentUrl}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-[#242424] border border-[#444444] rounded-md text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-[#242424] border-[#444444] text-white hover:bg-[#333333] hover:text-white"
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentUrl);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  data-component-name="_c"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="hidden md:block">
+              <QRCodeSVG 
+                value={currentUrl} 
+                size={100}
+                bgColor="#333333"
+                fgColor="#ffffff"
+              />
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default ClientRoommates; 
