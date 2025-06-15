@@ -389,156 +389,135 @@ export default function ViewSchedule() {
       </div>
 
       <main className="flex-1 px-4 pb-20 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu" style={{ isolation: 'isolate' }}>
-        {days.map((day, dayIndex) => (
-          <div key={day} className="mb-4">
-            {/* Day header - stays sticky below the WeeklySchedule header */}
-            <div 
-              id={`day-header-${day}`}
-              className="sticky top-[57px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80 transform-gpu"
-              data-component-name="ViewSchedule"
-              style={{ backfaceVisibility: 'hidden' }}
-            >
-              <div className="flex justify-between items-center pr-2">
-                <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day}</h4>
+        {days.map((day, dayIndex) => {
+          // Calculate the date for this day of the selected week (starting from Sunday)
+          const weekStart = new Date(currentWeek);
+          weekStart.setDate(currentWeek.getDate() - currentWeek.getDay());
+          const date = new Date(weekStart);
+          date.setDate(weekStart.getDate() + dayIndex);
+          const dayOfMonth = date.getDate();
+          return (
+            <div key={day} className="mb-4">
+              {/* Day header - stays sticky below the WeeklySchedule header */}
+              <div 
+                id={`day-header-${day}`}
+                className="sticky top-[57px] z-30 bg-[#282828] cursor-pointer hover:bg-opacity-80 transform-gpu"
+                data-component-name="ViewSchedule"
+                style={{ backfaceVisibility: 'hidden' }}
+              >
+                <div className="flex justify-between items-center pr-2">
+                  <h4 className="text-sm font-medium pl-2 h-[36px] flex items-center">{day} - {dayOfMonth}</h4>
+                </div>
               </div>
-            </div>
 
-            {/* Scrollable container for both time header and content */}
-            <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
-              <div className="min-w-[800px] md:min-w-0 pl-2">
-                {/* Time header - add padding-top to prevent overlapping */}
-                <div className="bg-[#282828] mb-2 pt-1 relative">
-                  <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
-                    <div className="absolute inset-0 flex overflow-visible">
-                      {/* Current time indicator removed */}
-                      
-                      {/* Time labels */}
-                      
-                      {hours.map((hour) => (
-                        <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
-                          <div
-                            className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
-                            style={{ left: `${(hour - 6) * (100 / 24)}%` }}
-                            data-component-name="ViewSchedule"
-                          >
-                            {formatHour(hour)}
+              {/* Scrollable container for both time header and content */}
+              <div className="md:overflow-visible overflow-x-auto scrollbar-hide">
+                <div className="min-w-[800px] md:min-w-0 pl-2">
+                  {/* Time header - add padding-top to prevent overlapping */}
+                  <div className="bg-[#282828] mb-2 pt-1 relative">
+                    <div className="relative h-6 overflow-visible transform-gpu" style={{ backfaceVisibility: 'hidden' }}>
+                      <div className="absolute inset-0 flex overflow-visible">
+                        {/* Current time indicator removed */}
+                        
+                        {/* Time labels */}
+                        
+                        {hours.map((hour) => (
+                          <div key={hour} className="flex-1 relative" data-component-name="ViewSchedule">
+                            <div
+                              className="absolute top-0 text-[10px] text-[#666666] whitespace-nowrap"
+                              style={{ left: `${(hour - 6) * (100 / 24)}%` }}
+                              data-component-name="ViewSchedule"
+                            >
+                              {formatHour(hour)}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Schedule timeline */}
-                <div 
-                  className={`relative ${isCollapsed ? "h-2" : "h-10"} bg-[#373737] rounded-md overflow-hidden transition-all duration-200`}
-                  data-component-name="ViewSchedule"
-                >
-                  {/* Vertical grid lines - improved positioning */}
-                  <div className="absolute inset-0 w-full h-full pointer-events-none">
-                    {hours.map((hour) => {
-                      const position = (hour - 6) * (100 / 24);
-                      return (
-                        <div 
-                          key={hour} 
-                          className="absolute h-full border-l border-[#191919]" 
-                          style={{ left: `${position}%` }}
-                        />
-                      );
-                    })}
-                  </div>
+                  {/* Schedule timeline */}
+                  <div 
+                    className={`relative ${isCollapsed ? "h-2" : "h-10"} bg-[#373737] rounded-md overflow-hidden transition-all duration-200`}
+                    data-component-name="ViewSchedule"
+                  >
+                    {/* Vertical grid lines - improved positioning */}
+                    <div className="absolute inset-0 w-full h-full pointer-events-none">
+                      {hours.map((hour) => {
+                        const position = (hour - 6) * (100 / 24);
+                        return (
+                          <div 
+                            key={hour} 
+                            className="absolute h-full border-l border-[#191919]" 
+                            style={{ left: `${position}%` }}
+                          />
+                        );
+                      })}
+                    </div>
 
 
-                  
-                  {/* Schedule blocks for this day */}
-                  {schedule && schedule[day]?.map((block, index) => {
-                    let startPos, endPos, width;
                     
-                    if (block.allDay) {
-                      startPos = 0;
-                      endPos = 100;
-                      width = 100;
-                    } else {
-                      // Calculate the position and width of the time block
-                       const startHour = parseInt(block.start.split(":")[0])
-                       const startMinute = parseInt(block.start.split(":")[1])
-                       const endHour = parseInt(block.end.split(":")[0])
-                       const endMinute = parseInt(block.end.split(":")[1])
+                    {/* Schedule blocks for this day */}
+                    {schedule && schedule[day]?.map((block, index) => {
+                      let startPos, endPos, width;
                       
-                      // Use the improved calculation for more accurate positioning
-                      let startDecimalHours = startHour + (startMinute / 60)
-                      let endDecimalHours = endHour + (endMinute / 60)
-                      
-                      // Handle times after midnight (0-6) by adding 24
-                      if (startHour >= 0 && startHour < 6) {
-                        startDecimalHours += 24
+                      if (block.allDay) {
+                        startPos = 0;
+                        endPos = 100;
+                        width = 100;
+                      } else {
+                        // Calculate the position and width of the time block
+                         const startHour = parseInt(block.start.split(":")[0])
+                         const startMinute = parseInt(block.start.split(":")[1])
+                         const endHour = parseInt(block.end.split(":")[0])
+                         const endMinute = parseInt(block.end.split(":")[1])
+                        
+                        // Use the improved calculation for more accurate positioning
+                        let startDecimalHours = startHour + (startMinute / 60)
+                        let endDecimalHours = endHour + (endMinute / 60)
+                        
+                        // Handle times after midnight (0-6) by adding 24
+                        if (startHour >= 0 && startHour < 6) {
+                          startDecimalHours += 24
+                        }
+                        if (endHour >= 0 && endHour < 6) {
+                          endDecimalHours += 24
+                        }
+                        
+                        // Calculate positions using the same logic as timeToPosition function
+                        const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
+                        startPos = (startDecimalHours - 6) * hourWidth
+                        endPos = (endDecimalHours - 6) * hourWidth
+                        width = endPos - startPos
                       }
-                      if (endHour >= 0 && endHour < 6) {
-                        endDecimalHours += 24
-                      }
-                      
-                      // Calculate positions using the same logic as timeToPosition function
-                      const hourWidth = 100 / 24 // Each hour takes up this percentage of the total width
-                      startPos = (startDecimalHours - 6) * hourWidth
-                      endPos = (endDecimalHours - 6) * hourWidth
-                      width = endPos - startPos
-                    }
 
-                    return (
-                      <div
-                        key={block.id || index}
-                        className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-start transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
-                        onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
-                        style={{
-                          left: `${startPos}%`,
-                          width: `${width}%`,
-                          backgroundColor: block.allDay ? 'transparent' : roommate?.color,
-                          color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
-                          top: isCollapsed ? "0" : undefined,
-                          border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
-                          backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
-                        }}
-                        title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
-                      >
-                        {!isCollapsed && width > 15 ? (
-                          <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
-                            <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
-                              {!block.allDay ? (
-                                width < 20 ? (
-                                  // For very narrow blocks, show only the label
-                                  <div className="flex items-center max-w-full overflow-hidden">
-                                    <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
-                                      {block.label}
-                                    </span>
-                                    {isCurrentUser && width > 12 && (
-                                      <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
-                                      >
-                                        <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
-                                      </svg>
-                                    )}
-                                  </div>
-                                ) : (
-                                  // For wider blocks, show time and label
-                                  <>
-                                    <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
-                                      {formatTime(block.start)} - {formatTime(block.end)}
-                                    </span>
-                                    <span className="text-xs opacity-60 mr-1">|</span>
+                      return (
+                        <div
+                          key={block.id || index}
+                          className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-start transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
+                          onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
+                          style={{
+                            left: `${startPos}%`,
+                            width: `${width}%`,
+                            backgroundColor: block.allDay ? 'transparent' : roommate?.color,
+                            color: block.allDay ? roommate?.color : "#000", // Always use dark text on colored backgrounds, matching WeeklySchedule
+                            top: isCollapsed ? "0" : undefined,
+                            border: block.allDay ? `2px solid ${roommate?.color}` : 'none',
+                            backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                          }}
+                          title={`Edit: ${block.label}${block.allDay ? " (All Day)" : `: ${block.start} - ${block.end}`}`}
+                        >
+                          {!isCollapsed && width > 15 ? (
+                            <div className="flex flex-row items-center justify-start w-full h-full pl-4 overflow-hidden" data-component-name="ViewSchedule">
+                              <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
+                                {!block.allDay ? (
+                                  width < 20 ? (
+                                    // For very narrow blocks, show only the label
                                     <div className="flex items-center max-w-full overflow-hidden">
                                       <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
                                         {block.label}
                                       </span>
-                                      {isCurrentUser && (
+                                      {isCurrentUser && width > 12 && (
                                         <svg
                                           xmlns="http://www.w3.org/2000/svg"
                                           width="24"
@@ -555,43 +534,72 @@ export default function ViewSchedule() {
                                         </svg>
                                       )}
                                     </div>
-                                  </>
-                                )
-                              ) : (
-                                // All-day blocks
-                                <div className="flex items-center max-w-full overflow-hidden">
-                                  <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
-                                    {block.label} (All Day)
-                                  </span>
-                                  {isCurrentUser && (
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="24"
-                                      height="24"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
-                                    >
-                                      <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
-                                    </svg>
-                                  )}
-                                </div>
-                              )}
+                                  ) : (
+                                    // For wider blocks, show time and label
+                                    <>
+                                      <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="ViewSchedule">
+                                        {formatTime(block.start)} - {formatTime(block.end)}
+                                      </span>
+                                      <span className="text-xs opacity-60 mr-1">|</span>
+                                      <div className="flex items-center max-w-full overflow-hidden">
+                                        <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                          {block.label}
+                                        </span>
+                                        {isCurrentUser && (
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                          >
+                                            <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                          </svg>
+                                        )}
+                                      </div>
+                                    </>
+                                  )
+                                ) : (
+                                  // All-day blocks
+                                  <div className="flex items-center max-w-full overflow-hidden">
+                                    <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="ViewSchedule">
+                                      {block.label} (All Day)
+                                    </span>
+                                    {isCurrentUser && (
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="lucide lucide-pen h-3 w-3 opacity-70 ml-1 flex-shrink-0"
+                                      >
+                                        <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
 
       </main>
