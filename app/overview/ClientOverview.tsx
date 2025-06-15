@@ -181,6 +181,9 @@ export default function ClientOverview() {
     };
   }, [selectedDay]);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white">
       {/* Header - fixed at the top */}
@@ -238,23 +241,30 @@ export default function ClientOverview() {
               </Button>
             </div>
             {/* Time format toggle button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-1 h-8 w-8 ml-auto"
-              onClick={() => {
-                const newFormat = !use24HourFormat
-                setUse24HourFormat(newFormat)
-                localStorage.setItem('use24HourFormat', newFormat.toString())
-              }}
-              title={`Switch to ${use24HourFormat ? '12-hour' : '24-hour'} format`}
-              data-component-name="_c"
-            >
-              <Clock className="h-5 w-5" />
-              <span className="sr-only">
-                {use24HourFormat ? '24h' : '12h'}
-              </span>
-            </Button>
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 bg-none border-none rounded-full ml-auto flex items-center justify-center transition-colors"
+                onClick={() => {
+                  const newFormat = !use24HourFormat
+                  setUse24HourFormat(newFormat)
+                  localStorage.setItem('use24HourFormat', newFormat.toString())
+                }}
+                title={`Switch to ${use24HourFormat ? '12-hour' : '24-hour'} format`}
+                data-component-name="_c"
+              >
+                <Clock
+                  className="h-5 w-5 text-[#A0A0A0] transition-transform duration-300"
+                  style={{
+                    transform: use24HourFormat ? 'rotateY(180deg)' : 'none'
+                  }}
+                />
+                <span className="sr-only">
+                  {use24HourFormat ? '24h' : '12h'}
+                </span>
+              </Button>
+            )}
           </div>
           {/* Day selector tabs moved to header */}
           <div className="flex w-full" role="tablist" aria-label="Day selector" data-component-name="Overview">

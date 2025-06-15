@@ -347,7 +347,7 @@ export default function ViewSchedule() {
               style={isSameWeek(currentWeek, new Date()) ? { color: roommate?.color || '#FFFFFF' } : {}}
               data-component-name="ViewSchedule"
             >
-              Week of {formatWeekRange(currentWeek)}
+              {formatWeekRange(currentWeek)}
             </h3>
             <Button 
               variant="ghost" 
