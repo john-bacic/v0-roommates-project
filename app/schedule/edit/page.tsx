@@ -548,6 +548,7 @@ export default function EditSchedule() {
                 sessionStorage.setItem('dashboardNeedsRefresh', 'true');
                 
                 // Store the selected week so dashboard can sync to it
+                console.log('Storing selected week for navigation:', selectedWeek);
                 sessionStorage.setItem('navigateToWeek', selectedWeek.toISOString());
                 
                 // Store timestamp to ensure we can detect this is a new refresh request
@@ -560,8 +561,9 @@ export default function EditSchedule() {
                 
                 document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
                 
-                // Always navigate to dashboard
-                window.location.href = '/dashboard?refresh=' + Date.now();
+                // Always navigate to dashboard with the week parameter
+                const weekParam = selectedWeek.toISOString().split('T')[0];
+                window.location.href = `/dashboard?week=${weekParam}&refresh=${Date.now()}`;
               }} 
               className="flex items-center text-white hover:opacity-80 cursor-pointer"
               data-component-name="BackButton"

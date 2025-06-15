@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Edit2, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ToastAction } from "@/components/ui/toast"
@@ -8,7 +8,7 @@ import { WeeklySchedule } from "@/components/weekly-schedule"
 import Link from "next/link"
 import Image from "next/image"
 import { getSupabase, fetchWeekSchedules } from "@/lib/supabase"
-import { getWeekBounds, formatWeekRange, isSameWeek, getCurrentDayName } from "@/lib/date-utils"
+import { getWeekBounds, formatWeekRange, isSameWeek, getCurrentDayName, parseWeekParam } from "@/lib/date-utils"
 import { useToast } from "@/hooks/use-toast"
 import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
 import { caveat } from "../fonts"
@@ -137,9 +137,30 @@ export default function Dashboard() {
     }
   }, [])
   
-  // Force currentWeek to be today's date on initial load, but only on client side
+  // Set initial week from URL parameter or default to today
   useEffect(() => {
     if (isClient) {
+      // Check URL for week parameter first
+      const urlParams = new URLSearchParams(window.location.search);
+      const weekParam = urlParams.get('week');
+      
+      if (weekParam) {
+        const weekDate = parseWeekParam(weekParam);
+        console.log('Setting week from URL parameter:', weekDate);
+        setCurrentWeek(weekDate);
+        
+        // Clean up URL to remove week parameter
+        const newUrl = window.location.pathname + 
+          (window.location.search ? 
+            window.location.search.replace(/[?&]week=[^&]*/, '').replace(/^&/, '?') : '');
+        if (window.history.replaceState) {
+          window.history.replaceState({}, document.title, newUrl);
+        }
+        
+        return;
+      }
+      
+      // Default to today if no valid week parameter
       setCurrentWeek(new Date())
     }
   }, [isClient])
@@ -160,12 +181,16 @@ export default function Dashboard() {
     if (shouldRefreshFromRoommates || shouldRefreshFromEdit || dashboardNeedsRefresh || hasRefreshParam) {
       // Check if we need to navigate to a specific week
       const navigateToWeek = sessionStorage.getItem('navigateToWeek');
+      let shouldDelayLoad = false;
+      
       if (navigateToWeek) {
         try {
           const weekDate = new Date(navigateToWeek);
           if (!isNaN(weekDate.getTime())) {
+            console.log('Navigating to week:', weekDate);
             setCurrentWeek(weekDate);
             emitWeekChange(weekDate, 'dashboard');
+            shouldDelayLoad = true; // We need to delay load to let state update
           }
         } catch (error) {
           console.error('Error parsing navigateToWeek:', error);
@@ -188,7 +213,15 @@ export default function Dashboard() {
       
       // Force a refresh of the page data
       console.log('Dashboard refreshing data after navigation');
-      loadData();
+      
+      // If we changed the week, delay the load to ensure state is updated
+      if (shouldDelayLoad) {
+        setTimeout(() => {
+          loadData();
+        }, 100);
+      } else {
+        loadData();
+      }
     }
     
     // Also listen for the refreshTimeDisplays event from the edit page
@@ -310,7 +343,7 @@ export default function Dashboard() {
   const [weekLoading, setWeekLoading] = useState(false)
 
   // Function to load data from Supabase
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     
     try {
@@ -400,7 +433,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentWeek, userName, formatWeekRange])
 
   // Set up real-time subscriptions to schedule and user changes - CLIENT SIDE ONLY
   useEffect(() => {

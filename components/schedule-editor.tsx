@@ -138,7 +138,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
       }
     }
     
-    const newBlock = { start: startTime, end: endTime, label: "Work", allDay: false };
+    const newBlock = { start: startTime, end: endTime, label: activeDay, allDay: false };
     const newSchedule = { ...schedule }
     newSchedule[activeDay] = [...(newSchedule[activeDay] || []), newBlock]
     onChange(newSchedule)
@@ -623,15 +623,17 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                   <Input
                     id={`label-${index}`}
                     type="text"
-                    defaultValue={block.label !== undefined ? block.label : ''}
-                    onFocus={() => setFocusedLabelIndex(index)}
-                    onBlur={(e) => {
-                      setTimeout(() => setFocusedLabelIndex(null), 200);
+                    value={block.label !== undefined ? block.label : ''}
+                    onChange={(e) => {
                       const newValue = e.target.value;
                       updateTimeBlock(activeDay, index, "label", newValue);
                     }}
+                    onFocus={() => setFocusedLabelIndex(index)}
+                    onBlur={() => {
+                      setTimeout(() => setFocusedLabelIndex(null), 200);
+                    }}
                     className={`${block.allDay === true ? 'bg-[#333333] border-[#333333] text-white font-medium' : 'bg-[#242424] border-[#333333] text-white'} h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-color)] focus-visible:border-[var(--focus-ring-color)] pr-8`}
-                    placeholder={block.allDay ? "Day Off, Busy, etc." : "Work, Class, etc."}
+                    placeholder={block.allDay ? "Day Off, Busy, etc." : "Activity or event"}
                     data-component-name="_c"
                     data-label-index={index}
                     data-time-block-id={`${activeDay}-${index}`}
@@ -642,22 +644,12 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
                       type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] hover:text-white transition-colors p-1 rounded-full hover:bg-[#333333]"
                       onClick={() => {
+                        // Update the state through updateTimeBlock
+                        updateTimeBlock(activeDay, index, "label", '');
+                        // Keep focus on the input
                         const input = document.getElementById(`label-${index}`) as HTMLInputElement;
                         if (input) {
-                          input.value = '';
                           input.focus();
-                          // Update the state
-                          const newSchedule = JSON.parse(JSON.stringify(schedule));
-                          if (!newSchedule[activeDay]) newSchedule[activeDay] = [];
-                          if (!newSchedule[activeDay][index]) newSchedule[activeDay][index] = {};
-                          newSchedule[activeDay][index] = {
-                            ...newSchedule[activeDay][index],
-                            label: ''
-                          };
-                          onChange(newSchedule);
-                          setTimeout(() => {
-                            updateTimeBlock(activeDay, index, "label", '');
-                          }, 0);
                         }
                       }}
                       aria-label="Clear text"
