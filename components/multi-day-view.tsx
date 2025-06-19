@@ -363,9 +363,6 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                             >
                               <Plus className="w-4 h-4" />
                             </div>
-                            <div className="text-xs text-white font-medium whitespace-nowrap flex items-center gap-1">
-                              Add time
-                            </div>
                           </div>
                         </div>
                       );

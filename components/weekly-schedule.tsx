@@ -1578,13 +1578,12 @@ export function WeeklySchedule({
                             className="absolute inset-0 flex items-center justify-center group"
                             key="add-time-link"
                           >
-                            <div className="flex flex-row items-center gap-2">
+                            <div className="flex items-center justify-center w-full">
                               <div 
                                 className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
                               >
                                 <Plus className="w-4 h-4 text-white" />
                               </div>
-                              <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">Add time</span>
                             </div>
                           </Link>
                         )
