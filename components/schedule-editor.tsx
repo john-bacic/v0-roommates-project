@@ -138,7 +138,7 @@ export function ScheduleEditor({ schedule, onChange, userColor, onSave, use24Hou
       }
     }
     
-    const newBlock = { start: startTime, end: endTime, label: activeDay, allDay: false };
+    const newBlock = { start: startTime, end: endTime, label: "Work", allDay: false };
     const newSchedule = { ...schedule }
     newSchedule[activeDay] = [...(newSchedule[activeDay] || []), newBlock]
     onChange(newSchedule)
