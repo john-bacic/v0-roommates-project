@@ -8,6 +8,7 @@ import { getSupabase, fetchWeekSchedules } from "@/lib/supabase"
 import { getDateForDayInWeek, isSameWeek } from "@/lib/date-utils"
 import { useRealtime } from "@/lib/use-realtime"
 import { emitScheduleUpdate } from "@/lib/schedule-events"
+import Link from "next/link"
 
 interface User {
   id: number
@@ -715,14 +716,11 @@ export function WeeklySchedule({
 
   // Handle clicking on a time block - navigate to edit page
   const handleTimeBlockClick = (user: User, day: string, timeBlock: TimeBlock) => {
-    // Get the current path to use as the 'from' parameter
-    const currentPath = encodeURIComponent(window.location.pathname);
-    
-    // Get the current week as ISO date string
-    const weekParam = currentWeek.toISOString().split('T')[0];
-    
-    // Navigate to the edit page with the user's name, day, and week as query parameters
-    window.location.href = `/schedule/edit?from=${currentPath}&user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}&week=${weekParam}`;
+    if (user.name === currentUserName) {
+      // Navigate to edit page with the time block data
+      const editUrl = `/schedule/edit?user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}&week=${currentWeek.toISOString().split('T')[0]}&blockId=${timeBlock.id}`
+      window.location.href = editUrl
+    }
   }
 
   // Close the modal and reset state
@@ -1478,99 +1476,119 @@ export function WeeklySchedule({
                         })}
                       </div>
 
-                      {/* Schedule blocks */}
-                      {userSchedule.map((block, index) => {
-                        // For all-day events, span the entire width
-                        let startPos, endPos, width;
-                        
-                        if (block.allDay) {
-                          startPos = 0;
-                          endPos = 100;
-                          width = 100;
-                        } else {
-                          // Use our common timeToPosition function for consistent positioning
-                          // This ensures perfect alignment with the time grid and current time indicator
-                          startPos = timeToPosition(block.start)
-                          endPos = timeToPosition(block.end)
+                      {/* Schedule blocks for this day */}
+                      {schedules[user.id]?.[day]?.length > 0 ? (
+                        schedules[user.id][day].map((block, index) => {
+                          // For all-day events, span the entire width
+                          let startPos, endPos, width;
                           
-                          // Ensure minimum width for very short events and handle rounding
-                          width = Math.max(endPos - startPos, 0.5) // Minimum width of 0.5%
-                        }
+                          if (block.allDay) {
+                            startPos = 0;
+                            endPos = 100;
+                            width = 100;
+                          } else {
+                            // Use our common timeToPosition function for consistent positioning
+                            // This ensures perfect alignment with the time grid and current time indicator
+                            startPos = timeToPosition(block.start)
+                            endPos = timeToPosition(block.end)
+                            
+                            // Ensure minimum width for very short events and handle rounding
+                            width = Math.max(endPos - startPos, 0.5) // Minimum width of 0.5%
+                          }
 
-                        return (
-                          <div
-                            key={block.id || index}
-                            className={`absolute ${
-                              isCollapsed ? "h-2" : "top-0 h-full bottom-0"
-                            } rounded-md flex items-center justify-center transition-all duration-200 z-${block.allDay ? 5 : 10 + index} ${
-                              isCurrentUser ? "cursor-pointer hover:opacity-90" : ""
-                            }`}
-                            style={{
-                              left: `${startPos}%`,
-                              width: `${width}%`,
-                              backgroundColor: block.allDay ? 'transparent' : user.color,
-                              color: block.allDay ? user.color : getTextColor(user.color),
-                              top: isCollapsed ? "0" : undefined,
-                              border: block.allDay ? `2px solid ${user.color}` : 'none',
-                              backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
-                              zIndex: block.allDay ? 5 : 10 + (
-                                block.start ? 
-                                  parseInt(block.start.split(':')[0]) + 
-                                  parseInt(block.start.split(':')[1]) / 60 
-                                : 0
-                              )
-                            }}
-                            title={`${block.label}${block.allDay ? " (All Day)" : `: ${formatTimeDisplay(block.start)} - ${formatTimeDisplay(block.end)}`}`}
-                            onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
-                          >
-                            {!isCollapsed && width > 0 ? (
-                              <div className={`flex flex-row items-center justify-start w-full h-full ${width < 10 ? 'pl-1' : 'pl-4'} overflow-hidden`} data-component-name="WeeklySchedule">
-                                <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
-                                  {!block.allDay ? (
-                                    width < 20 ? (
-                                      // For very narrow blocks, show only the label
-                                      <div className="flex items-center max-w-full overflow-hidden">
-                                        <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
-                                          {block.label}
-                                        </span>
-                                        {isCurrentUser && width > 12 && (
-                                          <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
-                                        )}
-                                      </div>
-                                    ) : (
-                                      // For wider blocks, show time and label
-                                      <>
-                                        <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="WeeklySchedule">
-                                          {formatTimeDisplay(block.start)} - {formatTimeDisplay(block.end)}
-                                        </span>
-                                        <span className="text-xs opacity-60 mr-1">|</span>
+                          return (
+                            <div
+                              key={block.id || index}
+                              className={`absolute ${
+                                isCollapsed ? "h-2" : "top-0 h-full bottom-0"
+                              } rounded-md flex items-center justify-center transition-all duration-200 z-${block.allDay ? 5 : 10 + index} ${
+                                isCurrentUser ? "cursor-pointer hover:opacity-90" : ""
+                              }`}
+                              style={{
+                                left: `${startPos}%`,
+                                width: `${width}%`,
+                                backgroundColor: block.allDay ? 'transparent' : user.color,
+                                color: block.allDay ? user.color : getTextColor(user.color),
+                                top: isCollapsed ? "0" : undefined,
+                                border: block.allDay ? `2px solid ${user.color}` : 'none',
+                                backgroundImage: block.allDay ? `repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.3) 5px, rgba(0,0,0,0.3) 10px)` : 'none',
+                                zIndex: block.allDay ? 5 : 10 + (
+                                  block.start ? 
+                                    parseInt(block.start.split(':')[0]) + 
+                                    parseInt(block.start.split(':')[1]) / 60 
+                                  : 0
+                                )
+                              }}
+                              title={`${block.label}${block.allDay ? " (All Day)" : `: ${formatTimeDisplay(block.start)} - ${formatTimeDisplay(block.end)}`}`}
+                              onClick={() => isCurrentUser && handleTimeBlockClick(user, day, block)}
+                            >
+                              {!isCollapsed && width > 0 ? (
+                                <div className={`flex flex-row items-center justify-start w-full h-full ${width < 10 ? 'pl-1' : 'pl-4'} overflow-hidden`} data-component-name="WeeklySchedule">
+                                  <div className="flex flex-row items-center justify-start overflow-hidden max-w-full">
+                                    {!block.allDay ? (
+                                      width < 20 ? (
+                                        // For very narrow blocks, show only the label
                                         <div className="flex items-center max-w-full overflow-hidden">
                                           <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
                                             {block.label}
                                           </span>
-                                          {isCurrentUser && width > 30 && (
+                                          {isCurrentUser && width > 12 && (
                                             <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
                                           )}
                                         </div>
-                                      </>
-                                    )
-                                  ) : (
-                                    <div className="flex items-center max-w-full overflow-hidden">
-                                      <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
-                                        {block.label}
-                                        {" (All Day)"}
-                                      </span>
-                                      {isCurrentUser && width > 15 && (
-                                        <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
-                                      )}
-                                    </div>
-                                  )}
+                                      ) : (
+                                        // For wider blocks, show time and label
+                                        <>
+                                          <span className="text-xs opacity-80 mr-1 font-bold leading-tight whitespace-nowrap" data-component-name="WeeklySchedule">
+                                            {formatTimeDisplay(block.start)} - {formatTimeDisplay(block.end)}
+                                          </span>
+                                          <span className="text-xs opacity-60 mr-1">|</span>
+                                          <div className="flex items-center max-w-full overflow-hidden">
+                                            <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
+                                              {block.label}
+                                            </span>
+                                            {isCurrentUser && width > 30 && (
+                                              <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
+                                            )}
+                                          </div>
+                                        </>
+                                      )
+                                    ) : (
+                                      <div className="flex items-center max-w-full overflow-hidden">
+                                        <span className="text-xs font-bold leading-tight overflow-hidden text-ellipsis whitespace-nowrap" data-component-name="WeeklySchedule">
+                                          {block.label}
+                                          {" (All Day)"}
+                                        </span>
+                                        {isCurrentUser && width > 15 && (
+                                          <Edit2 className="h-3 w-3 opacity-70 ml-1 flex-shrink-0" />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
+                              ) : null}
+                            </div>
+                          )
+                        })
+                      ) : (
+                        // Show "Add time" link when no schedule exists and it's the current user
+                        user.name === currentUserName && !isCollapsed && (
+                          <Link 
+                            href={`/schedule/edit?user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}&week=${currentWeek.toISOString().split('T')[0]}`}
+                            className="absolute inset-0 flex items-center justify-center group"
+                            key="add-time-link"
+                          >
+                            <div className="flex flex-row items-center gap-2">
+                              <div 
+                                className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
+                              >
+                                <Plus className="w-4 h-4 text-white" />
                               </div>
-                            ) : null}
-                          </div>
+                              <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">Add time</span>
+                            </div>
+                          </Link>
                         )
-                      })}
+                      )}
                     </div>
                   </div>
                 )

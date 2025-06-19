@@ -332,6 +332,45 @@ export function MultiDayView({ users: initialUsers, schedules: initialSchedules,
                   {users.map((user) => {
                     const userBlocks = schedules[user.id]?.[day] || [];
                     
+                    // If this is the first hour (6am) and there are no blocks for this user on this day,
+                    // show the "Add time" link
+                    if (hour === 6 && userBlocks.length === 0) {
+                      // Calculate the relative position within the day column
+                      const userIndex = users.findIndex(u => u.id === user.id);
+                      const totalUsers = users.length;
+                      const leftPosition = ((userIndex + 0.5) / totalUsers) * 100;
+                      
+                      return (
+                        <div 
+                          key={`add-time-${user.id}-${day}`}
+                          className="absolute cursor-pointer group"
+                          style={{
+                            top: "50%",
+                            left: `${leftPosition}%`,
+                            transform: "translate(-50%, -50%)",
+                            zIndex: 20,
+                          }}
+                          onClick={() => handleAddClick(user, day)}
+                          title={`Add schedule for ${user.name}`}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <div 
+                              className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold group-hover:scale-110 transition-transform"
+                              style={{
+                                backgroundColor: user.color,
+                                color: getTextColor(user.color),
+                              }}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </div>
+                            <div className="text-xs text-white font-medium whitespace-nowrap flex items-center gap-1">
+                              Add time
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
                     return userBlocks.map((block) => {
                       // Special handling for all-day events
                       if (block.allDay) {

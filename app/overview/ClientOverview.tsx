@@ -351,17 +351,17 @@ export default function ClientOverview() {
         </div>
       </main>
       {userName && (
-        <div className="fixed bottom-6 right-6 z-40">
+        <div className="fixed bottom-6 right-6 z-50">
           <Button
             asChild
-            className="rounded-full h-14 w-14 border-2"
+            className="rounded-full h-14 w-14 border-2 shadow-lg hover:scale-105 transition-transform"
             style={{
               backgroundColor: userColor,
               color: getTextColor(userColor),
               borderColor: "rgba(0, 0, 0, 0.75)"
             }}
           >
-            <Link href={`/schedule/edit?day=${encodeURIComponent(selectedDay)}&from=%2Foverview&week=${selectedWeek.toISOString().split('T')[0]}`}>
+            <Link href={`/schedule/edit?user=${encodeURIComponent(userName)}&day=${encodeURIComponent(selectedDay)}&from=%2Foverview&week=${selectedWeek.toISOString().split('T')[0]}`}>
               <Edit2 className="h-6 w-6" />
               <span className="sr-only">Edit schedule</span>
             </Link>

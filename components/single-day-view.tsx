@@ -374,7 +374,7 @@ export function SingleDayView({
                             {"(All Day)"}
                           </span>
                           {user.name === currentUserName && (
-                            <Edit2 className="h-3 w-3 ml-1 flex-shrink-0" style={{ color: user.color }} />
+                            <Edit2 className="h-4 w-4 ml-1 flex-shrink-0 hover:opacity-100 opacity-80" style={{ color: user.color }} />
                           )}
                         </div>
                       </div>
@@ -441,7 +441,7 @@ export function SingleDayView({
                                 {block.label}
                               </span>
                               {user.name === currentUserName && (
-                                <Edit2 className="h-3 w-3 ml-1 flex-shrink-0" style={{ color: getTextColor(user.color) }} />
+                                <Edit2 className="h-4 w-4 ml-1 flex-shrink-0 hover:opacity-100 opacity-80" style={{ color: getTextColor(user.color) }} />
                               )}
                             </div>
                           </div>

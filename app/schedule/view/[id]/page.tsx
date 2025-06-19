@@ -517,7 +517,8 @@ export default function ViewSchedule() {
                       </div>
 
                       {/* Schedule blocks for this day */}
-                      {schedule && schedule[day]?.map((block, index) => {
+                      {schedule && schedule[day] && schedule[day].length > 0 ? (
+                        schedule[day].map((block, index) => {
                         let startPos, endPos, width;
                         
                         if (block.allDay) {
@@ -652,7 +653,25 @@ export default function ViewSchedule() {
                             ) : null}
                           </div>
                         );
-                      })}
+                      })
+                      ) : (
+                        // Show "Add time" link when no schedule exists
+                        isCurrentUser && !isCollapsed && (
+                          <Link
+                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}`}
+                            className="absolute inset-0 flex items-center justify-center group"
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <div 
+                                className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
+                              >
+                                <Plus className="w-4 h-4 text-white" />
+                              </div>
+                              <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">Add time</span>
+                            </div>
+                          </Link>
+                        )
+                      )}
                     </div>
                   </div>
                 </div>
