@@ -1455,7 +1455,7 @@ export function WeeklySchedule({
                       <div
                         className={`relative ${
                           isCollapsed ? "h-2" : "h-10"
-                        } bg-[#373737] rounded-md overflow-hidden transition-all duration-200 flex-grow`}
+                        } bg-[#373737] rounded-md ${schedules[user.id]?.[day]?.length > 0 ? 'overflow-hidden' : ''} transition-all duration-200 flex-grow`}
                       data-component-name="WeeklySchedule"
                     >
                       {/* Vertical grid lines - positioned exactly at hour marks */}
@@ -1573,19 +1573,23 @@ export function WeeklySchedule({
                       ) : (
                         // Show "Add time" link when no schedule exists and it's the current user
                         user.name === currentUserName && !isCollapsed && (
-                          <Link 
-                            href={`/schedule/edit?user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}&week=${currentWeek.toISOString().split('T')[0]}`}
-                            className="absolute inset-0 flex items-center justify-center group"
-                            key="add-time-link"
-                          >
-                            <div className="flex items-center justify-center w-full">
-                              <div 
-                                className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
-                              >
-                                <Plus className="w-4 h-4 text-white" />
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div className="sticky left-1/2 top-0 h-full w-0">
+                              <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
+                                <Link 
+                                  href={`/schedule/edit?user=${encodeURIComponent(user.name)}&day=${encodeURIComponent(day)}&week=${currentWeek.toISOString().split('T')[0]}`}
+                                  className="group"
+                                  key="add-time-link"
+                                >
+                                  <div 
+                                    className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
+                                  >
+                                    <Plus className="w-4 h-4 text-white" />
+                                  </div>
+                                </Link>
                               </div>
                             </div>
-                          </Link>
+                          </div>
                         )
                       )}
                     </div>
