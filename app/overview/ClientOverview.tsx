@@ -84,6 +84,13 @@ export default function ClientOverview() {
     if (weekParam) setSelectedWeek(parseWeekParam(weekParam));
   }, []);
 
+  useEffect(() => {
+    const storedName = localStorage.getItem('userName');
+    if (storedName) {
+      setUserName(storedName);
+    }
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {

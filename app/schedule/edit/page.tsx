@@ -544,39 +544,15 @@ export default function EditSchedule() {
       <div className="flex flex-col max-w-7xl mx-auto w-full" data-component-name="EditSchedule">
         <div className="flex items-center justify-between w-full mb-3" data-component-name="EditSchedule">
           <div className="flex items-center group w-[72px]">
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                
-                // Use a more direct approach to ensure dashboard refreshes
-                // Set a flag that will be checked by the dashboard
-                sessionStorage.setItem('dashboardNeedsRefresh', 'true');
-                
-                // Store the selected week so dashboard can sync to it
-                console.log('Storing selected week for navigation:', selectedWeek);
-                sessionStorage.setItem('navigateToWeek', selectedWeek.toISOString());
-                
-                // Store timestamp to ensure we can detect this is a new refresh request
-                sessionStorage.setItem('refreshTimestamp', Date.now().toString());
-                
-                // Dispatch events for any components that might be listening
-                document.dispatchEvent(new CustomEvent('returnToScheduleView', {
-                  detail: { updatedAt: new Date().toISOString() }
-                }));
-                
-                document.dispatchEvent(new CustomEvent('refreshTimeDisplays'));
-                
-                // Always navigate to dashboard with the week parameter
-                const weekParam = selectedWeek.toISOString().split('T')[0];
-                window.location.href = `/dashboard?week=${weekParam}&refresh=${Date.now()}`;
-              }} 
+            <Link 
+              href={`${returnPath}?week=${selectedWeek.toISOString().split('T')[0]}`} 
               className="flex items-center text-white hover:opacity-80 cursor-pointer"
-              data-component-name="BackButton"
-              title="Back to Dashboard"
+              data-component-name="LinkComponent"
+              title="Back"
             >
               <ArrowLeft className="h-6 w-6" />
               <span className="sr-only">Back</span>
-            </button>
+            </Link>
           </div>
           <div className="flex items-center gap-1 absolute left-1/2 transform -translate-x-1/2">
             <Button 
