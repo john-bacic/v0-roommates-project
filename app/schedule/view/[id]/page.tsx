@@ -432,7 +432,7 @@ export default function ViewSchedule() {
           date.setDate(weekStart.getDate() + dayIndex);
           const dayOfMonth = date.getDate();
           return (
-            <div key={day} className="mb-4">
+            <div key={day} className="mb-4 relative">
               {/* Day header - stays sticky below the WeeklySchedule header */}
               <div 
                 id={`day-header-${day}`}
@@ -655,27 +655,32 @@ export default function ViewSchedule() {
                         );
                       })
                       ) : (
-                        // Show "Add time" link when no schedule exists
-                        isCurrentUser && !isCollapsed && (
-                          <Link
-                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}`}
-                            className="absolute inset-0 flex items-center justify-center group"
-                          >
-                            <div className="flex flex-col items-center gap-2">
-                              <div 
-                                className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
-                              >
-                                <Plus className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">Add time</span>
-                            </div>
-                          </Link>
-                        )
+                        // This space is now intentionally left blank. The button is moved outside the scroll container.
+                        null
                       )}
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Centered Add Button - positioned absolutely to the viewport-wide day container */}
+              {isCurrentUser && !isCollapsed && (!schedule || !schedule[day] || schedule[day].length === 0) && (
+                <div className="absolute left-1/2 top-[72px] -translate-x-1/2 h-10 flex items-center justify-center pointer-events-none z-20">
+                    <div className="pointer-events-auto">
+                        <Link
+                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}`}
+                            className="group"
+                            title="Add time"
+                        >
+                            <div 
+                                className="rounded-full flex items-center justify-center w-8 h-8 text-xs font-bold bg-white/10 group-hover:bg-white/20 transition-colors"
+                            >
+                                <Plus className="w-4 h-4 text-white" />
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+              )}
             </div>
           );
         })}
