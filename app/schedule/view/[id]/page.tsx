@@ -26,7 +26,10 @@ export default function ViewSchedule() {
   const [currentUserName, setCurrentUserName] = useState("")
   const [currentWeek, setCurrentWeek] = useState(() => {
     const weekParam = searchParams.get("week");
-    return weekParam ? parseWeekParam(weekParam) : new Date();
+    const date = weekParam ? parseWeekParam(weekParam) : new Date();
+    // Always normalize to start of week (Sunday)
+    const { start } = getWeekBounds(date);
+    return start;
   })
   const [currentUserId, setCurrentUserId] = useState<number>(3) // Default to John (id: 3) as the signed-in user
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -44,7 +47,11 @@ export default function ViewSchedule() {
 
   useEffect(() => {
     const weekParam = searchParams.get("week");
-    if (weekParam) setCurrentWeek(parseWeekParam(weekParam));
+    if (weekParam) {
+      const date = parseWeekParam(weekParam);
+      const { start } = getWeekBounds(date);
+      setCurrentWeek(start);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -262,18 +269,17 @@ export default function ViewSchedule() {
     const dayOfWeek = adjustedDate.getDay()
     const dayName = days[dayOfWeek]
     // Check if today is in the current week
-    const weekStart = new Date(currentWeek)
-    weekStart.setDate(currentWeek.getDate() - currentWeek.getDay())
-    weekStart.setHours(0, 0, 0, 0)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
+    // Since currentWeek is already the start of the week (Sunday), use it directly
+    const weekEnd = new Date(currentWeek)
+    weekEnd.setDate(currentWeek.getDate() + 6)
     weekEnd.setHours(23, 59, 59, 999)
-    const isInCurrentWeek = adjustedDate >= weekStart && adjustedDate <= weekEnd
+    const isInCurrentWeek = adjustedDate >= currentWeek && adjustedDate <= weekEnd
     return isInCurrentWeek ? dayName : null
   }
   
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
   const hours = Array.from({ length: 25 }, (_, i) => i + 6) // 6am to 6am next day (includes hours 0-6)
+  const weekString = `${currentWeek.getFullYear()}-${String(currentWeek.getMonth() + 1).padStart(2, '0')}-${String(currentWeek.getDate()).padStart(2, '0')}`;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#282828] text-white relative">
@@ -334,7 +340,8 @@ export default function ViewSchedule() {
               onClick={() => {
                 const prevWeek = new Date(currentWeek)
                 prevWeek.setDate(currentWeek.getDate() - 7)
-                setCurrentWeek(prevWeek)
+                const { start } = getWeekBounds(prevWeek);
+                setCurrentWeek(start)
                 // Optionally emit week change event if you use it
               }}
               aria-label="Previous week"
@@ -356,7 +363,8 @@ export default function ViewSchedule() {
               onClick={() => {
                 const nextWeek = new Date(currentWeek)
                 nextWeek.setDate(currentWeek.getDate() + 7)
-                setCurrentWeek(nextWeek)
+                const { start } = getWeekBounds(nextWeek);
+                setCurrentWeek(start)
                 // Optionally emit week change event if you use it
               }}
               aria-label="Next week"
@@ -425,12 +433,22 @@ export default function ViewSchedule() {
 
       <main className="flex-1 px-4 pb-20 pt-[57px] max-w-7xl mx-auto w-full relative transform-gpu" style={{ isolation: 'isolate' }}>
         {days.map((day, dayIndex) => {
-          // Calculate the date for this day of the selected week (starting from Sunday)
-          const weekStart = new Date(currentWeek);
-          weekStart.setDate(currentWeek.getDate() - currentWeek.getDay());
-          const date = new Date(weekStart);
-          date.setDate(weekStart.getDate() + dayIndex);
+          // Since currentWeek is already normalized to Sunday, we can calculate directly
+          const date = new Date(currentWeek);
+          date.setDate(currentWeek.getDate() + dayIndex);
           const dayOfMonth = date.getDate();
+          
+          // Generate the correct date string for THIS specific day
+          const dayDateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+          // Debug logging
+          console.log(`[ViewSchedule] ${day} (index ${dayIndex}):`, {
+            currentWeek: currentWeek.toISOString(),
+            date: date.toISOString(),
+            dayDateString,
+            dayOfMonth
+          });
+
           return (
             <div key={day} className="mb-4 relative">
               {/* Day header - stays sticky below the WeeklySchedule header */}
@@ -555,7 +573,15 @@ export default function ViewSchedule() {
                           <div
                             key={block.id || index}
                             className={`absolute ${isCollapsed ? "h-2" : "top-0 h-full"} rounded-md flex items-center justify-start transition-all duration-200 z-10 ${isCurrentUser ? "cursor-pointer hover:opacity-90" : ""}`}
-                            onClick={isCurrentUser ? () => router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&block=${encodeURIComponent(block.id || '')}`) : undefined}
+                            onClick={isCurrentUser ? () => {
+                              console.log(`[ViewSchedule] Clicking on ${day} schedule:`, {
+                                day,
+                                dayDateString,
+                                blockId: block.id,
+                                url: `/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&week=${dayDateString}&block=${encodeURIComponent(block.id || '')}`
+                              });
+                              router.push(`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&week=${dayDateString}&block=${encodeURIComponent(block.id || '')}`);
+                            } : undefined}
                             style={{
                               left: `${startPos}%`,
                               width: `${width}%`,
@@ -668,7 +694,7 @@ export default function ViewSchedule() {
                 <div className="absolute left-1/2 top-[72px] -translate-x-1/2 h-10 flex items-center justify-center pointer-events-none z-20">
                     <div className="pointer-events-auto">
                         <Link
-                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&week=${currentWeek.toISOString().split('T')[0]}`}
+                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&week=${dayDateString}`}
                             className="group"
                             title="Add time"
                         >
@@ -730,7 +756,7 @@ export default function ViewSchedule() {
             }}
           >
             <Link
-              href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[dayIndex])}&week=${currentWeek.toISOString().split('T')[0]}`}
+              href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[dayIndex])}&week=${weekString}`}
               className="rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 flex items-center justify-center border-2 border-black/75 transition-all duration-200 ease-in-out overflow-visible hover:scale-105"
               style={{ 
                 backgroundColor: roommate?.color || '#03DAC6', 
