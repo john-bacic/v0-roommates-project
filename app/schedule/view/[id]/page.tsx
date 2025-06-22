@@ -668,7 +668,7 @@ export default function ViewSchedule() {
                 <div className="absolute left-1/2 top-[72px] -translate-x-1/2 h-10 flex items-center justify-center pointer-events-none z-20">
                     <div className="pointer-events-auto">
                         <Link
-                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}`}
+                            href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(day)}&week=${currentWeek.toISOString().split('T')[0]}`}
                             className="group"
                             title="Add time"
                         >
@@ -730,7 +730,7 @@ export default function ViewSchedule() {
             }}
           >
             <Link
-              href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[dayIndex])}`}
+              href={`/schedule/edit?from=${encodeURIComponent(`/schedule/view/${params.id}`)}&user=${encodeURIComponent(roommate?.name || '')}&day=${encodeURIComponent(days[dayIndex])}&week=${currentWeek.toISOString().split('T')[0]}`}
               className="rounded-full min-h-[3.5rem] min-w-[3.5rem] p-3 flex items-center justify-center border-2 border-black/75 transition-all duration-200 ease-in-out overflow-visible hover:scale-105"
               style={{ 
                 backgroundColor: roommate?.color || '#03DAC6', 
