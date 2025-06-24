@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -11,7 +13,7 @@ import { format } from "date-fns"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 
-export default function MessagesPage() {
+function MessagesPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [newMessage, setNewMessage] = useState("")
@@ -201,4 +203,12 @@ export default function MessagesPage() {
       </form>
     </div>
   )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MessagesPage />
+    </Suspense>
+  );
 } 
