@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteMessage } from '@/lib/supabase';
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function DELETE(request: NextRequest, { params }: any) {
   try {
     // Get user ID from query params (in a real app, this would come from auth)
     const searchParams = request.nextUrl.searchParams;
