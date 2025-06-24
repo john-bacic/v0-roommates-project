@@ -385,13 +385,25 @@ export async function markMessageAsRead(messageId: string, userId: number): Prom
  */
 export async function deleteMessage(messageId: string, userId: number): Promise<boolean> {
   try {
-    const { error } = await supabase
+    console.log('[deleteMessage] Attempting to delete message:', { messageId, userId });
+    
+    const { data, error } = await supabase
       .from('messages')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', messageId)
-      .eq('sender_id', userId); // Ensure only sender can delete
+      .eq('sender_id', userId) // Ensure only sender can delete
+      .select();
+
+    console.log('[deleteMessage] Response:', { data, error });
 
     if (error) throw error;
+    
+    // Check if any rows were affected
+    if (!data || data.length === 0) {
+      console.log('[deleteMessage] No rows were updated - user may not own this message');
+      return false;
+    }
+    
     return true;
   } catch (error) {
     console.error('Error deleting message:', error);

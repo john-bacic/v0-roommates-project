@@ -86,14 +86,29 @@ export function useMessages({ userId, pollInterval = 30000 }: UseMessagesProps) 
   // Delete a message
   const deleteMessage = useCallback(async (messageId: string) => {
     try {
+      console.log('[useMessages] Deleting message:', { messageId, userId });
+      
       const response = await fetch(`/api/messages/${messageId}?userId=${userId}`, {
         method: 'DELETE',
       });
       
-      if (!response.ok) throw new Error('Failed to delete message');
+      console.log('[useMessages] Delete response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('[useMessages] Delete error response:', errorText);
+        throw new Error(`Failed to delete message: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('[useMessages] Delete result:', result);
       
       // Remove from local state
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      setMessages(prev => {
+        const newMessages = prev.filter(msg => msg.id !== messageId);
+        console.log('[useMessages] Updated messages count:', newMessages.length);
+        return newMessages;
+      });
     } catch (err) {
       console.error('Error deleting message:', err);
       throw err;
