@@ -8,7 +8,7 @@ import { ScheduleEditor } from "@/components/schedule-editor"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase, fetchWeekSchedules } from "@/lib/supabase"
 import { getWeekBounds, formatWeekRange, getCurrentDayName, getDateForDayInWeek, isSameWeek } from "@/lib/date-utils"
-import { useScheduleEvents, emitWeekChange, emitScheduleUpdate } from "@/lib/schedule-events"
+import { scheduleEvents, emitWeekChange, emitScheduleUpdate } from "@/lib/schedule-events"
 
 // Add the getTextColor helper function
 const getTextColor = (bgColor: string) => {
@@ -71,158 +71,179 @@ function EditScheduleUI({ initialWeek, initialDay, fromPath, userNameFromUrl }: 
   fromPath: string | null
   userNameFromUrl: string | null
 }) {
+  const router = useRouter();
+  
+  // Individual state management to avoid complex state object interaction
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState("");
   const [userId, setUserId] = useState<number | null>(null);
   const [userColor, setUserColor] = useState("#FF7DB1");
   const [use24HourFormat, setUse24HourFormat] = useState(false);
   const [returnPath, setReturnPath] = useState("/dashboard");
   
-  // Always store the start of the week to ensure consistency
-  const [selectedWeek, setSelectedWeek] = useState<Date>(() => {
-    console.log(`[EditScheduleUI] Received initialWeek:`, initialWeek.toISOString());
-    const { start } = getWeekBounds(initialWeek);
-    console.log(`[EditScheduleUI] Normalized to week start:`, start.toISOString());
-    return start;
-  });
+  // Calculate week bounds once and use that as the initial value
+  const { start: initialWeekStart } = getWeekBounds(initialWeek);
+  const [selectedWeek, setSelectedWeek] = useState<Date>(initialWeekStart);
   
-  const router = useRouter();
-  
+  // Initialize schedule state
   const [schedule, setSchedule] = useState<ScheduleState>({
-    activeDay: "Monday",
+    activeDay: initialDay || "Monday",
     Monday: [],
     Tuesday: [],
     Wednesday: [],
     Thursday: [],
     Friday: [],
     Saturday: [],
-    Sunday: [],
+    Sunday: []
   });
   
+  // Handle initialization
   useEffect(() => {
-    setMounted(true);
-    
+    // Get username from URL or local storage
     const storedName = localStorage.getItem("userName");
     const userToLoad = userNameFromUrl || storedName;
     
-    if (fromPath) setReturnPath(decodeURIComponent(fromPath));
-    if (initialDay) setSchedule(prev => ({ ...prev, activeDay: initialDay }));
-
+    // Update path if provided
+    if (fromPath) {
+      setReturnPath(decodeURIComponent(fromPath));
+    }
+    
+    // Validate and set username
     if (userToLoad && ["Riko", "Narumi", "John"].includes(userToLoad)) {
       setUserName(userToLoad);
+      
+      // Load user data
+      loadUserData(userToLoad, selectedWeek)
+        .then(() => {
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error('Error initializing data:', err);
+          setError(new Error('Failed to initialize. Please refresh the page.'));
+          setIsLoading(false);
+        });
     } else {
       router.push("/");
     }
   }, []);
 
-  useEffect(() => {
-    if (userName && mounted) {
-      loadUserData(userName, selectedWeek).catch(err => {
-        console.error('Error loading user data:', err);
-        setError(new Error('Failed to load user data. Please try refreshing the page.'));
-      });
-    }
-  }, [userName, selectedWeek, mounted]);
-
   const loadUserData = async (name: string, weekDate: Date) => {
     try {
       if (!weekDate || isNaN(weekDate.getTime())) {
-        console.warn('Invalid week date, using current date');
-        weekDate = new Date();
+        console.error("[loadUserData] Invalid weekDate provided", weekDate);
+        throw new Error("Invalid date provided");
       }
-      const { data: userData, error: userError } = await supabase
+      
+      // First, get user info
+      const { data: userResult, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('name', name)
         .single();
       
-      if (userError) {
-        console.error('Error fetching user data:', userError);
-        return;
+      if (userError) throw userError;
+      if (userResult) {
+        const color = userResult.color || "#FF7DB1";
+        const id = userResult.id;
+        console.log(`[loadUserData] Loaded user data for ${name}, id: ${id}, color: ${color}`);
+        
+        // Update user state
+        setUserColor(color);
+        setUserId(id);
+        
+        // Get schedule data
+        try {
+          // Fetch schedule data
+          const scheduleData = await fetchWeekSchedules(weekDate, id);
+          
+          if (scheduleData && scheduleData[id]) {
+            const updatedSchedule = {
+              ...schedule,
+              ...scheduleData[id],
+              // Keep activeDay from current state
+              activeDay: schedule.activeDay
+            };
+            
+            setSchedule(updatedSchedule);
+            console.log(`[loadUserData] Updated schedule for ${name}, week of ${weekDate.toLocaleDateString()}`);
+          }
+        } catch (error) {
+          console.error('Error fetching schedules:', error);
+          throw new Error('Failed to load schedule data');
+        }
       }
       
-      setUserColor(userData.color);
-      setUserId(userData.id);
+      // Additional settings from localStorage
+      const timeFormat = localStorage.getItem('timeFormat');
+      setUse24HourFormat(timeFormat === '24h');
       
-      console.log('[EditSchedule] Loading schedules for week:', formatWeekRange(weekDate));
-      const weekSchedules = await fetchWeekSchedules(weekDate, userData.id);
-      
-      const userSchedules = weekSchedules[userData.id] || {};
-      
-      const dayParam = initialDay;
-      const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-      const activeDay = dayParam && validDays.includes(dayParam) ? dayParam : schedule.activeDay;
-      
-      if (activeDay !== schedule.activeDay) {
-        setSchedule(prev => ({ ...prev, activeDay }));
-      }
-      
-      const formattedSchedule: {activeDay: string, [key: string]: any} = {
-        activeDay: activeDay,
-        Monday: userSchedules.Monday || [],
-        Tuesday: userSchedules.Tuesday || [],
-        Wednesday: userSchedules.Wednesday || [],
-        Thursday: userSchedules.Thursday || [],
-        Friday: userSchedules.Friday || [],
-        Saturday: userSchedules.Saturday || [],
-        Sunday: userSchedules.Sunday || [],
-      };
-      
-      setSchedule(prev => ({
-        ...prev,
-        ...formattedSchedule,
-        activeDay: formattedSchedule.activeDay || prev.activeDay,
-      }));
+      return true;
     } catch (error) {
       console.error('Error loading user data:', error);
     }
   };
 
-  useEffect(() => {
-    if (!userName || !mounted) return;
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadUserData(userName, selectedWeek);
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [userName, selectedWeek, mounted]);
+  // Define event handlers
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "visible" && userName) {
+      console.log("[EditScheduleUI] Tab became visible, refreshing data...");
+      loadUserData(userName, selectedWeek);
+    } 
+  };
+  
+  const handleColorChange = (event: CustomEvent<{userName: string, color: string}>) => {
+    if (userName && event.detail.userName === userName) {
+      setUserColor(event.detail.color);
+    }
+  };
+  
+  const handleTimeFormatChange = (event: CustomEvent<{use24Hour: boolean}>) => {
+    setUse24HourFormat(event.detail.use24Hour);
+  };
 
   useEffect(() => {
-    const handleColorChange = (event: CustomEvent<{userName: string, color: string}>) => {
-      if (event.detail.userName === userName) {
-        setUserColor(event.detail.color)
-      }
-    }
-    const handleTimeFormatChange = (event: CustomEvent<{use24Hour: boolean}>) => {
-      setUse24HourFormat(event.detail.use24Hour)
-    }
-    window.addEventListener('userColorChange', handleColorChange as EventListener)
-    window.addEventListener('timeFormatChange', handleTimeFormatChange as EventListener)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [userName, selectedWeek]);
+
+  useEffect(() => {
+    window.addEventListener('userColorChange', handleColorChange as EventListener);
+    window.addEventListener('timeFormatChange', handleTimeFormatChange as EventListener);
     return () => {
-      window.removeEventListener('userColorChange', handleColorChange as EventListener)
-      window.removeEventListener('timeFormatChange', handleTimeFormatChange as EventListener)
+      window.removeEventListener('userColorChange', handleColorChange as EventListener);
+      window.removeEventListener('timeFormatChange', handleTimeFormatChange as EventListener);
     }
   }, [userName])
-  
+
   useEffect(() => {
     document.documentElement.classList.toggle('use-24h-time', use24HourFormat)
   }, [use24HourFormat])
-  
-  useEffect(() => {
-    const events = useScheduleEvents()
-    const unsubscribeSync = events.on('sync-required', () => {
-      loadUserData(userName, selectedWeek)
-    })
-    return () => {
-      unsubscribeSync()
+
+  // Week change handler
+  const handleWeekChangeEvent = (e: Event) => {
+    try {
+      const event = e as CustomEvent<{weekDate?: Date, source?: string}>
+      const weekDate = event?.detail?.weekDate;
+      if (weekDate && weekDate instanceof Date) {
+        console.log(`[EditScheduleUI] Received week change event:`, weekDate);
+        setSelectedWeek(weekDate);
+      }
+    } catch (error) {
+      console.error("Error handling week change event:", error);
     }
-  }, [userName, selectedWeek])
+  };
 
-
+  // Set up event handlers for week change events - using direct DOM events
+  useEffect(() => {    
+    // Subscribe using standard DOM event listeners
+    window.addEventListener('week-changed', handleWeekChangeEvent);
+    
+    // Cleanup subscriptions when component unmounts
+    return () => {
+      window.removeEventListener('week-changed', handleWeekChangeEvent);
+    };
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -327,7 +348,7 @@ function EditScheduleUI({ initialWeek, initialDay, fromPath, userNameFromUrl }: 
     )
   }
 
-  if (!mounted) {
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-[#282828] text-white items-center justify-center">
         <p className="text-[#A0A0A0]">Loading...</p>
@@ -430,6 +451,15 @@ function EditScheduleUI({ initialWeek, initialDay, fromPath, userNameFromUrl }: 
 
       {/* Main content */}
       <main className="flex-1 p-4 pt-28 max-w-7xl mx-auto w-full">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-[#A0A0A0]">Loading schedule data...</div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-900/20 text-red-300 p-4 rounded-lg">
+            <p>{(error as Error)?.message || 'An error occurred'}</p>
+          </div>
+        ) : (
         <div className="bg-[#333333] rounded-lg p-4 mt-4">
           <ScheduleEditor 
             schedule={schedule} 
@@ -441,6 +471,7 @@ function EditScheduleUI({ initialWeek, initialDay, fromPath, userNameFromUrl }: 
             weekDate={selectedWeek}
           />
         </div>
+        )}
       </main>
     </div>
   )

@@ -9,6 +9,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { Message, MessageRead } from '../types/messages';
 
 // Check if we're running on the server
 const isServer = typeof window === 'undefined';
@@ -62,46 +63,37 @@ function createMockClient() {
  * and returns a mock client in server environments.
  */
 export function getSupabase(options?: { enableRealtime?: boolean }) {
-  // Always return a mock client during server-side rendering
-  if (isServer) {
-    return createMockClient();
-  }
-  
+  // Always return the real Supabase client, even on the server
   try {
-    // Reuse existing client if available
-    if (browserClient) {
+    // Reuse existing client if available (browser)
+    if (browserClient && typeof window !== 'undefined') {
       return browserClient;
     }
-    
     // Check for required environment variables
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase URL or API key');
     }
-    
     const clientConfig: any = {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
       }
     };
-    
-    // IMPORTANT: Completely disable Realtime functionality
-    // This prevents any WebSocket-related errors
-    debug('Creating client with Realtime completely disabled');
-    
-    // Set realtime to false to completely disable it
     clientConfig.realtime = false;
-    
-    // Create and cache the client
-    browserClient = createClient(supabaseUrl, supabaseKey, clientConfig);
-    return browserClient;
+    // Create and cache the client (cache only in browser)
+    if (typeof window !== 'undefined') {
+      browserClient = createClient(supabaseUrl, supabaseKey, clientConfig);
+      return browserClient;
+    } else {
+      // Always create a new client on the server
+      return createClient(supabaseUrl, supabaseKey, clientConfig);
+    }
   } catch (error) {
     logError('Error creating Supabase client', error);
-    // Return a mock client in case of errors
-    return createMockClient();
+    // Optionally, return a mock client ONLY for SSR React components, not for API/backend
+    throw error;
   }
 }
 
@@ -309,6 +301,118 @@ export async function updateScheduleWithWeek(
   } catch (error) {
     console.error('Error updating schedule with week:', error);
     return { data: null, error };
+  }
+}
+
+/**
+ * Fetch all messages with sender info and read status
+ * @param userId Current user ID to check read status
+ */
+export async function fetchMessages(userId: number): Promise<Message[]> {
+  try {
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        sender:users!sender_id(id, name, color, initial),
+        message_reads(user_id, read_at, user:users(id, name, initial))
+      `)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Process messages to add is_read flag
+    return (messages || []).map((msg: any) => ({
+      ...msg,
+      is_read: msg.message_reads?.some((read: any) => read.user_id === userId) || false,
+      read_by: msg.message_reads || []
+    }));
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    return [];
+  }
+}
+
+/**
+ * Send a new message
+ * @param senderId The ID of the user sending the message
+ * @param content The message content
+ */
+export async function sendMessage(senderId: number, content: string): Promise<Message | null> {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({ sender_id: senderId, content })
+      .select();
+
+    console.log('[sendMessage] data:', data);
+    console.log('[sendMessage] error:', error);
+
+    if (error) throw error;
+    return data && data[0] ? data[0] : null;
+  } catch (error) {
+    console.error('[sendMessage] Caught error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark a message as read
+ * @param messageId The message ID
+ * @param userId The user ID marking as read
+ */
+export async function markMessageAsRead(messageId: string, userId: number): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('message_reads')
+      .insert({ message_id: messageId, user_id: userId });
+
+    if (error && error.code !== '23505') { // Ignore unique constraint violations
+      throw error;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error marking message as read:', error);
+    return false;
+  }
+}
+
+/**
+ * Delete a message (soft delete)
+ * @param messageId The message ID to delete
+ * @param userId The user ID attempting to delete
+ */
+export async function deleteMessage(messageId: string, userId: number): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('messages')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', messageId)
+      .eq('sender_id', userId); // Ensure only sender can delete
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    return false;
+  }
+}
+
+/**
+ * Get unread message count for a user
+ * @param userId The user ID
+ */
+export async function getUnreadMessageCount(userId: number): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_unread_message_count', { p_user_id: userId });
+
+    if (error) throw error;
+    return data || 0;
+  } catch (error) {
+    console.error('Error getting unread count:', error);
+    return 0;
   }
 }
 

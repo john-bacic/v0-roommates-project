@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useScheduleEvents, emitWeekChange } from "@/lib/schedule-events"
 import { caveat } from "../fonts"
 import { ErrorBoundaryHandler } from "@/components/error-boundary"
+import { MessageIcon } from "@/components/message-icon"
+import { useMessages } from "@/hooks/use-messages"
 
 // Define types for the application
 interface User {
@@ -106,6 +108,14 @@ function getCurrentDay() {
 import GitCommitHash from "@/components/git-commit-hash";
 
 export default function Dashboard() {
+  // Get current user ID for messages
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  
+  // Get messages data for unread count
+  const { unreadCount } = useMessages({ 
+    userId: currentUserId || 1,
+    pollInterval: 30000 // Poll every 30 seconds
+  })
   // Use a state to track if we're on the client side
   const [isClient, setIsClient] = useState(false)
   
@@ -490,6 +500,15 @@ export default function Dashboard() {
       // Always set the username, even if it's empty
       setUserName(storedName || '')
       
+      // Map userName to userId for messages
+      const userMap: Record<string, number> = {
+        "Riko": 1,
+        "Narumi": 2,
+        "John": 3
+      }
+      const userId = storedName ? userMap[storedName] || 1 : 1
+      setCurrentUserId(userId)
+      
       // Only check for user color if we have a username
       if (storedName) {
         // Immediately check for the user's color in Supabase
@@ -828,6 +847,7 @@ export default function Dashboard() {
             <div id="weekly-schedule-controls" className="hidden md:flex items-center mr-4">
               {/* This div will be used by the WeeklySchedule component */}
             </div>
+            <MessageIcon unreadCount={unreadCount} userId={currentUserId || undefined} />
             <Link href={{ pathname: "/roommates", query: { week: currentWeekStr } }}>
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <Users className="h-4 w-4" />

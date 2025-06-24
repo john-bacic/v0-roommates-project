@@ -1,0 +1,204 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { ArrowLeft, Send, Trash2, Check, CheckCheck } from "lucide-react"
+import { useMessages } from "@/hooks/use-messages"
+import { format } from "date-fns"
+import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
+
+export default function MessagesPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [newMessage, setNewMessage] = useState("")
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
+
+  // Get current user from localStorage
+  useEffect(() => {
+    const userName = localStorage.getItem("userName")
+    // Map userName to userId (in a real app, this would come from auth)
+    const userMap: Record<string, number> = {
+      "Riko": 1,
+      "Narumi": 2,
+      "John": 3
+    }
+    const userId = userMap[userName || ""] || 1
+    setCurrentUserId(userId)
+  }, [])
+
+  const { messages, loading, error, sendMessage, markAsRead, deleteMessage } = useMessages({
+    userId: currentUserId || 1,
+    pollInterval: 10000 // Poll every 10 seconds
+  })
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
+  // Mark messages as read when viewing
+  useEffect(() => {
+    if (currentUserId && messages.length > 0) {
+      messages.forEach(msg => {
+        if (!msg.is_read && msg.sender_id !== currentUserId) {
+          markAsRead(msg.id)
+        }
+      })
+    }
+  }, [messages, currentUserId, markAsRead])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newMessage.trim() || !currentUserId) return
+
+    try {
+      await sendMessage(newMessage.trim())
+      setNewMessage("")
+      toast({ title: "Message sent!", duration: 2000 })
+    } catch (error) {
+      toast({ title: "Failed to send message", description: String(error), variant: "destructive" })
+    }
+  }
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (confirm("Are you sure you want to delete this message?")) {
+      try {
+        await deleteMessage(messageId)
+        toast({ title: "Message deleted", duration: 2000 })
+      } catch (error) {
+        toast({ title: "Failed to delete message", description: String(error), variant: "destructive" })
+      }
+    }
+  }
+
+  if (!currentUserId) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-[#1a1a1a] text-white">
+      {/* Header */}
+      <header className="bg-[#282828] p-4 flex items-center gap-4 border-b border-gray-700">
+        <Link href="/dashboard">
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-lg font-semibold">Messages</h1>
+      </header>
+
+      {/* Messages list */}
+      <ScrollArea className="flex-1 p-2 sm:p-4">
+        <div className="space-y-4 pb-2 sm:pb-4">
+          {loading && messages.length === 0 ? (
+            <div className="text-center text-gray-500">Loading messages...</div>
+          ) : error ? (
+            <div className="text-center text-red-500">Error: {error}</div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
+          ) : (
+            messages.map((message) => {
+              const isOwnMessage = message.sender_id === currentUserId
+              const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
+              
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
+                      isOwnMessage
+                        ? "bg-blue-600 text-white"
+                        : "bg-[#333333] text-white"
+                    }`}
+                  >
+                    {/* Sender name and avatar */}
+                    {!isOwnMessage && message.sender && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                          style={{ 
+                            backgroundColor: message.sender.color, 
+                            color: "#000" 
+                          }}
+                        >
+                          {message.sender.initial}
+                        </div>
+                        <span className="text-xs font-medium">
+                          {message.sender.name}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Message content */}
+                    <p className="break-words whitespace-pre-line">{message.content}</p>
+                    
+                    {/* Timestamp and read receipts */}
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs opacity-70">
+                        {format(new Date(message.created_at), "h:mm a")}
+                      </span>
+                      
+                      <div className="flex items-center gap-1">
+                        {isOwnMessage && (
+                          <>
+                            {/* Delete button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 opacity-70 hover:opacity-100"
+                              onClick={() => handleDeleteMessage(message.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                            
+                            {/* Read receipts */}
+                            {readByOthers.length > 0 && (
+                              <div className="flex items-center" title={`Read by ${readByOthers.map(r => r.user?.name).join(", ")}`}>
+                                <CheckCheck className="h-3 w-3 text-blue-300" />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+
+      {/* Message input */}
+      <form onSubmit={handleSendMessage} className="p-2 sm:p-4 border-t border-gray-700 bg-[#181818]">
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            className="flex-1 bg-[#333333] border-gray-600 text-white"
+            autoComplete="off"
+            maxLength={500}
+          />
+          <Button 
+            type="submit" 
+            disabled={!newMessage.trim()}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+} 

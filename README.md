@@ -1,6 +1,6 @@
 # Minimal web app design
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+_Automatically synced with your [v0.dev](https://v0.dev) deployments_
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/john-bacics-projects/v0-minimal-web-app-design)
 [![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/mI7snvKpgde)
@@ -28,3 +28,28 @@ Continue building your app on:
 2. Deploy your chats from the v0 interface
 3. Changes are automatically pushed to this repository
 4. Vercel deploys the latest version from this repository
+
+## Database Setup
+
+### Setting up the messaging tables
+
+To enable the messaging feature, you need to create the necessary database tables:
+
+1. **Option 1: Run the setup script**
+
+   ```bash
+   node setup-messages.js
+   ```
+
+2. **Option 2: Run SQL directly in Supabase**
+   - Go to your Supabase dashboard
+   - Navigate to the SQL Editor
+   - Copy and paste the contents of `setup-messages-tables.sql`
+   - Click "Run" to execute
+
+The messaging feature includes:
+
+- `messages` table for storing all messages
+- `message_reads` table for tracking read receipts
+- Helper functions for unread counts and marking messages as read
+- Row Level Security policies for proper access control
