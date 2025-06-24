@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { markMessageAsRead } from '@/lib/supabase';
 
-export async function POST(request: NextRequest, context: { params: { id: string } }) {
-  const { params } = context;
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
     const { userId } = body;
