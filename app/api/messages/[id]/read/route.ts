@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { markMessageAsRead } from '@/lib/supabase';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function POST(request: NextRequest, { params }: any) {
   try {
     const body = await request.json();
     const { userId } = body;
