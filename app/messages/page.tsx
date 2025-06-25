@@ -197,8 +197,8 @@ function MessagesPage() {
         </main>
 
         {/* Floating message input */}
-        <form onSubmit={handleSendMessage} className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2 sm:px-6 sm:py-4 pb-8 bg-transparent shadow-lg">
-          <div className="flex gap-2 max-w-7xl mx-auto px-4">
+        <form onSubmit={handleSendMessage} className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2 sm:py-4 pb-8 bg-transparent shadow-lg">
+          <div className="flex gap-2 max-w-7xl mx-auto">
             <div className="flex-1 relative">
               <Input
                 type="text"

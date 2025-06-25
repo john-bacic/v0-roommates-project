@@ -318,7 +318,7 @@ export async function fetchMessages(userId: number): Promise<Message[]> {
         message_reads(user_id, read_at, user:users(id, name, initial))
       `)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
 
@@ -387,24 +387,53 @@ export async function deleteMessage(messageId: string, userId: number): Promise<
   try {
     console.log('[deleteMessage] Attempting to delete message:', { messageId, userId });
     
+    // First, let's check if the message exists and who owns it
+    const { data: checkData, error: checkError } = await supabase
+      .from('messages')
+      .select('id, sender_id, content')
+      .eq('id', messageId)
+      .single();
+    
+    console.log('[deleteMessage] Message check:', { checkData, checkError });
+    
+    if (checkError) {
+      console.log('[deleteMessage] Error checking message:', checkError);
+      return false;
+    }
+    
+    if (!checkData) {
+      console.log('[deleteMessage] Message not found');
+      return false;
+    }
+    
+    if (checkData.sender_id !== userId) {
+      console.log('[deleteMessage] User does not own this message:', { 
+        messageSenderId: checkData.sender_id, 
+        requestUserId: userId 
+      });
+      return false;
+    }
+    
+    // Perform the actual soft delete
     const { data, error } = await supabase
       .from('messages')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', messageId)
-      .eq('sender_id', userId) // Ensure only sender can delete
       .select();
 
-    console.log('[deleteMessage] Response:', { data, error });
+    console.log('[deleteMessage] Update response:', { data, error });
 
     if (error) throw error;
     
     // Check if any rows were affected
     if (!data || data.length === 0) {
-      console.log('[deleteMessage] No rows were updated - user may not own this message');
+      console.log('[deleteMessage] No rows were updated');
       return false;
     }
     
+    console.log('[deleteMessage] Successfully deleted message');
     return true;
+    
   } catch (error) {
     console.error('Error deleting message:', error);
     return false;

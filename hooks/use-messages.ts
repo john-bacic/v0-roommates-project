@@ -52,7 +52,7 @@ export function useMessages({ userId, pollInterval = 30000 }: UseMessagesProps) 
       if (!response.ok) throw new Error('Failed to send message');
       
       const data = await response.json();
-      setMessages(prev => [data.message, ...prev]);
+      setMessages(prev => [...prev, data.message]);
       
       return data.message;
     } catch (err) {
