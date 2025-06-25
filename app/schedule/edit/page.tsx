@@ -158,14 +158,15 @@ function EditScheduleUI({ initialWeek, initialDay, fromPath, userNameFromUrl }: 
           const scheduleData = await fetchWeekSchedules(weekDate, id);
           
           if (scheduleData && scheduleData[id]) {
-            const updatedSchedule = {
-              ...schedule,
-              ...scheduleData[id],
-              // Keep activeDay from current state
-              activeDay: schedule.activeDay
-            };
-            
-            setSchedule(updatedSchedule);
+            setSchedule(prevSchedule => {
+              const updatedSchedule = {
+                ...prevSchedule,
+                ...scheduleData[id],
+                // Preserve the currently selected day, not the initial one
+                activeDay: prevSchedule.activeDay
+              };
+              return updatedSchedule;
+            });
             console.log(`[loadUserData] Updated schedule for ${name}, week of ${weekDate.toLocaleDateString()}`);
           }
         } catch (error) {
