@@ -205,6 +205,32 @@ function MessagesPage() {
     }
   }
 
+  // Copy message to clipboard and show toast
+  const handleCopyMessage = (content: string) => {
+    if (navigator && navigator.clipboard) {
+      navigator.clipboard.writeText(content)
+        .then(() => {
+          toast({ title: 'Copied', duration: 1500 })
+        })
+        .catch(() => {
+          toast({ title: 'Failed to copy', variant: 'destructive', duration: 1500 })
+        })
+    } else {
+      // Fallback for older browsers: try execCommand
+      const textarea = document.createElement('textarea');
+      textarea.value = content;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        toast({ title: 'Copied', duration: 1500 });
+      } catch {
+        toast({ title: 'Failed to copy', variant: 'destructive', duration: 1500 });
+      }
+      document.body.removeChild(textarea);
+    }
+  }
+
   if (!currentUserId) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
@@ -300,7 +326,14 @@ function MessagesPage() {
                               )}
                               
                               {/* Message content */}
-                              <p className="break-words whitespace-pre-line">{message.content}</p>
+                              <p
+                                className="break-words whitespace-pre-line cursor-pointer select-text"
+                                onTouchStart={() => handleCopyMessage(message.content)}
+                                onClick={() => handleCopyMessage(message.content)}
+                                title="Tap to copy"
+                              >
+                                {message.content}
+                              </p>
                               
                               {/* Timestamp and read receipts */}
                               <div className="flex items-center justify-between mt-2">

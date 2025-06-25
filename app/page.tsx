@@ -22,6 +22,35 @@ export default function Home() {
     setIsClient(true)
   }, [])
 
+  // Dynamic padding for iPhone notch
+  const [notchPadding, setNotchPadding] = useState<{ paddingTop?: string; paddingLeft?: string; paddingRight?: string }>({})
+
+  useEffect(() => {
+    function updateNotchPadding() {
+      // iPhone 12 notch: 47px (landscape), 47px (portrait top)
+      // Use safe-area-inset if available, fallback to hardcoded
+      const isIPhone12 = /iPhone/.test(navigator.userAgent) && (window.screen.height === 844 || window.screen.width === 844)
+      const isLandscape = window.innerWidth > window.innerHeight
+      if (isIPhone12) {
+        if (isLandscape) {
+          setNotchPadding({ paddingLeft: 'env(safe-area-inset-left, 47px)', paddingRight: 'env(safe-area-inset-right, 47px)', paddingTop: '0px' })
+        } else {
+          setNotchPadding({ paddingTop: 'env(safe-area-inset-top, 47px)' })
+        }
+      } else {
+        // Default: just use safe-area-inset-top
+        setNotchPadding({ paddingTop: 'env(safe-area-inset-top, 0px)' })
+      }
+    }
+    updateNotchPadding()
+    window.addEventListener('resize', updateNotchPadding)
+    window.addEventListener('orientationchange', updateNotchPadding)
+    return () => {
+      window.removeEventListener('resize', updateNotchPadding)
+      window.removeEventListener('orientationchange', updateNotchPadding)
+    }
+  }, [])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (name.trim() && password === "Tokyo") {
@@ -38,7 +67,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center text-white p-4 relative overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark, #1e1e1e)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <main className="flex min-h-screen flex-col items-center justify-center text-white p-4 relative overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark, #1e1e1e)', ...notchPadding }}>
       {/* Background SVG texture */}
       <img 
         src="/BGlines.svg" 
