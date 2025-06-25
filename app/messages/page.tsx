@@ -253,78 +253,81 @@ function MessagesPage() {
               ) : messages.length === 0 ? (
                 <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
               ) : (
-                messages.map((message) => {
-                  const isOwnMessage = message.sender_id === currentUserId
-                  const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
-                  
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                    >
+                <>
+                  {messages.length === 1 && <div className="h-20 block sm:hidden"></div>}
+                  {messages.map((message) => {
+                    const isOwnMessage = message.sender_id === currentUserId
+                    const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
+                    
+                    return (
                       <div
-                        className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
-                          isOwnMessage
-                            ? "text-black"
-                            : "bg-[#333333] text-white"
-                        }`}
-                        style={isOwnMessage ? { backgroundColor: userColor } : {}}
+                        key={message.id}
+                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                       >
-                        {/* Sender name and avatar */}
-                        {!isOwnMessage && message.sender && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <div
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
-                              style={{ 
-                                backgroundColor: message.sender.color, 
-                                color: "#000" 
-                              }}
-                            >
-                              {message.sender.initial}
+                        <div
+                          className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
+                            isOwnMessage
+                              ? "text-black"
+                              : "bg-[#333333] text-white"
+                          }`}
+                          style={isOwnMessage ? { backgroundColor: userColor } : {}}
+                        >
+                          {/* Sender name and avatar */}
+                          {!isOwnMessage && message.sender && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                                style={{ 
+                                  backgroundColor: message.sender.color, 
+                                  color: "#000" 
+                                }}
+                              >
+                                {message.sender.initial}
+                              </div>
+                              <span className="text-xs font-medium">
+                                {message.sender.name}
+                              </span>
                             </div>
-                            <span className="text-xs font-medium">
-                              {message.sender.name}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {/* Message content */}
-                        <p className="break-words whitespace-pre-line">{message.content}</p>
-                        
-                        {/* Timestamp and read receipts */}
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs opacity-70">
-                            {format(new Date(message.created_at), "h:mm a")}
-                          </span>
+                          )}
                           
-                          <div className="flex items-center gap-1">
-                            {isOwnMessage && (
-                              <>
-                                {/* Delete button */}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5 opacity-70 hover:opacity-100"
-                                  onClick={() => handleDeleteMessage(message.id)}
-                                  style={{ color: "#000" }}
-                                >
-                                  <Trash2 className="h-3 w-3" style={{ color: "#000" }} />
-                                </Button>
-                                
-                                {/* Read receipts */}
-                                {readByOthers.length > 0 && (
-                                  <div className="flex items-center" title={`Read by ${readByOthers.map(r => r.user?.name).join(", ")}`}>
-                                    <CheckCheck className="h-3 w-3" style={{ color: "#000" }} />
-                                  </div>
-                                )}
-                              </>
-                            )}
+                          {/* Message content */}
+                          <p className="break-words whitespace-pre-line">{message.content}</p>
+                          
+                          {/* Timestamp and read receipts */}
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs opacity-70">
+                              {format(new Date(message.created_at), "h:mm a")}
+                            </span>
+                            
+                            <div className="flex items-center gap-1">
+                              {isOwnMessage && (
+                                <>
+                                  {/* Delete button */}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 opacity-70 hover:opacity-100"
+                                    onClick={() => handleDeleteMessage(message.id)}
+                                    style={{ color: "#000" }}
+                                  >
+                                    <Trash2 className="h-3 w-3" style={{ color: "#000" }} />
+                                  </Button>
+                                  
+                                  {/* Read receipts */}
+                                  {readByOthers.length > 0 && (
+                                    <div className="flex items-center" title={`Read by ${readByOthers.map(r => r.user?.name).join(", ")}`}>
+                                      <CheckCheck className="h-3 w-3" style={{ color: "#000" }} />
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })
+                    )
+                  })}
+                </>
               )}
               <div ref={messagesEndRef} />
             </div>
