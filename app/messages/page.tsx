@@ -119,6 +119,8 @@ function MessagesPage() {
           {/* Messages list */}
           <ScrollArea className="flex-1 p-2 sm:p-4" style={{ scrollBehavior: "smooth" }}>
             <div className="min-h-full flex flex-col justify-end space-y-4 pb-2 sm:pb-4">
+              {/* Spacer to push first message down from bottom */}
+              <div className="h-20"></div>
               {loading && messages.length === 0 ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : error ? (
