@@ -46,14 +46,22 @@ function MessagesPage() {
     if (userName) {
       const fetchUserColor = async () => {
         try {
-          const response = await fetch(`/api/users?name=${encodeURIComponent(userName)}`)
-          if (response.ok) {
-            const userData = await response.json()
-            if (userData.color) {
-              setUserColor(userData.color)
-              // Update localStorage with latest color
-              localStorage.setItem(`userColor_${userName}`, userData.color)
-            }
+          // Import Supabase here to avoid SSR issues
+          const { supabase } = await import('@/lib/supabase')
+          
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('color')
+            .eq('name', userName)
+            .single()
+          
+          if (!error && userData?.color) {
+            console.log(`[Messages] Fetched user color for ${userName}:`, userData.color)
+            setUserColor(userData.color)
+            // Update localStorage with latest color
+            localStorage.setItem(`userColor_${userName}`, userData.color)
+          } else {
+            console.error('Failed to fetch user color from database:', error)
           }
         } catch (error) {
           console.error('Failed to fetch user color:', error)
@@ -61,6 +69,20 @@ function MessagesPage() {
       }
       fetchUserColor()
     }
+  }, [])
+
+  // Listen for storage changes (color updates from other tabs/windows)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      const userName = localStorage.getItem("userName")
+      if (e.key === `userColor_${userName}` && e.newValue) {
+        console.log(`[Messages] Color updated from storage:`, e.newValue)
+        setUserColor(e.newValue)
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   // Handle mobile keyboard detection and viewport changes
