@@ -197,13 +197,13 @@ function MessagesPage() {
             className="flex-1 p-2 sm:p-4 scrollbar-hide" 
             style={{ 
               scrollBehavior: "smooth",
-              height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 80px)` : 'calc(100vh - 57px - 80px)',
-              marginBottom: '80px'
+              height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 70px)` : 'calc(100vh - 57px - 70px)',
+              marginBottom: '70px'
             }}
           >
-            <div className="min-h-full flex flex-col justify-end space-y-4 pb-4">
-              {/* Small spacer for better visual separation */}
-              <div className="h-4"></div>
+            <div className="min-h-full flex flex-col justify-end space-y-4 pb-2">
+              {/* Reduced spacer */}
+              <div className="h-2"></div>
               {loading && messages.length === 0 ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : error ? (
