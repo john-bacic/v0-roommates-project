@@ -224,7 +224,7 @@ function MessagesPage() {
             <button onClick={() => router.back()} className="text-white hover:opacity-80 cursor-pointer">
               <ArrowLeft className="h-6 w-6" />
             </button>
-            <h1 className="text-lg font-semibold text-white absolute left-1/2 transform -translate-x-1/2">Messages</h1>
+            <h1 className="text-lg font-semibold text-white absolute left-1/2 transform -translate-x-1/2">Group chat</h1>
             <div className="w-6"></div>
           </div>
         </header>
