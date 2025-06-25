@@ -109,7 +109,7 @@ function MessagesPage() {
         <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
           {/* Messages list */}
           <ScrollArea className="flex-1 p-2 sm:p-4">
-            <div className="space-y-4 pb-2 sm:pb-4">
+            <div className="min-h-full flex flex-col justify-end space-y-4 pb-2 sm:pb-4">
               {loading && messages.length === 0 ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : error ? (
