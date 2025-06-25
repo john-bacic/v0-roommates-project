@@ -38,7 +38,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center text-white p-4 relative overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark, #1e1e1e)' }}>
+    <main className="flex min-h-screen flex-col items-center justify-center text-white p-4 relative overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark, #1e1e1e)', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Background SVG texture */}
       <img 
         src="/BGlines.svg" 
