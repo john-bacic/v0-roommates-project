@@ -47,8 +47,17 @@ function MessagesPage() {
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
+
+  // Also scroll to bottom when component first loads
+  useEffect(() => {
+    if (messagesEndRef.current && messages.length > 0) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" })
+    }
+  }, [messages.length])
 
   // Mark messages as read when viewing
   useEffect(() => {
@@ -108,7 +117,7 @@ function MessagesPage() {
         {/* Main content */}
         <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
           {/* Messages list */}
-          <ScrollArea className="flex-1 p-2 sm:p-4">
+          <ScrollArea className="flex-1 p-2 sm:p-4" style={{ scrollBehavior: "smooth" }}>
             <div className="min-h-full flex flex-col justify-end space-y-4 pb-2 sm:pb-4">
               {loading && messages.length === 0 ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
@@ -197,7 +206,7 @@ function MessagesPage() {
         </main>
 
         {/* Floating message input */}
-        <form onSubmit={handleSendMessage} className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2 sm:py-4 pb-8 bg-transparent shadow-lg">
+        <form onSubmit={handleSendMessage} className="fixed bottom-0 left-0 right-0 z-50 px-4 py-4 pb-6 bg-[#282828] border-t border-[#333333] shadow-lg">
           <div className="flex gap-2 max-w-7xl mx-auto">
             <div className="flex-1 relative">
               <Input
