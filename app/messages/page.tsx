@@ -211,182 +211,190 @@ function MessagesPage() {
 
   return (
           <div 
-            className="flex flex-col bg-[#282828] text-white min-h-screen"
+            className="flex flex-col text-white min-h-screen relative overflow-hidden"
             style={{ 
+              backgroundColor: 'var(--color-bg-dark, #1e1e1e)',
               height: '100vh',
               maxHeight: isKeyboardOpen ? `${viewportHeight}px` : '100vh',
               overflow: 'hidden'
             }}
           >
-        {/* Main header - fixed at the top */}
-        <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]">
-          <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
-            <button onClick={() => router.back()} className="text-white hover:opacity-80 cursor-pointer">
-              <ArrowLeft className="h-6 w-6" />
-            </button>
-            <h1 className="text-lg font-semibold text-white absolute left-1/2 transform -translate-x-1/2">Group chat</h1>
-            <div className="w-6"></div>
-          </div>
-        </header>
+            {/* Background SVG texture */}
+            <img 
+              src="/BGlines.svg" 
+              alt="background texture" 
+              className="pointer-events-none select-none absolute inset-0 w-full h-full object-cover opacity-60 z-0"
+              aria-hidden="true"
+            />
+            {/* Main header - fixed at the top */}
+            <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]">
+              <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
+                <button onClick={() => router.back()} className="text-white hover:opacity-80 cursor-pointer">
+                  <ArrowLeft className="h-6 w-6" />
+                </button>
+                <h1 className="text-lg font-semibold text-white absolute left-1/2 transform -translate-x-1/2">Group chat</h1>
+                <div className="w-6"></div>
+              </div>
+            </header>
 
-        {/* Spacer to account for fixed header */}
-        <div className="h-[57px] flex-shrink-0"></div>
+            {/* Spacer to account for fixed header */}
+            <div className="h-[57px] flex-shrink-0"></div>
 
-        {/* Main content */}
-        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
-          {/* Messages list */}
-          <ScrollArea 
-            className="flex-1 p-2 sm:p-4 scrollbar-hide" 
-            style={{ 
-              scrollBehavior: "smooth",
-              height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 70px)` : 'calc(100vh - 57px - 70px)',
-              marginBottom: '70px'
-            }}
-          >
-            <div className="min-h-full flex flex-col justify-end space-y-4 pb-2">
-              {/* Reduced spacer */}
-              <div className="h-2"></div>
-              {loading && messages.length === 0 ? (
-                <div className="text-center text-gray-500">Loading messages...</div>
-              ) : error ? (
-                <div className="text-center text-red-500">Error: {error}</div>
-              ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
-              ) : (
-                <>
-                  {messages.length === 1 && <div className="h-20 block sm:hidden"></div>}
-                  {messages.map((message) => {
-                    const isOwnMessage = message.sender_id === currentUserId
-                    const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
-                    
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
-                            isOwnMessage
-                              ? "text-black"
-                              : "bg-[#333333] text-white"
-                          }`}
-                          style={isOwnMessage ? { backgroundColor: userColor } : {}}
-                        >
-                          {/* Sender name and avatar */}
-                          {!isOwnMessage && message.sender && (
-                            <div className="flex items-center gap-2 mb-1">
-                              <div
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
-                                style={{ 
-                                  backgroundColor: message.sender.color, 
-                                  color: "#000" 
-                                }}
-                              >
-                                {message.sender.initial}
-                              </div>
-                              <span className="text-xs font-medium">
-                                {message.sender.name}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {/* Message content */}
-                          <p className="break-words whitespace-pre-line">{message.content}</p>
-                          
-                          {/* Timestamp and read receipts */}
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs opacity-70">
-                              {format(new Date(message.created_at), "h:mm a")}
-                            </span>
-                            
-                            <div className="flex items-center gap-1">
-                              {isOwnMessage && (
-                                <>
-                                  {/* Delete button */}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 opacity-70 hover:opacity-100"
-                                    onClick={() => handleDeleteMessage(message.id)}
-                                    style={{ color: "#000" }}
+            {/* Main content */}
+            <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
+              {/* Messages list */}
+              <ScrollArea 
+                className="flex-1 p-2 sm:p-4 scrollbar-hide" 
+                style={{ 
+                  scrollBehavior: "smooth",
+                  height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 70px)` : 'calc(100vh - 57px - 70px)',
+                  marginBottom: '70px'
+                }}
+              >
+                <div className="min-h-full flex flex-col justify-end space-y-4 pb-2">
+                  {/* Reduced spacer */}
+                  <div className="h-2"></div>
+                  {loading && messages.length === 0 ? (
+                    <div className="text-center text-gray-500">Loading messages...</div>
+                  ) : error ? (
+                    <div className="text-center text-red-500">Error: {error}</div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
+                  ) : (
+                    <>
+                      {messages.length === 1 && <div className="h-20 block sm:hidden"></div>}
+                      {messages.map((message) => {
+                        const isOwnMessage = message.sender_id === currentUserId
+                        const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
+                        
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
+                                isOwnMessage
+                                  ? "text-black"
+                                  : "bg-[#333333] text-white"
+                              }`}
+                              style={isOwnMessage ? { backgroundColor: userColor } : {}}
+                            >
+                              {/* Sender name and avatar */}
+                              {!isOwnMessage && message.sender && (
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                                    style={{ 
+                                      backgroundColor: message.sender.color, 
+                                      color: "#000" 
+                                    }}
                                   >
-                                    <Trash2 className="h-3 w-3" style={{ color: "#000" }} />
-                                  </Button>
-                                  
-                                  {/* Read receipts */}
-                                  {readByOthers.length > 0 && (
-                                    <div className="flex items-center" title={`Read by ${readByOthers.map(r => r.user?.name).join(", ")}`}>
-                                      <CheckCheck className="h-3 w-3" style={{ color: "#000" }} />
-                                    </div>
-                                  )}
-                                </>
+                                    {message.sender.initial}
+                                  </div>
+                                  <span className="text-xs font-medium">
+                                    {message.sender.name}
+                                  </span>
+                                </div>
                               )}
+                              
+                              {/* Message content */}
+                              <p className="break-words whitespace-pre-line">{message.content}</p>
+                              
+                              {/* Timestamp and read receipts */}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs opacity-70">
+                                  {format(new Date(message.created_at), "h:mm a")}
+                                </span>
+                                
+                                <div className="flex items-center gap-1">
+                                  {isOwnMessage && (
+                                    <>
+                                      {/* Delete button */}
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5 opacity-70 hover:opacity-100"
+                                        onClick={() => handleDeleteMessage(message.id)}
+                                        style={{ color: "#000" }}
+                                      >
+                                        <Trash2 className="h-3 w-3" style={{ color: "#000" }} />
+                                      </Button>
+                                      
+                                      {/* Read receipts */}
+                                      {readByOthers.length > 0 && (
+                                        <div className="flex items-center" title={`Read by ${readByOthers.map(r => r.user?.name).join(", ")}`}>
+                                          <CheckCheck className="h-3 w-3" style={{ color: "#000" }} />
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-        </main>
+                        )
+                      })}
+                    </>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+            </main>
 
-        {/* Message input - always pinned at bottom, adapts to keyboard */}
-        <div 
-          className="fixed bottom-0 left-0 right-0 bg-[#282828] border-t border-[#333333] shadow-lg transition-transform duration-200 ease-out"
-          style={{
-            zIndex: 50,
-            transform: isKeyboardOpen ? 'translateY(0)' : 'translateY(0)',
-            paddingBottom: isKeyboardOpen ? 'env(safe-area-inset-bottom, 0px)' : 'env(safe-area-inset-bottom, 1.5rem)'
-          }}
-        >
-          <form onSubmit={handleSendMessage} className="px-4 py-4">
-            <div className="flex gap-2 max-w-7xl mx-auto">
-              <div className="flex-1 relative">
-                <Input
-                  ref={inputRef}
-                  type="text"
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="bg-[#333333] border-gray-600 text-white rounded-full pr-10"
-                  autoComplete="off"
-                  maxLength={500}
-                  style={{
-                    fontSize: '16px', // Prevents zoom on iOS
-                    WebkitAppearance: 'none'
-                  }}
-                />
-                {newMessage.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setNewMessage("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              {newMessage.trim() && (
-                <Button 
-                  type="submit" 
-                  className="rounded-full h-10 w-10 p-0 border-0 hover:opacity-90 transition-opacity"
-                  style={{ 
-                    backgroundColor: userColor,
-                    color: "#000",
-                    borderColor: userColor
-                  }}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              )}
+            {/* Message input - always pinned at bottom, adapts to keyboard */}
+            <div 
+              className="fixed bottom-0 left-0 right-0 bg-[#282828] border-t border-[#333333] shadow-lg transition-transform duration-200 ease-out"
+              style={{
+                zIndex: 50,
+                transform: isKeyboardOpen ? 'translateY(0)' : 'translateY(0)',
+                paddingBottom: isKeyboardOpen ? 'env(safe-area-inset-bottom, 0px)' : 'env(safe-area-inset-bottom, 1.5rem)'
+              }}
+            >
+              <form onSubmit={handleSendMessage} className="px-4 py-4">
+                <div className="flex gap-2 max-w-7xl mx-auto">
+                  <div className="flex-1 relative">
+                    <Input
+                      ref={inputRef}
+                      type="text"
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      className="bg-[#333333] border-gray-600 text-white rounded-full pr-10"
+                      autoComplete="off"
+                      maxLength={500}
+                      style={{
+                        fontSize: '16px', // Prevents zoom on iOS
+                        WebkitAppearance: 'none'
+                      }}
+                    />
+                    {newMessage.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setNewMessage("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {newMessage.trim() && (
+                    <Button 
+                      type="submit" 
+                      className="rounded-full h-10 w-10 p-0 border-0 hover:opacity-90 transition-opacity"
+                      style={{ 
+                        backgroundColor: userColor,
+                        color: "#000",
+                        borderColor: userColor
+                      }}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
-      </div>
+          </div>
   )
 }
 
