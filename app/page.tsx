@@ -43,8 +43,8 @@ export default function Home() {
       <img 
         src="/BGlines.svg" 
         alt="background texture" 
-        className="pointer-events-none select-none fixed inset-0 w-full h-full object-cover opacity-100 z-[9999]"
-        style={{position: 'fixed', border: '5px solid red'}} 
+        className="pointer-events-none select-none fixed inset-0 w-full h-full object-cover opacity-60 z-0"
+        style={{position: 'fixed'}} 
         aria-hidden="true"
       />
       <div className="w-full max-w-md space-y-8">
