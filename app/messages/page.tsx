@@ -45,38 +45,47 @@ function MessagesPage() {
 
   // Handle mobile keyboard detection and viewport changes
   useEffect(() => {
-    // Initial viewport height
-    setViewportHeight(window.innerHeight)
+    // Store initial viewport height
+    const initialHeight = window.innerHeight
+    setViewportHeight(initialHeight)
     
     const handleResize = () => {
       const newHeight = window.innerHeight
-      const heightDifference = viewportHeight - newHeight
+      const heightDifference = initialHeight - newHeight
       
       // If viewport height decreased by more than 150px, assume keyboard is open
-      setIsKeyboardOpen(heightDifference > 150)
+      const keyboardOpen = heightDifference > 150
+      setIsKeyboardOpen(keyboardOpen)
       setViewportHeight(newHeight)
+      
+      // Scroll to bottom when keyboard opens to keep recent messages visible
+      if (keyboardOpen && messagesEndRef.current) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 150)
+      }
     }
     
     const handleFocus = () => {
-      // Small delay to let the keyboard animation start
+      // Set keyboard open state immediately for responsive feel
+      setIsKeyboardOpen(true)
+      
+      // Ensure messages scroll to bottom when input is focused
       setTimeout(() => {
-        setIsKeyboardOpen(true)
-        // Scroll input into view on mobile
-        if (inputRef.current && window.innerWidth <= 768) {
-          inputRef.current.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest',
-            inline: 'nearest'
-          })
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
         }
-      }, 100)
+      }, 200)
     }
     
     const handleBlur = () => {
-      // Delay to ensure keyboard is actually closing
+      // Small delay to allow for quick refocus (like sending message)
       setTimeout(() => {
-        setIsKeyboardOpen(false)
-      }, 100)
+        // Only close if the input is truly not focused
+        if (inputRef.current && document.activeElement !== inputRef.current) {
+          setIsKeyboardOpen(false)
+        }
+      }, 150)
     }
     
     // Add event listeners
@@ -98,7 +107,7 @@ function MessagesPage() {
         input.removeEventListener('blur', handleBlur)
       }
     }
-  }, [viewportHeight])
+  }, [])
 
   const { messages, loading, error, sendMessage, markAsRead, deleteMessage } = useMessages({
     userId: currentUserId || 1,
@@ -160,9 +169,9 @@ function MessagesPage() {
 
   return (
           <div 
-            className="flex flex-col bg-[#282828] text-white"
+            className="flex flex-col bg-[#282828] text-white min-h-screen"
             style={{ 
-              height: isKeyboardOpen ? `${viewportHeight}px` : '100vh',
+              height: '100vh',
               maxHeight: isKeyboardOpen ? `${viewportHeight}px` : '100vh',
               overflow: 'hidden'
             }}
@@ -170,8 +179,8 @@ function MessagesPage() {
         {/* Main header - fixed at the top */}
         <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]">
           <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
-            <button onClick={() => router.back()} className="text-white hover:text-gray-300">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            <button onClick={() => router.back()} className="text-white hover:opacity-80 cursor-pointer">
+              <ArrowLeft className="h-6 w-6" />
             </button>
             <h1 className="text-lg font-semibold text-white absolute left-1/2 transform -translate-x-1/2">Messages</h1>
             <div className="w-6"></div>
@@ -182,18 +191,19 @@ function MessagesPage() {
         <div className="h-[57px] flex-shrink-0"></div>
 
         {/* Main content */}
-        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative overflow-hidden">
+        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
           {/* Messages list */}
           <ScrollArea 
-            className="flex-1 p-2 sm:p-4" 
+            className="flex-1 p-2 sm:p-4 scrollbar-hide" 
             style={{ 
               scrollBehavior: "smooth",
-              height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 80px)` : 'auto'
+              height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 80px)` : 'calc(100vh - 57px - 80px)',
+              marginBottom: '80px'
             }}
           >
-            <div className="min-h-full flex flex-col justify-end space-y-4 pb-2 sm:pb-4">
-              {/* Dynamic spacer based on keyboard state */}
-              <div className={isKeyboardOpen ? "h-4" : "h-20"}></div>
+            <div className="min-h-full flex flex-col justify-end space-y-4 pb-4">
+              {/* Small spacer for better visual separation */}
+              <div className="h-4"></div>
               {loading && messages.length === 0 ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : error ? (
@@ -277,16 +287,13 @@ function MessagesPage() {
           </ScrollArea>
         </main>
 
-        {/* Message input - positioned at bottom but adapts to keyboard */}
+        {/* Message input - always pinned at bottom, adapts to keyboard */}
         <div 
-          className="flex-shrink-0 bg-[#282828] border-t border-[#333333] shadow-lg"
+          className="fixed bottom-0 left-0 right-0 bg-[#282828] border-t border-[#333333] shadow-lg transition-transform duration-200 ease-out"
           style={{
-            position: isKeyboardOpen ? 'fixed' : 'relative',
-            bottom: isKeyboardOpen ? '0' : 'auto',
-            left: isKeyboardOpen ? '0' : 'auto',
-            right: isKeyboardOpen ? '0' : 'auto',
             zIndex: 50,
-            paddingBottom: isKeyboardOpen ? 'env(safe-area-inset-bottom, 0px)' : '1.5rem'
+            transform: isKeyboardOpen ? 'translateY(0)' : 'translateY(0)',
+            paddingBottom: isKeyboardOpen ? 'env(safe-area-inset-bottom, 0px)' : 'env(safe-area-inset-bottom, 1.5rem)'
           }}
         >
           <form onSubmit={handleSendMessage} className="px-4 py-4">
