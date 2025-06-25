@@ -205,29 +205,23 @@ function MessagesPage() {
     }
   }
 
-  // Copy message to clipboard and show toast
-  const handleCopyMessage = (content: string) => {
-    if (navigator && navigator.clipboard) {
-      navigator.clipboard.writeText(content)
-        .then(() => {
-          toast({ title: 'Copied', duration: 1500 })
-        })
-        .catch(() => {
-          toast({ title: 'Failed to copy', variant: 'destructive', duration: 1500 })
-        })
-    } else {
-      // Fallback for older browsers: try execCommand
-      const textarea = document.createElement('textarea');
-      textarea.value = content;
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        toast({ title: 'Copied', duration: 1500 });
-      } catch {
-        toast({ title: 'Failed to copy', variant: 'destructive', duration: 1500 });
+  // Copy message content to clipboard
+  const handleCopyMessage = async (content: string) => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(content)
+      } else {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea')
+        textarea.value = content
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
       }
-      document.body.removeChild(textarea);
+      toast({ title: 'Copied', duration: 1200 })
+    } catch (err) {
+      toast({ title: 'Copy failed', description: String(err), variant: 'destructive' })
     }
   }
 
@@ -327,10 +321,9 @@ function MessagesPage() {
                               
                               {/* Message content */}
                               <p
-                                className="break-words whitespace-pre-line cursor-pointer select-text"
-                                onTouchStart={() => handleCopyMessage(message.content)}
-                                onClick={() => handleCopyMessage(message.content)}
+                                className="break-words whitespace-pre-line cursor-pointer hover:opacity-80 transition-opacity"
                                 title="Tap to copy"
+                                onClick={() => handleCopyMessage(message.content)}
                               >
                                 {message.content}
                               </p>
