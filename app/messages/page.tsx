@@ -287,6 +287,17 @@ function MessagesPage() {
                     const isOwnMessage = message.sender_id === currentUserId
                     const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
                     
+                    // Handler for copying, but ignore if clicking a button
+                    const handleBubbleCopy = (e: React.SyntheticEvent) => {
+                      // If the click/tap is on a button or inside a button, do nothing
+                      let el = e.target as HTMLElement | null;
+                      while (el) {
+                        if (el.tagName === 'BUTTON') return;
+                        el = el.parentElement;
+                      }
+                      handleCopyMessage(message.content, e);
+                    };
+
                     return (
                       <div
                         key={message.id}
@@ -299,6 +310,9 @@ function MessagesPage() {
                               : "bg-[#333333] text-white"
                           }`}
                           style={isOwnMessage ? { backgroundColor: userColor } : {}}
+                          onClick={handleBubbleCopy}
+                          onTouchStart={handleBubbleCopy}
+                          title="Tap to copy"
                         >
                           {/* Sender name and avatar */}
                           {!isOwnMessage && message.sender && (
@@ -320,10 +334,7 @@ function MessagesPage() {
                           
                           {/* Message content */}
                           <p
-                            className="break-words whitespace-pre-line cursor-pointer hover:opacity-80 transition-opacity"
-                            title="Tap to copy"
-                            onClick={e => handleCopyMessage(message.content, e)}
-                            onTouchStart={e => handleCopyMessage(message.content, e)}
+                            className="break-words whitespace-pre-line"
                           >
                             {message.content}
                           </p>
