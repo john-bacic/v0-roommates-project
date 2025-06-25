@@ -114,26 +114,26 @@ export function SingleDayView({
     document.dispatchEvent(dummyEvent)
   }, [])
 
-  // Use visibility change instead of polling or Realtime subscription
-  useEffect(() => {
-    console.log('[SingleDayView] Using visibility change for data refreshing')
-    
-    // Function to handle visibility change
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[SingleDayView] Page became visible, refreshing data')
-        onScheduleUpdate()
-      }
-    }
-    
-    // Add visibility change listener
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    // Clean up listener on unmount
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [onScheduleUpdate])
+  // Visibility-based refresh disabled for better performance
+  // useEffect(() => {
+  //   console.log('[SingleDayView] Using visibility change for data refreshing')
+  //   
+  //   // Function to handle visibility change
+  //   const handleVisibilityChange = () => {
+  //     if (document.visibilityState === 'visible') {
+  //       console.log('[SingleDayView] Page became visible, refreshing data')
+  //       onScheduleUpdate()
+  //     }
+  //   }
+  //   
+  //   // Add visibility change listener
+  //   document.addEventListener('visibilitychange', handleVisibilityChange)
+  //   
+  //   // Clean up listener on unmount
+  //   return () => {
+  //     document.removeEventListener('visibilitychange', handleVisibilityChange)
+  //   }
+  // }, [onScheduleUpdate])
 
   // Effect to update current time position and handle day transitions
   useEffect(() => {

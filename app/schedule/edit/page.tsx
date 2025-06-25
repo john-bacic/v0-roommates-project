@@ -203,10 +203,11 @@ function EditScheduleUI({ initialWeek, initialDay, fromPath, userNameFromUrl }: 
     setUse24HourFormat(event.detail.use24Hour);
   };
 
-  useEffect(() => {
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [userName, selectedWeek]);
+  // Visibility-based refresh disabled to prevent day reset issues
+  // useEffect(() => {
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // }, [userName, selectedWeek]);
 
   useEffect(() => {
     window.addEventListener('userColorChange', handleColorChange as EventListener);

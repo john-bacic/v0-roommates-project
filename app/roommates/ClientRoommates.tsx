@@ -340,24 +340,24 @@ export default function Roommates() {
     
     fetchUsersAndSchedules();
 
-    // Set up visibility-based refresh instead of polling
-    console.log('Setting up visibility-based refresh for Roommates component');
+    // Visibility-based refresh disabled for better performance
+    // console.log('Setting up visibility-based refresh for Roommates component');
     
     // Handle page visibility changes (when user returns to the tab)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Tab became visible - refreshing roommates data');
-        fetchUsersAndSchedules();
-      }
-    };
+    // const handleVisibilityChange = () => {
+    //   if (document.visibilityState === 'visible') {
+    //     console.log('Tab became visible - refreshing roommates data');
+    //     fetchUsersAndSchedules();
+    //   }
+    // };
     
-    // Add event listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // // Add event listener
+    // document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    return () => {
-      console.log('Cleaning up visibility listener in Roommates');
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    // return () => {
+    //   console.log('Cleaning up visibility listener in Roommates');
+    //   document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // };
   }, [selectedWeek, fetchUsersAndSchedules])
 
   // Set up event listeners for schedule synchronization

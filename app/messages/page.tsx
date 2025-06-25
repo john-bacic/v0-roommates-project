@@ -19,6 +19,9 @@ function MessagesPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [userColor, setUserColor] = useState("#B388F5") // Default color
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
+  const [viewportHeight, setViewportHeight] = useState(0)
   const { toast } = useToast()
 
   // Get current user from localStorage
@@ -39,6 +42,63 @@ function MessagesPage() {
       setUserColor(storedColor)
     }
   }, [])
+
+  // Handle mobile keyboard detection and viewport changes
+  useEffect(() => {
+    // Initial viewport height
+    setViewportHeight(window.innerHeight)
+    
+    const handleResize = () => {
+      const newHeight = window.innerHeight
+      const heightDifference = viewportHeight - newHeight
+      
+      // If viewport height decreased by more than 150px, assume keyboard is open
+      setIsKeyboardOpen(heightDifference > 150)
+      setViewportHeight(newHeight)
+    }
+    
+    const handleFocus = () => {
+      // Small delay to let the keyboard animation start
+      setTimeout(() => {
+        setIsKeyboardOpen(true)
+        // Scroll input into view on mobile
+        if (inputRef.current && window.innerWidth <= 768) {
+          inputRef.current.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest',
+            inline: 'nearest'
+          })
+        }
+      }, 100)
+    }
+    
+    const handleBlur = () => {
+      // Delay to ensure keyboard is actually closing
+      setTimeout(() => {
+        setIsKeyboardOpen(false)
+      }, 100)
+    }
+    
+    // Add event listeners
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+    
+    // Add focus/blur listeners to input when it's available
+    const input = inputRef.current
+    if (input) {
+      input.addEventListener('focus', handleFocus)
+      input.addEventListener('blur', handleBlur)
+    }
+    
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+      if (input) {
+        input.removeEventListener('focus', handleFocus)
+        input.removeEventListener('blur', handleBlur)
+      }
+    }
+  }, [viewportHeight])
 
   const { messages, loading, error, sendMessage, markAsRead, deleteMessage } = useMessages({
     userId: currentUserId || 1,
@@ -99,7 +159,14 @@ function MessagesPage() {
   }
 
   return (
-          <div className="flex flex-col min-h-screen bg-[#282828] text-white">
+          <div 
+            className="flex flex-col bg-[#282828] text-white"
+            style={{ 
+              height: isKeyboardOpen ? `${viewportHeight}px` : '100vh',
+              maxHeight: isKeyboardOpen ? `${viewportHeight}px` : '100vh',
+              overflow: 'hidden'
+            }}
+          >
         {/* Main header - fixed at the top */}
         <header className="fixed top-0 left-0 right-0 z-[100] bg-[#242424] shadow-md border-b border-[#333333]">
           <div className="flex items-center justify-between max-w-7xl mx-auto h-[57px] px-4 w-full">
@@ -112,15 +179,21 @@ function MessagesPage() {
         </header>
 
         {/* Spacer to account for fixed header */}
-        <div className="h-[57px]"></div>
+        <div className="h-[57px] flex-shrink-0"></div>
 
         {/* Main content */}
-        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative">
+        <main className="flex-1 flex flex-col max-w-7xl mx-auto w-full relative overflow-hidden">
           {/* Messages list */}
-          <ScrollArea className="flex-1 p-2 sm:p-4" style={{ scrollBehavior: "smooth" }}>
+          <ScrollArea 
+            className="flex-1 p-2 sm:p-4" 
+            style={{ 
+              scrollBehavior: "smooth",
+              height: isKeyboardOpen ? `calc(${viewportHeight}px - 57px - 80px)` : 'auto'
+            }}
+          >
             <div className="min-h-full flex flex-col justify-end space-y-4 pb-2 sm:pb-4">
-              {/* Spacer to push first message down from bottom */}
-              <div className="h-20"></div>
+              {/* Dynamic spacer based on keyboard state */}
+              <div className={isKeyboardOpen ? "h-4" : "h-20"}></div>
               {loading && messages.length === 0 ? (
                 <div className="text-center text-gray-500">Loading messages...</div>
               ) : error ? (
@@ -202,48 +275,62 @@ function MessagesPage() {
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
-
-          {/* Add bottom padding to prevent messages from being hidden behind floating input */}
-          <div className="h-32"></div>
         </main>
 
-        {/* Floating message input */}
-        <form onSubmit={handleSendMessage} className="fixed bottom-0 left-0 right-0 z-50 px-4 py-4 pb-6 bg-[#282828] border-t border-[#333333] shadow-lg">
-          <div className="flex gap-2 max-w-7xl mx-auto">
-            <div className="flex-1 relative">
-              <Input
-                type="text"
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                className="bg-[#333333] border-gray-600 text-white rounded-full pr-10"
-                autoComplete="off"
-                maxLength={500}
-              />
+        {/* Message input - positioned at bottom but adapts to keyboard */}
+        <div 
+          className="flex-shrink-0 bg-[#282828] border-t border-[#333333] shadow-lg"
+          style={{
+            position: isKeyboardOpen ? 'fixed' : 'relative',
+            bottom: isKeyboardOpen ? '0' : 'auto',
+            left: isKeyboardOpen ? '0' : 'auto',
+            right: isKeyboardOpen ? '0' : 'auto',
+            zIndex: 50,
+            paddingBottom: isKeyboardOpen ? 'env(safe-area-inset-bottom, 0px)' : '1.5rem'
+          }}
+        >
+          <form onSubmit={handleSendMessage} className="px-4 py-4">
+            <div className="flex gap-2 max-w-7xl mx-auto">
+              <div className="flex-1 relative">
+                <Input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="bg-[#333333] border-gray-600 text-white rounded-full pr-10"
+                  autoComplete="off"
+                  maxLength={500}
+                  style={{
+                    fontSize: '16px', // Prevents zoom on iOS
+                    WebkitAppearance: 'none'
+                  }}
+                />
+                {newMessage.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setNewMessage("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               {newMessage.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setNewMessage("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                <Button 
+                  type="submit" 
+                  className="rounded-full h-10 w-10 p-0"
+                  style={{ 
+                    backgroundColor: userColor,
+                    color: "#000"
+                  }}
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  <Send className="h-4 w-4" />
+                </Button>
               )}
             </div>
-            {newMessage.trim() && (
-              <Button 
-                type="submit" 
-                className="rounded-full h-10 w-10 p-0"
-                style={{ 
-                  backgroundColor: userColor,
-                  color: "#000"
-                }}
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
   )
 }

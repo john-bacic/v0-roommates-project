@@ -115,15 +115,13 @@ export function useMessages({ userId, pollInterval = 30000 }: UseMessagesProps) 
     }
   }, [userId]);
 
-  // Initial fetch and polling
+  // Initial fetch only (no polling)
   useEffect(() => {
     fetchMessages();
     
-    // Set up polling
-    const interval = setInterval(fetchMessages, pollInterval);
-    
-    return () => clearInterval(interval);
-  }, [fetchMessages, pollInterval]);
+    // Polling disabled for better performance
+    // Users can manually refresh or send messages to get updates
+  }, [fetchMessages]);
 
   return {
     messages,
