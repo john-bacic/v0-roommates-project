@@ -24,7 +24,7 @@ function MessagesPage() {
   const [viewportHeight, setViewportHeight] = useState(0)
   const { toast } = useToast()
 
-  // Get current user from localStorage
+  // Get current user from localStorage and database
   useEffect(() => {
     const userName = localStorage.getItem("userName")
     // Map userName to userId (in a real app, this would come from auth)
@@ -36,10 +36,30 @@ function MessagesPage() {
     const userId = userMap[userName || ""] || 1
     setCurrentUserId(userId)
     
-    // Get user color from localStorage or use default
+    // Get user color from localStorage first
     const storedColor = localStorage.getItem(`userColor_${userName}`)
     if (storedColor) {
       setUserColor(storedColor)
+    }
+    
+    // Also fetch from database to ensure we have the latest color
+    if (userName) {
+      const fetchUserColor = async () => {
+        try {
+          const response = await fetch(`/api/users?name=${encodeURIComponent(userName)}`)
+          if (response.ok) {
+            const userData = await response.json()
+            if (userData.color) {
+              setUserColor(userData.color)
+              // Update localStorage with latest color
+              localStorage.setItem(`userColor_${userName}`, userData.color)
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch user color:', error)
+        }
+      }
+      fetchUserColor()
     }
   }, [])
 
@@ -223,9 +243,10 @@ function MessagesPage() {
                       <div
                         className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
                           isOwnMessage
-                            ? "bg-blue-600 text-white"
+                            ? "text-black"
                             : "bg-[#333333] text-white"
                         }`}
+                        style={isOwnMessage ? { backgroundColor: userColor } : {}}
                       >
                         {/* Sender name and avatar */}
                         {!isOwnMessage && message.sender && (
@@ -263,14 +284,15 @@ function MessagesPage() {
                                   size="icon"
                                   className="h-5 w-5 opacity-70 hover:opacity-100"
                                   onClick={() => handleDeleteMessage(message.id)}
+                                  style={{ color: "#000" }}
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-3 w-3" style={{ color: "#000" }} />
                                 </Button>
                                 
                                 {/* Read receipts */}
                                 {readByOthers.length > 0 && (
                                   <div className="flex items-center" title={`Read by ${readByOthers.map(r => r.user?.name).join(", ")}`}>
-                                    <CheckCheck className="h-3 w-3 text-blue-300" />
+                                    <CheckCheck className="h-3 w-3" style={{ color: "#000" }} />
                                   </div>
                                 )}
                               </>
@@ -326,10 +348,11 @@ function MessagesPage() {
               {newMessage.trim() && (
                 <Button 
                   type="submit" 
-                  className="rounded-full h-10 w-10 p-0"
+                  className="rounded-full h-10 w-10 p-0 border-0 hover:opacity-90 transition-opacity"
                   style={{ 
                     backgroundColor: userColor,
-                    color: "#000"
+                    color: "#000",
+                    borderColor: userColor
                   }}
                 >
                   <Send className="h-4 w-4" />
