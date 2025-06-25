@@ -218,7 +218,7 @@ function MessagesPage() {
         sel?.removeAllRanges()
         sel?.addRange(range)
       }
-      showToast("Copy failed, text selected")
+      // No toast on failure
     }
   }
 
@@ -352,7 +352,7 @@ function MessagesPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-5 w-5 opacity-70 hover:opacity-100"
+                                    className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-70 hover:opacity-100"
                                     onClick={() => handleDeleteMessage(message.id)}
                                     style={{ color: "#000" }}
                                   >
