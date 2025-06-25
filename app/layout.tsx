@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ClientOnlyScripts } from '@/components/client-only-scripts'
 import { caveat } from './fonts'
+import NotchPaddingWrapper from '@/components/notch-padding-wrapper'
 
 export const metadata: Metadata = {
   title: 'Roomeez',
@@ -57,10 +58,12 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 834px) and (max-device-width: 834px) and (-webkit-device-pixel-ratio: 2)" />
         <link rel="apple-touch-startup-image" href="/splash.png" media="(min-device-width: 1024px) and (max-device-width: 1024px) and (-webkit-device-pixel-ratio: 2)" />
       </head>
-      <body className="overflow-y-hidden">
-        <div id="app-container">
-          {children}
-        </div>
+      <body className="overflow-y-hidden" style={{ background: 'transparent' }}>
+        <NotchPaddingWrapper>
+          <div id="app-container">
+            {children}
+          </div>
+        </NotchPaddingWrapper>
         <ClientOnlyScripts />
       </body>
     </html>
