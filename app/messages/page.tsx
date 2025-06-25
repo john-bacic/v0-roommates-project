@@ -205,23 +205,25 @@ function MessagesPage() {
     }
   }
 
-  // Copy message content to clipboard
-  const handleCopyMessage = async (content: string) => {
+  // Copy message content to clipboard, robust for mobile
+  const handleCopyMessage = async (content: string, e?: React.SyntheticEvent) => {
     try {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(content)
+        toast({ title: 'Copied', duration: 1200 })
       } else {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea')
-        textarea.value = content
-        document.body.appendChild(textarea)
-        textarea.select()
-        document.execCommand('copy')
-        document.body.removeChild(textarea)
+        throw new Error('Clipboard API not available')
       }
-      toast({ title: 'Copied', duration: 1200 })
     } catch (err) {
-      toast({ title: 'Copy failed', description: String(err), variant: 'destructive' })
+      // Fallback: select the text for manual copy
+      if (e && e.target && document.createRange) {
+        const range = document.createRange()
+        range.selectNodeContents(e.target as Node)
+        const sel = window.getSelection()
+        sel?.removeAllRanges()
+        sel?.addRange(range)
+      }
+      toast({ title: 'Copy failed, text selected', duration: 2000 })
     }
   }
 
@@ -323,7 +325,8 @@ function MessagesPage() {
                               <p
                                 className="break-words whitespace-pre-line cursor-pointer hover:opacity-80 transition-opacity"
                                 title="Tap to copy"
-                                onClick={() => handleCopyMessage(message.content)}
+                                onClick={e => handleCopyMessage(message.content, e)}
+                                onTouchStart={e => handleCopyMessage(message.content, e)}
                               >
                                 {message.content}
                               </p>
