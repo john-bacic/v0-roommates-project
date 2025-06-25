@@ -38,7 +38,15 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#282828] text-white p-4">
+    <main className="flex min-h-screen flex-col items-center justify-center text-white p-4 relative overflow-hidden" style={{ backgroundColor: 'var(--color-bg-dark, #1e1e1e)' }}>
+      {/* Background SVG texture */}
+      <img 
+        src="/BGlines.svg" 
+        alt="background texture" 
+        className="pointer-events-none select-none fixed inset-0 w-full h-full object-cover opacity-100 z-[9999]"
+        style={{position: 'fixed', border: '5px solid red'}} 
+        aria-hidden="true"
+      />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
