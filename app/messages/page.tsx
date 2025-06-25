@@ -223,7 +223,8 @@ function MessagesPage() {
             <img 
               src="/BGlines.svg" 
               alt="background texture" 
-              className="pointer-events-none select-none absolute inset-0 w-full h-full object-cover opacity-60 z-0"
+              className="pointer-events-none select-none fixed inset-0 w-full h-full object-cover opacity-60 z-0"
+              style={{position: 'fixed'}}
               aria-hidden="true"
             />
             {/* Main header - fixed at the top */}
@@ -262,7 +263,7 @@ function MessagesPage() {
                     <div className="text-center text-gray-500">No messages yet. Start a conversation!</div>
                   ) : (
                     <>
-                      {messages.length === 1 && <div className="h-20 block sm:hidden"></div>}
+                      {messages.length === 1 && <div className="h-2 block sm:hidden"></div>}
                       {messages.map((message) => {
                         const isOwnMessage = message.sender_id === currentUserId
                         const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
