@@ -304,10 +304,10 @@ function MessagesPage() {
                         className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 ${
+                          className={`max-w-[85vw] sm:max-w-[70%] rounded-lg p-3 pt-5 pb-1 ${
                             isOwnMessage
-                              ? "text-black"
-                              : "bg-[#333333] text-white"
+                              ? "text-black pl-5"
+                              : "bg-[#333333] text-white pl-5"
                           }`}
                           style={isOwnMessage ? { backgroundColor: userColor } : {}}
                           onClick={handleBubbleCopy}
