@@ -22,6 +22,7 @@ function MessagesPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
   const [viewportHeight, setViewportHeight] = useState(0)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
   // Get current user from localStorage and database
   useEffect(() => {
@@ -205,10 +206,14 @@ function MessagesPage() {
   }
 
   // Copy message content to clipboard, robust for mobile
-  const handleCopyMessage = async (content: string, e?: React.SyntheticEvent) => {
+  const handleCopyMessage = async (content: string, e?: React.SyntheticEvent, messageId?: string) => {
     try {
       await navigator.clipboard.writeText(content)
       showToast("Copied")
+      if (messageId) {
+        setCopiedMessageId(messageId)
+        setTimeout(() => setCopiedMessageId(null), 300)
+      }
     } catch (err) {
       // Fallback: select the text for manual copy
       if (e && e.target && document.createRange) {
@@ -221,6 +226,15 @@ function MessagesPage() {
       // No toast on failure
     }
   }
+
+  const handleBubbleCopy = (e: React.SyntheticEvent, messageId: string) => {
+    let el = e.target as HTMLElement | null;
+    while (el) {
+      if (el.tagName === 'BUTTON') return;
+      el = el.parentElement;
+    }
+    handleCopyMessage(messages.find(m => m.id === messageId)?.content || '', e, messageId);
+  };
 
   if (!currentUserId) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -287,17 +301,6 @@ function MessagesPage() {
                     const isOwnMessage = message.sender_id === currentUserId
                     const readByOthers = message.read_by?.filter(r => r.user_id !== currentUserId) || []
                     
-                    // Handler for copying, but ignore if clicking a button
-                    const handleBubbleCopy = (e: React.SyntheticEvent) => {
-                      // If the click/tap is on a button or inside a button, do nothing
-                      let el = e.target as HTMLElement | null;
-                      while (el) {
-                        if (el.tagName === 'BUTTON') return;
-                        el = el.parentElement;
-                      }
-                      handleCopyMessage(message.content, e);
-                    };
-
                     return (
                       <div
                         key={message.id}
@@ -308,10 +311,10 @@ function MessagesPage() {
                             isOwnMessage
                               ? "text-black pl-5"
                               : "bg-[#333333] text-white pl-5"
-                          }`}
+                          } transition-transform duration-100${copiedMessageId === message.id ? " scale-90" : ""}`}
                           style={isOwnMessage ? { backgroundColor: userColor } : {}}
-                          onClick={handleBubbleCopy}
-                          onTouchStart={handleBubbleCopy}
+                          onClick={e => handleBubbleCopy(e, message.id)}
+                          onTouchStart={e => handleBubbleCopy(e, message.id)}
                           title="Tap to copy"
                         >
                           {/* Sender name and avatar */}
@@ -355,6 +358,8 @@ function MessagesPage() {
                                     className="h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-70 hover:opacity-100"
                                     onClick={() => handleDeleteMessage(message.id)}
                                     style={{ color: "#000" }}
+                                    onMouseOver={e => (e.currentTarget.style.backgroundColor = userColor)}
+                                    onMouseOut={e => (e.currentTarget.style.backgroundColor = '')}
                                   >
                                     <Trash2 className="h-3 w-3" style={{ color: "#000" }} />
                                   </Button>
