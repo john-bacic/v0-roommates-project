@@ -244,7 +244,7 @@ function MessagesPage() {
     <>
       <MinimalToaster />
       <div 
-        className="flex flex-col text-white min-h-screen relative overflow-hidden"
+        className="flex flex-col text-white min-h-screen relative overflow-hidden select-none"
         style={{ 
           backgroundColor: 'var(--color-bg-dark, #1e1e1e)',
           height: '100vh',
